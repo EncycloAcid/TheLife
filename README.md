@@ -6,11 +6,14 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 
 - **17 countries**, each with its own names, currency, tax rate and life expectancy. Emigrate mid-life.
 - **Stats**: happiness, health, smarts, looks, plus athleticism, karma, fame and social-media followers.
-- **Education**: elementary → middle → high school, a GED, university (26 majors; pay with parents, a scholarship, loans or savings), and graduate school (Law, Medicine, MBA, PhD). You can study, join clubs and sports teams, skip class or drop out.
-- **Careers**: 37 career ladders with promotions, performance reviews, raises and firing, plus part-time jobs, odd jobs, retirement and pensions.
+- **Education**: elementary → middle → high school, a GED, trade school, university (26 majors; pay with parents, a scholarship, loans or savings), and graduate school (Law, Medicine, Veterinary, Dental, MBA, PhD). You can study, join clubs and sports teams, skip class or drop out.
+- **Careers**: 50 career ladders with promotions, performance reviews, raises and firing, plus part-time jobs, odd jobs, retirement and pensions. **Job interviews** ask you a question, and your answer (or your smarts, fitness or looks) sways the hiring manager.
+- **Trade school, vet school and dental school**: become an electrician, plumber, welder or HVAC tech after two years of training, or a veterinarian or dentist after grad school.
+- **Astronaut**: a tough-to-land career for fit STEM graduates, with real space missions (and real risk).
 - **Fame careers**: acting, music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
 - **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
-- **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy and adoption. Your adult children marry and give you grandchildren.
+- **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy, twins, IVF, surrogacy and adoption. Your adult children marry and give you grandchildren.
+- **Where you live**: stay with your parents (they may start charging rent), rent anything from a shared room to a luxury loft, move into a house you own, or end up evicted and homeless.
 - **Assets**: real estate with mortgages, renovation and rental income; cars, jets and yachts with financing; jewelry; a stock market; and businesses you can start and grow.
 - **Health**: 29 illnesses, injuries and addictions. Doctors, herbalists, therapy, rehab and plastic surgery.
 - **Activities**: gym, library, meditation, martial arts, instruments, social media, casino (blackjack, slots, roulette, horse racing), lottery, vacations, pets (8 species) and volunteering.
@@ -23,11 +26,13 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Student life**: take the SAT, run for class president, join a fraternity or sorority, go to campus parties, land internships (which help you get hired later) and study abroad.
 - **Landlord life**: tenants who pay late, wreck the place, throw parties, or offer to buy your house.
 - **Custom lives**: set your starting happiness, health, smarts and looks, and your family's wealth.
+- **Time Machine**: go back up to five years, even after you die.
+- **Bucket list**: every life gets five personal goals, from skydiving and running a marathon to seeing the Northern Lights.
 - **Obituary & life chart**: when you die, read your obituary and see your net worth and happiness charted across your whole life.
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
-- **~80 random life events** with choices, gated by age and circumstances.
+- **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **38 achievements**, tracked per life and across all lives.
+- **43 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **Settings**: text size, and deleting all data.
 - Works offline, autosaves, supports light and dark themes, and handles the Android back gesture.

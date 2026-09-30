@@ -73,7 +73,9 @@ TL.data = (function () {
   ];
 
   // Education ranks: higher number = more education.
-  var EDU_RANK = { none: 0, hs: 1, bachelor: 2, mba: 3, law: 3, med: 3, phd: 4 };
+  var EDU_RANK = { none: 0, hs: 1, trade: 1, bachelor: 2, mba: 3, law: 3, med: 3, vet: 3, dental: 3, phd: 4 };
+  // Trade school specialties (2 years, after high school).
+  var TRADES = [['Electrical', '⚡'], ['Plumbing', '🔧'], ['Welding', '🔥'], ['HVAC', '❄️']];
 
   var MAJORS = ['Accounting', 'Architecture', 'Art', 'Biology', 'Business', 'Chemistry', 'Communications',
     'Computer Science', 'Criminal Justice', 'Economics', 'Education', 'Engineering', 'English', 'Finance',
@@ -85,7 +87,9 @@ TL.data = (function () {
     { id: 'law', name: 'Law School', years: 3, cost: 50000, minSmarts: 60, degree: 'Juris Doctor' },
     { id: 'med', name: 'Medical School', years: 4, cost: 60000, minSmarts: 72, majors: PREMED, degree: 'Doctor of Medicine' },
     { id: 'mba', name: 'Business School (MBA)', years: 2, cost: 60000, minSmarts: 55, degree: 'MBA' },
-    { id: 'phd', name: 'Graduate School (PhD)', years: 5, cost: 0, minSmarts: 70, degree: 'PhD' }
+    { id: 'phd', name: 'Graduate School (PhD)', years: 5, cost: 0, minSmarts: 70, degree: 'PhD' },
+    { id: 'vet', name: 'Veterinary School', years: 4, cost: 45000, minSmarts: 66, majors: PREMED, degree: 'Doctor of Veterinary Medicine' },
+    { id: 'dental', name: 'Dental School', years: 4, cost: 55000, minSmarts: 68, majors: PREMED, degree: 'Doctor of Dental Surgery' }
   ];
 
   /* Careers. levels: [title, base salary]. edu: minimum degree. majors: required
@@ -131,7 +135,23 @@ TL.data = (function () {
     { id: 'surgeon', name: 'Surgery', edu: 'med', minAge: 27, stat: 'smarts', minStat: 75, levels: [['Surgical Resident', 68000], ['Surgeon', 360000], ['Senior Surgeon', 480000], ['Chief of Surgery', 650000]] },
     { id: 'executive', name: 'Corporate', edu: 'mba', minAge: 24, stat: 'smarts', levels: [['Management Associate', 105000], ['Manager', 140000], ['Vice President', 230000], ['Senior VP', 380000], ['CEO', 1200000]] },
     { id: 'professor', name: 'Academia', edu: 'phd', minAge: 26, stat: 'smarts', levels: [['Postdoc', 56000], ['Assistant Professor', 82000], ['Associate Professor', 108000], ['Professor', 150000], ['Dean', 240000]] },
-    { id: 'scientist', name: 'Research', edu: 'phd', minAge: 26, stat: 'smarts', levels: [['Research Scientist', 96000], ['Senior Scientist', 132000], ['Principal Scientist', 180000], ['Chief Scientist', 260000]] }
+    { id: 'scientist', name: 'Research', edu: 'phd', minAge: 26, stat: 'smarts', levels: [['Research Scientist', 96000], ['Senior Scientist', 132000], ['Principal Scientist', 180000], ['Chief Scientist', 260000]] },
+    { id: 'vet', name: 'Veterinary', edu: 'vet', minAge: 25, stat: 'smarts', levels: [['Associate Veterinarian', 95000], ['Veterinarian', 115000], ['Senior Veterinarian', 135000], ['Clinic Owner', 190000]] },
+    { id: 'dentist', name: 'Dentistry', edu: 'dental', minAge: 25, stat: 'smarts', levels: [['Associate Dentist', 140000], ['Dentist', 175000], ['Senior Dentist', 210000], ['Practice Owner', 300000]] },
+    // v1.4 careers
+    { id: 'electrician', name: 'Electrical', edu: 'trade', majors: ['Electrical'], minAge: 18, stat: 'smarts', levels: [['Apprentice Electrician', 38000], ['Journeyman Electrician', 62000], ['Master Electrician', 85000], ['Electrical Contractor', 130000]] },
+    { id: 'plumber', name: 'Plumbing', edu: 'trade', majors: ['Plumbing'], minAge: 18, stat: 'health', levels: [['Apprentice Plumber', 36000], ['Plumber', 58000], ['Master Plumber', 80000], ['Plumbing Contractor', 120000]] },
+    { id: 'welder', name: 'Welding', edu: 'trade', majors: ['Welding'], minAge: 18, stat: 'athl', levels: [['Welder\'s Helper', 34000], ['Welder', 52000], ['Certified Welder', 68000], ['Welding Supervisor', 90000]] },
+    { id: 'hvac', name: 'HVAC', edu: 'trade', majors: ['HVAC'], minAge: 18, stat: 'smarts', levels: [['HVAC Apprentice', 35000], ['HVAC Technician', 56000], ['Senior HVAC Technician', 72000], ['HVAC Contractor', 110000]] },
+    { id: 'trainer', name: 'Fitness', edu: 'hs', minAge: 18, stat: 'athl', minStat: 60, levels: [['Personal Trainer', 34000], ['Senior Trainer', 48000], ['Head Trainer', 62000], ['Gym Owner', 95000]] },
+    { id: 'gamedev', name: 'Game Development', edu: 'bachelor', majors: ['Computer Science', 'Graphic Design', 'Art', 'Mathematics'], minAge: 21, stat: 'smarts', levels: [['Junior Game Developer', 62000], ['Game Developer', 85000], ['Senior Game Developer', 115000], ['Lead Designer', 145000], ['Studio Director', 210000]] },
+    { id: 'zookeeper', name: 'Zoo', edu: 'bachelor', majors: ['Biology'], minAge: 21, stat: 'health', levels: [['Zookeeper', 36000], ['Senior Zookeeper', 45000], ['Curator', 68000], ['Zoo Director', 110000]] },
+    { id: 'pharmacist', name: 'Pharmacy', edu: 'bachelor', majors: ['Chemistry', 'Biology'], minAge: 22, stat: 'smarts', minStat: 60, levels: [['Pharmacy Intern', 40000], ['Pharmacist', 125000], ['Senior Pharmacist', 140000], ['Pharmacy Director', 165000]] },
+    { id: 'fashion', name: 'Fashion', edu: 'bachelor', majors: ['Art', 'Graphic Design', 'Marketing'], minAge: 21, stat: 'looks', levels: [['Design Assistant', 38000], ['Fashion Designer', 65000], ['Senior Fashion Designer', 95000], ['Creative Director', 180000]] },
+    // Astronauts are chosen from very few applicants: hard (-0.5 hire chance) and fit.
+    { id: 'astronaut', name: 'Space Agency', edu: 'bachelor', majors: ['Engineering', 'Physics', 'Mathematics', 'Computer Science', 'Biology', 'Chemistry'], minAge: 26, maxAge: 46, stat: 'smarts', minStat: 75, hard: 0.5,
+      req: function () { return TL.S.me.athl < 60 ? 'Needs athleticism 60+' : null; },
+      levels: [['Astronaut Candidate', 70000], ['Astronaut', 105000], ['Mission Specialist', 130000], ['Mission Commander', 165000], ['Chief Astronaut', 190000]] }
   ];
 
   // Part-time and freelance work for teens and students.
@@ -270,7 +290,7 @@ TL.data = (function () {
   var VACATIONS = [
     { name: 'Road Trip', cost: 1200 }, { name: 'Camping in the Mountains', cost: 600 }, { name: 'Beach Resort in Cancún', cost: 4000 },
     { name: 'Paris Getaway', cost: 6000 }, { name: 'Tokyo Adventure', cost: 7000 }, { name: 'Safari in Kenya', cost: 9000 },
-    { name: 'Bali Retreat', cost: 5000 }, { name: 'Maldives Overwater Villa', cost: 18000 }, { name: 'Antarctica Expedition', cost: 30000 },
+    { name: 'Bali Retreat', cost: 5000 }, { name: 'Northern Lights in Iceland', cost: 5500, aurora: true }, { name: 'Maldives Overwater Villa', cost: 18000 }, { name: 'Antarctica Expedition', cost: 30000 },
     { name: 'Private Island Charter', cost: 250000 }
   ];
 
@@ -320,7 +340,12 @@ TL.data = (function () {
     { id: 'award', name: 'And the Winner Is...', desc: 'Win a major award', icon: '🏆' },
     { id: 'nobel', name: 'Nobel Laureate', desc: 'Win a Nobel Prize', icon: '🏅' },
     { id: 'valedictorian', name: 'Valedictorian', desc: 'Graduate high school at the top of your class', icon: '🥇' },
-    { id: 'landlord', name: 'Landlord', desc: 'Rent out 3 properties at once', icon: '🔑' }
+    { id: 'landlord', name: 'Landlord', desc: 'Rent out 3 properties at once', icon: '🔑' },
+    { id: 'timetraveler', name: 'Do-Over', desc: 'Use the Time Machine', icon: '⏳' },
+    { id: 'bucketlist', name: 'No Regrets', desc: 'Complete your whole bucket list', icon: '📝' },
+    { id: 'astronaut', name: 'To Infinity', desc: 'Go to space', icon: '🚀' },
+    { id: 'twins', name: 'Double Trouble', desc: 'Have twins', icon: '👯' },
+    { id: 'tradesman', name: 'Skilled Trade', desc: 'Earn a trade certificate', icon: '🔧' }
   ];
 
   var BUSINESS_TYPES = [
@@ -344,7 +369,7 @@ TL.data = (function () {
 
   return {
     COUNTRIES: COUNTRIES, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
-    CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, POLITICS: POLITICS, SPORTS: SPORTS, GENRES: GENRES,
+    TRADES: TRADES, CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, POLITICS: POLITICS, SPORTS: SPORTS, GENRES: GENRES,
     HOUSES: HOUSES, STREETS: STREETS, STREET_TYPES: STREET_TYPES, CARS: CARS, CAR_COLORS: CAR_COLORS,
     JEWELRY: JEWELRY, PETS: PETS, PET_NAMES: PET_NAMES, ILLNESSES: ILLNESSES, CRIMES: CRIMES, CLUBS: CLUBS,
     SPORTS_TEAMS: SPORTS_TEAMS, VACATIONS: VACATIONS, TRAITS: TRAITS, ZODIAC: ZODIAC, MONTHS: MONTHS,

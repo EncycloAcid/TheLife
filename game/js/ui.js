@@ -281,7 +281,7 @@ TL.ui = (function () {
       ['🏃 Athleticism', m.athl + '%'], ['🙏 Karma', karmaWord(s.karma)], ['⭐ Fame', s.fame + '%'],
       ['📱 Followers', s.followers.toLocaleString()], ['💰 Net worth', E.fmt(E.netWorth())],
       ['🎓 Education', E.degreeName(deg)], ['🎂 Birthday', D.MONTHS[m.month - 1] + ' ' + m.day + ' (' + m.zodiac + ')'],
-      ['🌍 Country', E.country().flag + ' ' + s.country], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
+      ['🌍 Country', E.country().flag + ' ' + s.country], ['🏡 Home', E.homeLabel()], ['📝 Bucket list', TL.features.bucketCount()], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
       ['🩺 Conditions', s.conditions.length ? s.conditions.join(', ') : 'None'], ['🏅 Achievements', s.ach.length]
     ];
     if (s.royal) rows.splice(3, 0, ['👑 Royalty', TL.features.royalTitle() + ' · ' + s.royal.house + ' · popularity ' + s.royal.popularity + '%']);
@@ -293,6 +293,22 @@ TL.ui = (function () {
     menu('About me', function () {
       return [{ info: true, html: lifeChart(s.hist) }, { info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
     });
+  }
+  // Go back 1-5 years; also undoes a death.
+  function timeMachine() {
+    var ages = E.tmAges();
+    if (!ages.length) return;
+    choose('⏳ Time Machine', 'How far back do you want to go? Everything after that point will be undone.', ages.map(function (age, i) {
+      return { label: 'Back ' + U.plural(i + 1, 'year') + ' (age ' + age + ')', fn: function () {
+        if (!E.timeTravel(i + 1)) return;
+        E.save();
+        closeAll();
+        if (screen !== 'game') show('game');
+        refresh();
+        scrollLog();
+        toast('⏳ Welcome back to age ' + S().me.age + '.', 'good');
+      } };
+    }));
   }
   function moneyDelta(d) {
     var el = $('#h-delta');
@@ -335,7 +351,13 @@ TL.ui = (function () {
   // ---------------------------------------------------------------- events
   function runPending() {
     var s = S();
-    if (!s || dialogOpen || s.dead) return;
+    if (!s || dialogOpen) return;
+    if (s.dead) {
+      // Died during an event or action rather than at a birthday.
+      s.pending = [];
+      if (screen === 'game') { E.save(); setTimeout(deathScreen, 350); }
+      return;
+    }
     while (s.pending.length) {
       var p = s.pending[0];
       var ev = TL.events.build(p);
@@ -486,7 +508,8 @@ TL.ui = (function () {
     heirs.forEach(function (c) {
       addBtn(box, '👑 Continue as ' + c.first + ' (' + c.age + ')', 'primary', function () { E.continueAs(c.id); E.save(); startGame(); });
     });
-    addBtn(box, '＋ New Life', heirs.length ? '' : 'primary', createScreen);
+    if (E.tmAges().length) addBtn(box, '⏳ Time Machine: go back up to ' + U.plural(E.tmAges().length, 'year'), heirs.length ? '' : 'primary', timeMachine);
+    addBtn(box, '＋ New Life', heirs.length || E.tmAges().length ? '' : 'primary', createScreen);
     addBtn(box, '📜 Read my life story', '', function () { show('game'); refresh(); });
     addBtn(box, '🏠 Main Menu', 'ghost', home);
     show('death');
@@ -528,6 +551,6 @@ TL.ui = (function () {
 
   return {
     init: init, menu: menu, back: back, closeAll: closeAll, refresh: refresh, alert: alert, choose: choose,
-    confirm: confirm, prompt: prompt, toast: toast, runPending: runPending, handleBack: handleBack, home: home, ageUp: ageUp
+    confirm: confirm, prompt: prompt, toast: toast, timeMachine: timeMachine, runPending: runPending, handleBack: handleBack, home: home, ageUp: ageUp
   };
 })();

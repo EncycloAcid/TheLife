@@ -90,7 +90,7 @@ TL.engine = (function () {
   }
   function degreeName(d) {
     if (!d) return 'None';
-    return { hs: 'High School Diploma', bachelor: 'Bachelor\'s in ' + d.major, mba: 'MBA', law: 'Juris Doctor', med: 'Doctor of Medicine', phd: 'PhD in ' + d.major }[d.type];
+    return { hs: 'High School Diploma', trade: 'Trade Certificate (' + d.major + ')', bachelor: 'Bachelor\'s in ' + d.major, mba: 'MBA', law: 'Juris Doctor', med: 'Doctor of Medicine', vet: 'Doctor of Veterinary Medicine', dental: 'Doctor of Dental Surgery', phd: 'PhD in ' + d.major }[d.type];
   }
 
   function hasCondition(name) { return S().conditions.indexOf(name) >= 0; }
@@ -178,7 +178,7 @@ TL.engine = (function () {
       edu: null, job: null, jobHistory: [], retired: false, pension: 0,
       flags: {}, counts: { vacations: 0, exes: 0, kids: 0, crimes: 0, jobs: 0, dates: 0 },
       yearActs: {}, pending: [], dead: false, cause: null, legacy: opts.legacy || null,
-      famePerks: null, social: { platform: false }
+      famePerks: null, social: { platform: false }, home: { type: 'parents' }
     };
     D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round(U.randf(20, 300) * 100) / 100; });
     TL.S = st;
@@ -241,6 +241,7 @@ TL.engine = (function () {
   function schoolName(kind) {
     var w = U.pick(SCHOOL_WORDS);
     if (kind === 'uni') return w + ' ' + U.pick(UNI_WORDS);
+    if (kind === 'trade') return w + ' ' + U.pick(['Technical Institute', 'Trade School', 'Vocational College']);
     return w + ' ' + { elementary: 'Elementary', middle: 'Middle School', high: 'High School' }[kind];
   }
   function enroll(stage, extra) {
@@ -261,6 +262,7 @@ TL.engine = (function () {
   }
   function eduYears(stage, grad) {
     if (stage === 'uni') return 4;
+    if (stage === 'trade') return 2;
     if (stage === 'grad') return D.GRAD_SCHOOLS.filter(function (g) { return g.id === grad; })[0].years;
     return { elementary: 5, middle: 3, high: 4 }[stage];
   }
@@ -309,6 +311,13 @@ TL.engine = (function () {
       s.edu = null;
       achieve('graduate');
       if (s.job && s.job.partTime) quitJob(true);
+    } else if (e.stage === 'trade') {
+      if (e.grade < 25) { e.year = total; log('I failed my certification exam and need another year of trade school.', 'bad'); return; }
+      s.degrees.push({ type: 'trade', major: e.major });
+      log('🔧 I earned my trade certificate in ' + e.major.toLowerCase() + '!', 'good');
+      stat('happy', 12);
+      s.edu = null;
+      achieve('tradesman');
     } else if (e.stage === 'grad') {
       if (e.grade < 35) { e.year = total; log('I didn\'t pass my exams and need another year.', 'bad'); return; }
       var gs = D.GRAD_SCHOOLS.filter(function (g) { return g.id === e.grad; })[0];
@@ -369,6 +378,17 @@ TL.engine = (function () {
     enroll('grad', { grad: id, major: major, school: U.pick(SCHOOL_WORDS) + ' ' + gs.name.replace(' (MBA)', '').replace('Graduate School (PhD)', 'Graduate School') });
     return { ok: true, msg: 'I was accepted to ' + s.edu.school + '! ' + (cost ? (funding === 'savings' ? 'I paid ' : 'I borrowed ') + fmt(cost) + '.' : 'My PhD is fully funded.') };
   }
+  function enrollTrade(trade, funding) {
+    var s = S(), cost = $(7000) * 2;
+    if (!hasDegree('hs')) return { ok: false, msg: 'I need a high school diploma or GED first.' };
+    if (hasDegree('trade', [trade])) return { ok: false, msg: 'I already have that certificate.' };
+    if (funding === 'savings') {
+      if (s.money < cost) return { ok: false, msg: 'I don\'t have enough money (' + fmt(cost) + ').' };
+      addMoney(-cost);
+    } else s.studentDebt += cost;
+    enroll('trade', { major: trade, funding: funding });
+    return { ok: true, msg: 'I enrolled at ' + s.edu.school + ' to train in ' + trade.toLowerCase() + '. ' + (funding === 'savings' ? 'I paid ' : 'I borrowed ') + fmt(cost) + '.' };
+  }
   function dropOut() {
     var s = S(), e = s.edu;
     if (!e) return;
@@ -399,14 +419,16 @@ TL.engine = (function () {
     if (c.edu && c.edu !== 'none') {
       if (c.edu === 'hs' && eduRank() < 1) reasons.push('Needs high school diploma');
       if (c.edu === 'bachelor' && !hasDegree('bachelor', c.majors)) reasons.push(c.majors ? 'Needs degree in ' + c.majors.join('/') : 'Needs a bachelor\'s degree');
-      if (['law', 'med', 'mba', 'phd'].indexOf(c.edu) >= 0 && !hasDegree(c.edu)) reasons.push('Needs ' + { law: 'law degree', med: 'medical degree', mba: 'an MBA', phd: 'a PhD' }[c.edu]);
+      if (c.edu === 'trade' && !hasDegree('trade', c.majors)) reasons.push('Needs ' + c.majors[0].toLowerCase() + ' trade school');
+      if (['law', 'med', 'mba', 'phd', 'vet', 'dental'].indexOf(c.edu) >= 0 && !hasDegree(c.edu)) reasons.push('Needs ' + { law: 'law degree', med: 'medical degree', mba: 'an MBA', phd: 'a PhD', vet: 'vet school', dental: 'dental school' }[c.edu]);
     }
     if (c.minStat && statValue(c.stat) < c.minStat) reasons.push('Not enough ' + statLabel(c.stat));
     if (c.noRecord && s.record.length) reasons.push('Criminal record');
+    if (c.req) { var extra = c.req(); if (extra) reasons.push(extra); }
     return reasons;
   }
   function statLabel(k) { return { happy: 'happiness', health: 'health', smarts: 'smarts', looks: 'looks', athl: 'athleticism' }[k]; }
-  function applyJob(careerId) {
+  function applyJob(careerId, bonus) {
     var s = S(), c = D.career(careerId);
     if (eligible(c).length) return { ok: false, msg: 'I don\'t qualify: ' + eligible(c).join(', ') + '.' };
     var sv = statValue(c.stat);
@@ -416,7 +438,9 @@ TL.engine = (function () {
     p += Math.min(0.2, exp * 0.03);
     if (TL.features) p += TL.features.skillBonus(careerId);
     p += Math.min(0.2, (s.internships || 0) * 0.08);
-    if (!U.chance(U.clamp(p, 0.08, 0.95))) return { ok: false, msg: 'After the interview, they decided not to hire me.' };
+    p += bonus || 0; // how the interview went
+    p -= c.hard || 0;
+    if (!U.chance(U.clamp(p, 0.05, 0.95))) return { ok: false, msg: 'After the interview, they decided not to hire me.' };
     if (s.job) quitJob(true);
     var lvl = exp >= 4 ? Math.min(c.levels.length - 2, Math.floor(exp / 4)) : 0;
     s.job = { career: careerId, level: Math.max(0, lvl), perf: 55, years: 0, levelYears: 0, mult: U.randf(0.92, 1.12), company: companyName(c) };
@@ -433,9 +457,10 @@ TL.engine = (function () {
     return { ok: true, msg: 'I was hired as ' + an(pt.name) + '! It pays about ' + fmt($(pt.salary)) + '/yr.' };
   }
   var CO_A = ['Apex', 'Blue', 'Summit', 'Vertex', 'Pioneer', 'Nova', 'Liberty', 'Crescent', 'Evergreen', 'Atlas', 'Iron', 'Golden', 'Northstar', 'Harbor'];
-  var CO_B = { software: 'Labs', accountant: 'Accounting', teacher: 'Academy', nurse: 'Medical Center', doctor: 'Hospital', surgeon: 'Hospital', lawyer: 'Law Group', finance: 'Capital', executive: 'Holdings', military: 'Army', police: 'Police Dept.', firefighter: 'Fire Dept.' };
+  var CO_B = { electrician: 'Electric', plumber: 'Plumbing', hvac: 'Heating & Air', welder: 'Fabrication', vet: 'Animal Hospital', dentist: 'Dental', gamedev: 'Games', zookeeper: 'Zoo', pharmacist: 'Pharmacy', fashion: 'Fashion House', trainer: 'Fitness', software: 'Labs', accountant: 'Accounting', teacher: 'Academy', nurse: 'Medical Center', doctor: 'Hospital', surgeon: 'Hospital', lawyer: 'Law Group', finance: 'Capital', executive: 'Holdings', military: 'Army', police: 'Police Dept.', firefighter: 'Fire Dept.' };
   function companyName(c) {
     if (c.id === 'military') return 'the Army';
+    if (c.id === 'astronaut') return 'the ' + U.pick(['National', 'International', 'United']) + ' Space Agency';
     if (c.id === 'police') return 'the ' + U.pick(SCHOOL_WORDS) + ' Police Department';
     if (c.id === 'judge') return 'the Courts';
     return U.pick(CO_A) + ' ' + (CO_B[c.id] || U.pick(['Group', 'Inc.', 'Corp.', 'Partners', 'Co.', 'Industries']));
@@ -607,10 +632,11 @@ TL.engine = (function () {
     if (s.social.platform && s.followers >= 10000) income += $(Math.round(s.followers * 0.01));
     // cost of living
     if (m.age >= 18 && !s.prison) {
-      var homes = s.assets.filter(function (a) { return a.kind === 'house' && !a.rented; });
-      var living = $(9000);
-      if (!homes.length && !(s.edu && s.edu.funding === 'parents')) living += $(11000);
-      if (s.edu && (s.edu.stage === 'uni' || s.edu.stage === 'grad') && s.edu.funding === 'loans') {
+      validateHome();
+      var h = home();
+      var living = $(h.type === 'parents' ? 4000 : h.type === 'homeless' ? 2000 : 9000);
+      if (!(s.edu && s.edu.funding === 'parents')) living += rentCost(h);
+      if (s.edu && (s.edu.stage === 'uni' || s.edu.stage === 'grad' || s.edu.stage === 'trade') && s.edu.funding === 'loans') {
         s.studentDebt += living; living = 0;
       }
       expense += living;
@@ -678,6 +704,74 @@ TL.engine = (function () {
     s.stocks = {};
     s.money = 0; s.flags.bankrupt = (s.flags.bankrupt || 0) + 1;
     stat('happy', -25);
+    validateHome();
+  }
+
+  // ---------- home / living situation ----------
+  // [name, yearly rent in base dollars, happiness per year]
+  var RENT_TIERS = [['Shared room', 6000, -3], ['Studio apartment', 12000, 0], ['Nice apartment', 24000, 2], ['Luxury loft', 60000, 5]];
+  function home() {
+    var s = S();
+    if (!s.home) {
+      // Saves from before v1.4 have no home: infer one.
+      var own = s.assets.filter(function (a) { return a.kind === 'house' && !a.rented; })[0];
+      s.home = me().age < 18 ? { type: 'parents' } : s.royal ? { type: 'palace' } : own ? { type: 'owned', id: own.id } : { type: 'rent', tier: 1 };
+    }
+    return s.home;
+  }
+  function ownedHome() {
+    var h = home();
+    return h.type === 'owned' ? S().assets.filter(function (a) { return a.id === h.id; })[0] || null : null;
+  }
+  function homeLabel() {
+    var h = home();
+    if (h.type === 'parents') return me().age < 18 ? 'My family\'s home' : 'Living with my parents';
+    if (h.type === 'palace') return 'The royal palace';
+    if (h.type === 'homeless') return 'Homeless';
+    if (h.type === 'owned') { var a = ownedHome(); return a ? 'My ' + a.type.toLowerCase() + ' at ' + a.name : 'My house'; }
+    return RENT_TIERS[h.tier][0];
+  }
+  function rentCost(h) {
+    h = h || home();
+    if (h.type === 'rent') return Math.round($(RENT_TIERS[h.tier][1]) * (h.mult || 1));
+    if (h.type === 'parents' && S().flags.parentRent) return S().flags.parentRent;
+    return 0;
+  }
+  function parentsAround() { return people(['mother', 'father']); }
+  // Fix up the home after something changed (house sold, parents died...).
+  function validateHome() {
+    var s = S(), h = home(), why = null;
+    if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
+    else if (h.type === 'palace' && !s.royal) why = 'I left the palace and moved into a studio apartment.';
+    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = 'With my parents gone, I moved into a studio apartment.';
+    if (why) { s.home = { type: 'rent', tier: 1 }; log(why); }
+  }
+  function moveHome(h, msg) {
+    var s = S();
+    s.home = h;
+    if (h.type !== 'parents') delete s.flags.parentRent;
+    return msg;
+  }
+  function yearlyHome() {
+    var s = S(), m = me();
+    if (m.age < 18 || s.prison) return;
+    var h = home();
+    if (h.type === 'rent') stat('happy', RENT_TIERS[h.tier][2]);
+    else if (h.type === 'owned') stat('happy', 2);
+    else if (h.type === 'palace') stat('happy', 3);
+    else if (h.type === 'homeless') { stat('happy', -8); stat('health', -4); }
+    else if (h.type === 'parents' && m.age >= 25) {
+      stat('happy', -2);
+      parentsAround().forEach(function (p) { rel(p, -U.rand(0, 2)); });
+      if (m.age === 30) log('I\'m 30 and I still live with my parents...', 'bad');
+    }
+    // Rent unpaid for too long: evicted.
+    if (h.type === 'rent' && s.money < -rentCost(h)) {
+      var par = parentsAround().filter(function (p) { return p.rel >= 30; })[0];
+      if (par) { s.home = { type: 'parents' }; log('🏚️ I was evicted and had to move back in with my parents.', 'bad'); }
+      else { s.home = { type: 'homeless' }; log('🏚️ I was evicted from my apartment. I\'m homeless now.', 'bad'); }
+      stat('happy', -15);
+    }
   }
 
   // ---------- health ----------
@@ -803,9 +897,9 @@ TL.engine = (function () {
     });
     // Pregnancy resolution
     if (s.flags.pregnant) {
-      var other = person(s.flags.pregnant.with);
+      var other = person(s.flags.pregnant.with), viaSurrogate = s.flags.pregnant.surrogate;
       delete s.flags.pregnant;
-      haveBaby(other);
+      haveBaby(other, { surrogate: viaSurrogate });
     }
     // Pets
     s.pets.forEach(function (pet) {
@@ -839,15 +933,19 @@ TL.engine = (function () {
       log('📜 I inherited ' + fmt(share) + ' from ' + p.first + '.', 'good');
     }
   }
-  function haveBaby(other) {
+  function haveBaby(other, o) {
     var s = S();
+    o = o || {};
     var last = me().last;
     var baby = addPerson({ role: 'child', age: 0, last: last, rel: 90, money: 0, job: 'Toddler' });
     baby.otherParent = other ? other.id : null;
     s.counts.kids++;
-    log('👶 ' + (me().gender === 'F' ? 'I gave birth to' : (other ? other.first + ' gave birth to' : 'I welcomed')) + ' a baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + ' named ' + baby.first + '!', 'good');
+    var who = o.surrogate ? 'Our surrogate gave birth to' : me().gender === 'F' ? 'I gave birth to' : (other && other.gender === 'F' ? other.first + ' gave birth to' : 'We welcomed');
+    if (o.twin) log('👶 ...and a second baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + ', ' + baby.first + '! It\'s twins! 👯', 'good');
+    else log('👶 ' + who + ' a baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + ' named ' + baby.first + '!', 'good');
     stat('happy', 15);
     achieve('parent');
+    if (!o.twin && U.chance(0.03)) { haveBaby(other, { twin: true }); achieve('twins'); }
     if (people('child', true).length >= 5) achieve('bigfamily');
     return baby;
   }
@@ -892,6 +990,7 @@ TL.engine = (function () {
   // ---------- achievements ----------
   function checkAchievements() {
     var s = S(), nw = netWorth(), m = me();
+    if (TL.features && !s.dead) TL.features.checkBucket();
     if (nw >= 1e6) achieve('millionaire');
     if (nw >= 1e9) achieve('billionaire');
     if (s.assets.some(function (a) { return a.kind === 'house'; })) achieve('homeowner');
@@ -912,6 +1011,7 @@ TL.engine = (function () {
   function ageUp() {
     var s = S(), m = me();
     if (s.dead) return;
+    snapshot();
     m.age++; s.year++;
     s.yearActs = {};
     s.log.push({ age: m.age, year: s.year, entries: [] });
@@ -921,6 +1021,7 @@ TL.engine = (function () {
     var earned = progressJob();
     fameProgress();
     if (m.age >= 16 || s.money !== 0 || s.assets.length) yearlyFinances(earned);
+    yearlyHome();
     yearlyHealth();
     yearlyPeople();
     if (TL.features) TL.features.yearly();
@@ -1021,7 +1122,9 @@ TL.engine = (function () {
     var r = [];
     if (nw >= $(50000000)) r.push(['💎', 'Tycoon', 'Died with a fortune.']);
     else if (nw >= $(2000000)) r.push(['💰', 'Rich', 'Lived a wealthy life.']);
+    if (s.bucket && s.bucket.length && s.bucket.every(function (b) { return b.done; })) r.push(['📝', 'Fulfilled', 'Checked off my whole bucket list.']);
     if (s.royal && s.royal.monarch) r.push(['👑', 'Monarch', 'Ruled the realm.']);
+    if (s.flags.space) r.push(['🚀', 'Astronaut', 'Touched the stars.']);
     if (s.mob && s.mob.rank >= 4) r.push(['🕴️', 'Kingpin', 'Ran the underworld.']);
     if (s.awards && s.awards.length) r.push(['🏆', 'Acclaimed', 'Honored with the ' + s.awards[0].award + '.']);
     if (s.fame >= 70) r.push(['⭐', 'Famous', 'The world knew my name.']);
@@ -1041,7 +1144,7 @@ TL.engine = (function () {
   function recordHistory() {
     var s = S(), g = loadGlobal();
     var rb = ribbon();
-    g.history.unshift({ name: me().first + ' ' + me().last, age: me().age, cause: s.cause, worth: fmt(netWorth()), ribbon: rb[0] + ' ' + rb[1], country: s.country, gen: s.gen, year: s.year });
+    g.history.unshift({ id: s.id, name: me().first + ' ' + me().last, age: me().age, cause: s.cause, worth: fmt(netWorth()), ribbon: rb[0] + ' ' + rb[1], country: s.country, gen: s.gen, year: s.year });
     g.history = g.history.slice(0, 50);
     saveGlobal(g);
   }
@@ -1066,13 +1169,80 @@ TL.engine = (function () {
       var idx = listSaves().filter(function (x) { return x.id !== s.id; });
       idx.unshift({ id: s.id, name: s.me.first + ' ' + s.me.last, age: s.me.age, dead: s.dead, country: s.country, gen: s.gen, updated: s.updated });
       store.setItem('thelife.index', JSON.stringify(idx.slice(0, 12)));
+      saveSnaps(s, idx);
       // drop saves that fell out of the index
       var keep = idx.slice(0, 12).map(function (x) { return x.id; });
       idx.slice(12).forEach(function (x) { if (keep.indexOf(x.id) < 0) store.removeItem('thelife.save.' + x.id); });
     } catch (e) { }
   }
+  // ---------- time machine ----------
+  // A snapshot of the end of each of the last few years: everything except the
+  // log and chart history, which are trimmed back instead. Snapshots live under
+  // their own key (only for the most recently played lives) so saves stay small.
+  var TM_MAX = 5;
+  var tm = { id: null, snaps: [] };
+  function tmSnaps() {
+    var s = S();
+    if (tm.id !== s.id) {
+      tm.id = s.id;
+      try { tm.snaps = JSON.parse(store.getItem('thelife.tm.' + s.id) || '[]'); } catch (e) { tm.snaps = []; }
+    }
+    return tm.snaps;
+  }
+  function snapshot() {
+    var s = S(), copy = {};
+    Object.keys(s).forEach(function (k) { if (k !== 'log' && k !== 'hist') copy[k] = s[k]; });
+    var snap = JSON.parse(JSON.stringify(copy));
+    var last = s.log[s.log.length - 1];
+    snap.pending = [];
+    snap._tm = { logAge: last ? last.age : s.me.age, logN: last ? last.entries.length : 0 };
+    var list = tmSnaps();
+    list.push(snap);
+    while (list.length > TM_MAX) list.shift();
+  }
+  function saveSnaps(s, idx) {
+    if (tm.id === s.id) {
+      try { store.setItem('thelife.tm.' + s.id, JSON.stringify(tm.snaps)); }
+      catch (e) {
+        // Storage is tight: keep fewer snapshots rather than none.
+        tm.snaps = tm.snaps.slice(-2);
+        try { store.setItem('thelife.tm.' + s.id, JSON.stringify(tm.snaps)); } catch (e2) { }
+      }
+    }
+    idx.slice(3).forEach(function (x) { store.removeItem('thelife.tm.' + x.id); });
+  }
+  // Ages you can travel back to, most recent first.
+  function tmAges() {
+    return tmSnaps().slice().reverse().map(function (sn) { return sn.me.age; });
+  }
+  function timeTravel(k) {
+    var s = S(), list = tmSnaps();
+    if (!k || k > list.length) return false;
+    var snap = list[list.length - k], meta = snap._tm, logArr = s.log, cut = -1;
+    for (var i = logArr.length - 1; i >= 0; i--) if (logArr[i].age === meta.logAge) { cut = i; break; }
+    var st = JSON.parse(JSON.stringify(snap));
+    delete st._tm;
+    if (cut >= 0) {
+      st.log = logArr.slice(0, cut + 1);
+      var y = st.log[cut];
+      st.log[cut] = { age: y.age, year: y.year, entries: y.entries.slice(0, meta.logN) };
+    } else st.log = [{ age: st.me.age, year: st.year, entries: [] }];
+    st.hist = (s.hist || []).filter(function (h) { return h[0] <= st.me.age; });
+    var wasDead = s.dead;
+    TL.S = st;
+    tm.snaps = list.slice(0, list.length - k);
+    if (wasDead) {
+      var g = loadGlobal();
+      g.history = g.history.filter(function (h) { return h.id !== st.id; });
+      saveGlobal(g);
+    }
+    log('⏳ I used the Time Machine to go back to age ' + st.me.age + '.', 'good');
+    achieve('timetraveler');
+    return true;
+  }
   function wipeAll() {
-    listSaves().forEach(function (x) { store.removeItem('thelife.save.' + x.id); });
+    listSaves().forEach(function (x) { store.removeItem('thelife.save.' + x.id); store.removeItem('thelife.tm.' + x.id); });
+    tm = { id: null, snaps: [] };
     store.removeItem('thelife.index');
     store.removeItem('thelife.global');
   }
@@ -1088,6 +1258,7 @@ TL.engine = (function () {
   }
   function deleteSave(id) {
     store.removeItem('thelife.save.' + id);
+    store.removeItem('thelife.tm.' + id);
     store.setItem('thelife.index', JSON.stringify(listSaves().filter(function (x) { return x.id !== id; })));
   }
 
@@ -1115,14 +1286,15 @@ TL.engine = (function () {
   }
 
   return {
-    exportAll: exportAll, importAll: importAll, wipeAll: wipeAll,
+    home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
+    exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
     S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
     achieve: achieve, netWorth: netWorth, makePerson: makePerson, addPerson: addPerson, randomName: randomName,
-    newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, dropOut: dropOut, gradeLetter: gradeLetter,
+    newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
     statLabel: statLabel, statValue: statValue, haveBaby: haveBaby, jail: jail, queue: queue, die: die,

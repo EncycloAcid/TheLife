@@ -20,6 +20,7 @@ TL.events = (function () {
         icon: '🎓', title: 'What\'s next?', text: 'I finished high school. What do I want to do with my life?',
         choices: [
           { label: 'Go to university', run: function () { TL.actions.openUniversity(); return null; } },
+          { label: 'Go to trade school', run: function () { TL.actions.tradeMenu(); return null; } },
           { label: 'Start working', run: function () { return 'I decided to skip college and join the workforce.'; } },
           { label: 'Take a gap year', run: function () { E.stat('happy', 10); return 'I\'m taking a gap year to figure things out. 🌍'; } }
         ]
@@ -356,9 +357,9 @@ TL.events = (function () {
   def('celebrity_encounter', { min: 10, max: 90, w: 3, build: function () {
     var c = E.makePerson({ age: U.rand(25, 60) });
     return { icon: '🤩', title: 'Celebrity sighting', text: 'I spotted the famous ' + U.pick(['actor', 'singer', 'athlete', 'TV host']) + ' ' + E.fullName(c) + ' at a café!', choices: [
-      { label: 'Ask for a selfie', run: function () { if (U.chance(0.6)) { S().followers += U.rand(10, 500); return good('They said yes! My selfie went mildly viral.'); } return 'Their bodyguard shoved me away.'; } },
-      { label: 'Try to befriend them', run: function () { if (U.chance(0.2)) { c.role = 'friend'; c.rel = 50; c.job = 'Celebrity'; c.money = E.$(20000000); S().people.push(c); E.fame(3); return good('We hit it off! ' + c.first + ' is now my friend.'); } return 'They politely declined.'; } },
-      { label: 'Play it cool', run: function () { return 'I pretended not to notice.'; } }
+      { label: 'Ask for a selfie', run: function () { S().flags.metCeleb = true; if (U.chance(0.6)) { S().followers += U.rand(10, 500); return good('They said yes! My selfie went mildly viral.'); } return 'Their bodyguard shoved me away.'; } },
+      { label: 'Try to befriend them', run: function () { S().flags.metCeleb = true; if (U.chance(0.2)) { c.role = 'friend'; c.rel = 50; c.job = 'Celebrity'; c.money = E.$(20000000); S().people.push(c); E.fame(3); return good('We hit it off! ' + c.first + ' is now my friend.'); } return 'They politely declined.'; } },
+      { label: 'Play it cool', run: function () { S().flags.metCeleb = true; return 'I pretended not to notice.'; } }
     ] };
   } });
   def('charity_ask', { min: 18, max: 95, w: 4, cond: function () { return S().money > E.$(1000); }, build: function () {
@@ -724,6 +725,145 @@ TL.events = (function () {
     return { icon: '🕴️', title: 'A favor', text: 'The ' + mob.family + ' family needs me to hide a package for a few weeks. No questions asked.', choices: [
       { label: 'Do it', run: function () { mob.respect = Math.min(100, mob.respect + 8); mob.heat = Math.min(100, mob.heat + 6); E.karma(-2); return 'I kept the package safe. The family won\'t forget it.'; } },
       { label: 'Refuse', run: function () { mob.respect = Math.max(0, mob.respect - 12); return bad('The family is unhappy with me.'); } }
+    ] };
+  } });
+
+  // ---------- v1.4 home events ----------
+  function homeIs(t) { return me().age >= 18 && !S().prison && E.home().type === t; }
+  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent; }, build: function () {
+    var rent = E.$(U.pick([3000, 5000, 8000]));
+    var p = E.parentsAround()[0];
+    return { icon: '🏠', title: 'House rules', text: 'My ' + p.role + ' says it\'s time I either pay rent or move out.', choices: [
+      { label: 'Pay rent (' + E.fmt(rent) + '/yr)', run: function () { S().flags.parentRent = rent; E.rel(p, 8); return 'I agreed to pay my parents rent.'; } },
+      { label: 'Move into a studio apartment', run: function () { var dep = Math.round(E.$(12000) / 6); if (S().money < dep) { E.rel(p, -5); return bad('I couldn\'t afford the deposit. Awkward.'); } E.addMoney(-dep); E.moveHome({ type: 'rent', tier: 1 }); E.rel(p, 5); return good('I finally moved out! 📦'); } },
+      { label: 'Beg to stay rent-free', run: function () { if (U.chance(p.rel / 120)) return good(p.first + ' caved. I can stay for free.'); E.rel(p, -12); return bad(p.first + ' is not happy with me.'); } }
+    ] };
+  } });
+  def('rent_hike', { min: 18, max: 100, w: 5, cond: function () { return homeIs('rent') && E.home().tier >= 1; }, build: function () {
+    var h = E.home(), pct = U.pick([8, 12, 15, 20]);
+    return { icon: '📈', title: 'Rent increase', text: 'My landlord is raising the rent by ' + pct + '%.', choices: [
+      { label: 'Accept it', run: function () { h.mult = (h.mult || 1) * (1 + pct / 100); return 'My rent is now ' + E.fmt(E.rentCost()) + '/yr.'; } },
+      { label: 'Negotiate', run: function () { if (U.chance(0.45 + me().smarts / 400)) return good('I talked them out of it!'); h.mult = (h.mult || 1) * (1 + (pct + 5) / 100); return bad('The landlord raised it even more for "attitude".'); } },
+      { label: 'Move somewhere cheaper', run: function () { E.moveHome({ type: 'rent', tier: h.tier - 1 }); return 'I moved into a ' + E.RENT_TIERS[h.tier - 1][0].toLowerCase() + '.'; } }
+    ] };
+  } });
+  def('roommate', { min: 18, max: 60, w: 6, cond: function () { return homeIs('rent') && E.home().tier === 0; }, build: function () {
+    var r = E.makePerson({ age: me().age + U.rand(-4, 6) });
+    var what = U.pick(['keeps eating my food', 'plays drums at 2 AM', 'never does the dishes', 'has a secret pet snake', 'keeps "borrowing" my clothes']);
+    return { icon: '🛏️', title: 'Roommate trouble', text: 'My roommate ' + r.first + ' ' + what + '.', choices: [
+      { label: 'Confront them', run: function () { if (U.chance(0.55)) return good(r.first + ' apologized. Things are better.'); E.stat('happy', -4); return bad('It turned into a screaming match.'); } },
+      { label: 'Leave a passive-aggressive note', run: function () { E.stat('happy', 2); return 'I left a note on the fridge. 🙃'; } },
+      { label: 'Befriend them instead', run: function () { r.role = 'friend'; r.rel = 55; S().people.push(r); return good(r.first + ' and I actually became friends.'); } }
+    ] };
+  } });
+  def('shelter', { min: 18, max: 100, w: 12, cond: function () { return homeIs('homeless'); }, build: function () {
+    return { icon: '🏚️', title: 'A helping hand', text: 'A shelter offers me a bed and help getting back on my feet.', choices: [
+      { label: 'Accept their help', run: function () { E.stat('health', 6); E.stat('happy', 5); if (U.chance(0.4)) { E.addMoney(E.$(2000)); return good('They helped me find some work. I saved ' + E.fmt(E.$(2000)) + '.'); } return good('I got warm meals and a safe place to sleep.'); } },
+      { label: 'Ask family for help', run: function () { var p = E.parentsAround().concat(E.people(['sibling', 'child'])).filter(function (x) { return x.age >= 18 && x.rel >= 40; })[0]; if (p && U.chance(0.6)) { E.moveHome({ type: p.role === 'mother' || p.role === 'father' ? 'parents' : 'rent', tier: 1 }); return good(p.first + ' helped me get a roof over my head.'); } return bad('Nobody could take me in.'); } },
+      { label: 'Refuse', run: function () { return 'I\'d rather manage on my own.'; } }
+    ] };
+  } });
+
+  // ---------- v1.4 life events ----------
+  function job(id) { var j = S().job; return j && j.career === id && !S().prison; }
+  def('space_mission', { min: 26, max: 70, w: 30, cond: function () { return job('astronaut') && S().job.level >= 1; }, build: function () {
+    var dest = U.pick(['the International Space Station', 'a lunar orbit mission', 'a Moon landing', 'a spacewalk to repair a satellite', 'a six-month station expedition']);
+    return { icon: '🚀', title: 'Mission assignment', text: 'I\'ve been selected for ' + dest + '!', choices: [
+      { label: 'Launch! 🚀', run: function () {
+        if (U.chance(0.012)) { E.die('a spacecraft accident'); return bad('Something went terribly wrong during launch...'); }
+        var j = S().job; j.perf = Math.min(100, j.perf + 15); E.fame(U.rand(6, 12)); E.stat('happy', 15);
+        S().flags.space = (S().flags.space || 0) + 1; E.achieve('astronaut');
+        return good('The mission was a success! I saw Earth from space. 🌍');
+      } },
+      { label: 'Stay on the ground crew', run: function () { S().job.perf = Math.min(100, S().job.perf + 3); return 'I supported the mission from mission control.'; } }
+    ] };
+  } });
+  def('first_steps', { min: 1, max: 1, w: 20, once: true, build: function () {
+    return { icon: '🚼', title: 'First steps', text: 'I\'m trying to take my very first steps!', choices: [
+      { label: 'Keep trying', run: function () { me().athl = U.clamp(me().athl + 3, 0, 100); E.people(['mother', 'father']).forEach(function (p) { E.rel(p, 5); }); return good('I took my first wobbly steps! My parents cheered.'); } },
+      { label: 'Crawl instead', run: function () { return 'Walking is overrated. I\'m a crawler.'; } },
+      { label: 'Plop down and cry', run: function () { return 'I fell on my diaper and wailed.'; } }
+    ] };
+  } });
+  def('daycare_bite', { min: 2, max: 5, w: 6, build: function () {
+    var k = E.makePerson({ age: me().age });
+    return { icon: '🧸', title: 'Daycare drama', text: 'A kid named ' + k.first + ' bit me at daycare!', choices: [
+      { label: 'Bite back', run: function () { E.karma(-1); E.stat('happy', 3); return 'I bit ' + k.first + ' right back. We were both put in time-out.'; } },
+      { label: 'Tell the teacher', run: function () { return k.first + ' had to sit in the corner.'; } },
+      { label: 'Cry', run: function () { E.stat('happy', -3); return 'I cried until snack time.'; } }
+    ] };
+  } });
+  def('lost_in_store', { min: 4, max: 8, w: 5, build: function () {
+    return { icon: '🛒', title: 'Lost!', text: 'I lost my parents in a huge department store.', choices: [
+      { label: 'Stay where I am', run: function () { E.stat('smarts', 1); return good('My parents found me right where they left me. Smart move!'); } },
+      { label: 'Ask an employee for help', run: function () { return 'They called my parents over the loudspeaker.'; } },
+      { label: 'Go exploring', run: function () { if (U.chance(0.5)) { E.stat('happy', 4); return 'I found the toy aisle! My parents found me an hour later.'; } E.stat('happy', -6); return bad('I ended up in the parking lot, terrified.'); } }
+    ] };
+  } });
+  def('pet_request', { min: 6, max: 13, w: 5, cond: function () { return !S().pets.length && E.parentsAround().length; }, build: function () {
+    var sp = U.pick(['Dog', 'Cat', 'Hamster', 'Rabbit']);
+    return { icon: '🥺', title: 'Can we get a pet?', text: 'I really, really want a ' + sp.toLowerCase() + '.', choices: [
+      { label: 'Beg my parents', run: function () { var p = E.parentsAround()[0]; if (U.chance(p.rel / 130)) { var pet = TL.actions.addPet(sp); return good('They said yes! Meet ' + pet.name + ' the ' + sp.toLowerCase() + '! 🐾'); } return 'They said "maybe when you\'re older."'; } },
+      { label: 'Promise to do all my chores', run: function () { if (U.chance(0.5)) { var pet = TL.actions.addPet(sp); return good('Deal! ' + pet.name + ' joined the family.'); } return 'They didn\'t believe me.'; } },
+      { label: 'Forget it', run: function () { return 'I\'ll get one when I\'m grown up.'; } }
+    ] };
+  } });
+  def('lottery_pool', { min: 21, max: 65, w: 4, cond: function () { var j = S().job; return j && !j.partTime && !j.fame && !S().prison; }, build: function () {
+    var buy = E.$(20);
+    return { icon: '🎟️', title: 'Office lottery pool', text: 'My coworkers are pooling money for the big lottery jackpot. It\'s ' + E.fmt(buy) + ' to join.', choices: [
+      { label: 'Join the pool', run: function () { E.addMoney(-buy); if (Math.random() < 0.004) { var share = E.$(U.rand(200000, 2000000)); E.addMoney(share); E.achieve('lottery'); return good('WE WON! My share of the jackpot is ' + E.fmt(share) + '! 🎉'); } if (U.chance(0.1)) { var sm = E.$(U.rand(20, 200)); E.addMoney(sm); return 'We won a small prize. My cut: ' + E.fmt(sm) + '.'; } return 'We didn\'t win anything.'; } },
+      { label: 'Sit this one out', run: function () { return 'I kept my money.'; } }
+    ] };
+  } });
+  def('marathon_invite', { min: 16, max: 65, w: 4, cond: function () { return !S().flags.marathon && E.people(['friend', 'best friend']).length; }, build: function () {
+    var f = U.pick(E.people(['friend', 'best friend']));
+    return { icon: '🏃', title: 'Marathon', text: f.first + ' wants us to run a marathon together.', choices: [
+      { label: 'Let\'s do it', run: function () { E.rel(f, 8); if (U.chance(me().athl / 110 + 0.1)) { S().flags.marathon = true; me().athl = U.clamp(me().athl + 3, 0, 100); return good('We crossed the finish line together! 🏅'); } E.stat('health', -4); return bad('I cramped up at mile 16 and had to walk off the course.'); } },
+      { label: 'Cheer from the sidelines', run: function () { E.rel(f, 3); return 'I held a funny sign at mile 20.'; } }
+    ] };
+  } });
+  def('reality_show', { min: 18, max: 40, w: 3, once: true, cond: function () { return (me().looks >= 70 || S().fame >= 30) && !S().prison; }, build: function () {
+    return { icon: '📺', title: 'Reality TV', text: 'A producer wants me on a dating reality show filmed in a tropical villa.', choices: [
+      { label: 'Sign me up', run: function () {
+        E.fame(U.rand(5, 15)); if (S().social.platform) S().followers += U.rand(5000, 80000);
+        var pt = E.partner();
+        if (pt) { E.rel(pt, -30); return bad('I went on the show while dating ' + pt.first + '. They were NOT happy.'); }
+        if (U.chance(0.4)) { var c = E.addPerson({ role: 'partner', age: me().age + U.rand(-3, 3), gender: me().interest === 'A' ? undefined : me().interest, rel: 65 }); return good('I coupled up with ' + c.first + ' and we won the show! 🌴'); }
+        return 'I was voted off in week two, but gained a ton of followers.';
+      } },
+      { label: 'No way', run: function () { return 'I\'d rather keep my dignity.'; } }
+    ] };
+  } });
+  def('grandkid_tuition', { min: 55, max: 110, w: 5, cond: function () { return E.people('grandchild').some(function (g) { return g.age >= 17 && g.age <= 19; }) && S().money > E.$(10000); }, build: function () {
+    var g = E.people('grandchild').filter(function (g) { return g.age >= 17 && g.age <= 19; })[0];
+    var amt = E.$(U.pick([5000, 20000, 60000]));
+    return { icon: '🎓', title: 'College fund', text: 'My grandchild ' + g.first + ' got into college and asks if I can help with tuition (' + E.fmt(amt) + ').', choices: [
+      { label: 'Pay it', run: function () { E.addMoney(-amt); E.rel(g, 30); E.karma(4); g.job = 'University Student'; return good(g.first + ' hugged me and cried. Best money I ever spent.'); } },
+      { label: 'Pay half', run: function () { E.addMoney(-Math.round(amt / 2)); E.rel(g, 12); return g.first + ' was grateful for the help.'; } },
+      { label: 'Tell them to take out loans', run: function () { E.rel(g, -10); return g.first + ' said they understood. They didn\'t.'; } }
+    ] };
+  } });
+  def('old_friend', { min: 55, max: 110, w: 4, build: function () {
+    var f = E.makePerson({ age: me().age + U.rand(-3, 3) });
+    return { icon: '💌', title: 'A voice from the past', text: 'My childhood friend ' + E.fullName(f) + ' found me online and wants to catch up.', choices: [
+      { label: 'Meet for coffee', run: function () { f.role = 'friend'; f.rel = U.rand(60, 85); S().people.push(f); E.stat('happy', 8); return good('We talked for hours like no time had passed.'); } },
+      { label: 'Just send a nice reply', run: function () { E.stat('happy', 2); return 'We traded a few messages.'; } },
+      { label: 'Ignore it', run: function () { return 'Some things are better left in the past.'; } }
+    ] };
+  } });
+  def('tech_help', { min: 70, max: 110, w: 4, cond: function () { return E.people(['grandchild', 'child']).some(function (p) { return p.age >= 10; }); }, build: function () {
+    var k = U.pick(E.people(['grandchild', 'child']).filter(function (p) { return p.age >= 10; }));
+    return { icon: '📱', title: 'New phone', text: 'My new smartphone is baffling me. ' + k.first + ' offers to help.', choices: [
+      { label: 'Let them teach me', run: function () { E.rel(k, 8); E.stat('smarts', 2); if (!S().social.platform && U.chance(0.4)) { S().social.platform = true; S().followers = U.rand(5, 50); return good(k.first + ' even set me up on social media! 📱'); } return 'I can finally video call!'; } },
+      { label: 'Throw it out the window', run: function () { E.stat('happy', 3); return 'Back to my trusty landline.'; } }
+    ] };
+  } });
+  def('will_dispute', { min: 65, max: 110, w: 4, cond: function () { return E.people('child').filter(function (c) { return c.age >= 18; }).length >= 2 && S().money > E.$(50000); }, build: function () {
+    var kids = E.people('child').filter(function (c) { return c.age >= 18; });
+    return { icon: '📜', title: 'Family feud', text: kids[0].first + ' and ' + kids[1].first + ' are arguing about who gets what when I\'m gone.', choices: [
+      { label: 'Split everything equally', run: function () { S().will = null; kids.forEach(function (k) { E.rel(k, 3); }); return 'I told them my estate will be split equally.'; } },
+      { label: 'Name ' + kids[0].first + ' my main heir', run: function () { S().will = kids[0].id; E.rel(kids[0], 10); E.rel(kids[1], -15); return kids[0].first + ' is my main heir now. ' + kids[1].first + ' is fuming.'; } },
+      { label: 'Threaten to leave it all to my cat', run: function () { kids.forEach(function (k) { E.rel(k, -3); }); E.stat('happy', 5); return 'That shut them up. 😼'; } }
     ] };
   } });
 

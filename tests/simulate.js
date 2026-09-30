@@ -19,6 +19,9 @@ TL.ui = {
   choose: function (t, text, opts) { dialogs.push({ buttons: opts.map(function (o) { return { fn: o.fn }; }).concat([{ fn: null }]) }); },
   confirm: function (t, text, yes) { dialogs.push({ buttons: [{ fn: yes }, { fn: null }] }); },
   prompt: function (t, text, def, cb) { dialogs.push({ buttons: [{ fn: function () { cb('Test Co'); } }] }); },
+  toast: function () {},
+  // Time travel swaps TL.S for a restored copy, so the loop below always reads TL.S.
+  timeMachine: function () { var ages = TL.engine.tmAges(); if (ages.length) TL.engine.timeTravel(1 + Math.floor(Math.random() * ages.length)); },
   runPending: function () {}
 };
 function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -62,14 +65,15 @@ for (var n = 0; n < N; n++) {
   TL.engine.newLife({ royal: Math.random() < 0.3 });
   var lives = 0;
   while (true) {
-    var S = TL.S, years = 0;
-    while (!S.dead && years++ < 140) {
+    var years = 0;
+    while (!TL.S.dead && years++ < 400) {
       for (var a = 0; a < 3; a++) { TL.actions[pick(tops)](); tapAround(3); }
       runPending();
       TL.engine.ageUp();
       runPending();
-      check(S);
+      check(TL.S);
     }
+    var S = TL.S;
     if (!S.dead) throw new Error('never died (age ' + S.me.age + ')');
     ages.push(S.me.age);
     if (TL.engine.netWorth() > TL.engine.$(1e6)) rich++;

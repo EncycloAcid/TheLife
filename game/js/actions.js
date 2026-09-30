@@ -123,7 +123,8 @@ TL.actions = (function () {
       if (['partner', 'fiance', 'spouse'].indexOf(r) >= 0) {
         items.push({ section: 'Romance' });
         items.push({ icon: '🍷', label: 'Date night', onClick: function () { dateNight(p); } });
-        if (me().age >= 16) items.push({ icon: '👶', label: r === 'spouse' ? 'Try for a baby' : 'Try for a baby', onClick: function () { tryBaby(p); } });
+        if (me().age >= 16) items.push({ icon: '👶', label: 'Try for a baby', onClick: function () { tryBaby(p); } });
+        if (me().age >= 21) items.push({ icon: '🧬', label: 'Fertility options', sub: 'IVF, surrogacy, adoption', onClick: function () { fertility(p); } });
         if (r === 'partner' && me().age >= 18) items.push({ icon: '💍', label: 'Propose', onClick: function () { propose(p); } });
         if (r === 'fiance') items.push({ icon: '💒', label: 'Plan the wedding', onClick: function () { wedding(p); } });
         if (r === 'spouse') items.push({ icon: '🧾', label: 'Divorce', danger: true, onClick: function () { ui().confirm('Divorce ' + p.first + '?', 'You may lose half your money and property.', function () { done(divorce(p)); }); } });
@@ -290,11 +291,12 @@ TL.actions = (function () {
   }
   function tryBaby(p) {
     var m = me();
+    if (S().flags.pregnant) return done(nope('We\'re already expecting!'));
+    if (m.gender === p.gender && m.gender === 'M') return done(nope('We\'ll need a surrogate or adoption. See "Fertility options".'));
+    if (m.gender === p.gender) return done(nope('We\'ll need IVF, a surrogate or adoption. See "Fertility options".'));
     if (used('baby')) return done(nope('We should wait until next year to try again.'));
     use('baby');
-    if (S().flags.pregnant) return done(nope('We\'re already expecting!'));
     var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
-    if (m.gender === p.gender) return done('We\'ll need to adopt or use a surrogate. (See Activities → Adoption)');
     if (mom.age > 47 || mom.age < 14) return done(bad('We weren\'t able to conceive.'));
     var chance = mom.age < 35 ? 0.55 : mom.age < 40 ? 0.35 : 0.12;
     E.rel(p, 5);
@@ -304,6 +306,28 @@ TL.actions = (function () {
       return done('We had a romantic evening... ' + (m.gender === 'F' ? 'and I\'m late.' : 'and ' + p.first + ' has news.'));
     }
     done('We had a romantic evening, but no baby news yet.');
+  }
+  function fertility(p) {
+    var m = me(), s = S();
+    if (s.flags.pregnant) return done(nope('We\'re already expecting!'));
+    var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
+    var ivf = E.$(15000), surro = E.$(80000), opts = [];
+    if (mom) opts.push({ label: '🧪 IVF (' + E.fmt(ivf) + ')', fn: function () {
+      if (used('ivf')) return done(nope('The clinic says we need to wait until next year for another round.'));
+      if (!afford(ivf)) return done(noMoney(ivf));
+      use('ivf'); E.addMoney(-ivf);
+      var ch = mom.age < 35 ? 0.5 : mom.age < 40 ? 0.35 : mom.age < 45 ? 0.15 : 0.05;
+      if (U.chance(ch)) { S().flags.pregnant = { with: p.id }; E.rel(p, 8); return done(good('The IVF worked! ' + (mom === m ? 'I\'m' : p.first + ' is') + ' pregnant! 🤰')); }
+      E.stat('happy', -6); done(bad('This round of IVF didn\'t work.'));
+    } });
+    opts.push({ label: '🤱 Surrogate (' + E.fmt(surro) + ')', fn: function () {
+      if (!afford(surro)) return done(noMoney(surro));
+      E.addMoney(-surro);
+      if (U.chance(0.85)) { S().flags.pregnant = { with: p.id, surrogate: true }; E.rel(p, 10); return done(good('Our surrogate is pregnant! The baby is due next year. 🍼')); }
+      done(bad('The surrogacy didn\'t result in a pregnancy.'));
+    } });
+    opts.push({ label: '🏠 Adoption agency', fn: adopt });
+    ui().choose('Fertility options', 'How do we want to grow our family with ' + p.first + '?', opts);
   }
   function propose(p) {
     var rings = S().assets.filter(function (a) { return a.kind === 'jewelry' && a.ring; });
@@ -344,7 +368,7 @@ TL.actions = (function () {
       var lost = Math.max(0, Math.round(s.money / 2));
       s.money -= lost;
       var houses = s.assets.filter(function (a) { return a.kind === 'house'; });
-      if (houses.length > 1) { var h = houses[houses.length - 1]; s.assets = s.assets.filter(function (a) { return a !== h; }); msg += ' ' + p.first + ' got the ' + h.name + '.'; }
+      if (houses.length > 1) { var h = houses[houses.length - 1]; s.assets = s.assets.filter(function (a) { return a !== h; }); msg += ' ' + p.first + ' got the ' + h.name + '.'; E.validateHome(); }
       if (lost > 0) msg += ' I lost ' + E.fmt(lost) + ' in the settlement.';
     } else msg += ' Thanks to the prenup, I kept everything.';
     p.role = 'ex'; p.rel = Math.min(p.rel, 25);
@@ -412,6 +436,7 @@ TL.actions = (function () {
     var sp = D.PETS.filter(function (x) { return x.species === species; })[0];
     var pet = { id: U.uid(), name: U.pick(D.PET_NAMES), species: species, breed: breed || U.pick(sp.breeds), age: age || 0, life: sp.life + U.rand(-2, 3), rel: U.rand(60, 90) };
     S().pets.push(pet);
+    S().flags.hadPet = true;
     E.checkAchievements();
     return pet;
   }
@@ -457,17 +482,18 @@ TL.actions = (function () {
         items.push({ info: true, html: '<div class="kv"><b>' + U.esc(e.school) + '</b><br>' + (e.major ? 'Major: ' + e.major + '<br>' : '') + 'Year ' + Math.min(e.year, E.eduYears(e.stage, e.grad)) + ' of ' + E.eduYears(e.stage, e.grad) + ' · Grades: <b>' + E.gradeLetter(e.grade) + '</b> (' + e.grade + '%)' + (e.popularity != null && e.stage !== 'grad' ? ' · Popularity ' + Math.round(e.popularity) + '%' : '') + (e.team ? '<br>Team: ' + e.team : '') + (e.greek ? '<br>Greek life: ' + e.greek : '') + (e.president ? '<br>🗳️ Class president' : '') + (e.stage === 'high' && S().sat ? '<br>SAT: ' + S().sat : '') + (e.clubs.length ? '<br>Clubs: ' + e.clubs.join(', ') : '') + '</div>' });
         items.push({ icon: '📚', label: 'Study harder', onClick: studyHarder });
         items.push({ icon: '🍎', label: 'Talk to a teacher', onClick: function () { var f = diminish('teacher'); e.grade = U.clamp(e.grade + Math.round(3 * f), 0, 100); done('My teacher gave me some great advice.'); } });
-        if (e.stage !== 'elementary' && e.stage !== 'grad') items.push({ icon: '🎭', label: 'Join a club', onClick: clubMenu });
+        if (e.stage !== 'elementary' && e.stage !== 'grad' && e.stage !== 'trade') items.push({ icon: '🎭', label: 'Join a club', onClick: clubMenu });
         TL.features.schoolItems(e).forEach(function (it) { items.push(it); });
         if (e.stage === 'high' || e.stage === 'middle') items.push({ icon: '😎', label: 'Hang out with the popular kids', onClick: function () { var f = diminish('popular'); if (U.chance(me().looks / 120 + 0.1)) { e.popularity = U.clamp(e.popularity + 10 * f, 0, 100); done(good('They let me sit at their table!')); } else { e.popularity = U.clamp(e.popularity - 5, 0, 100); done(bad('They laughed me away.')); } } });
         if (m.age >= 8) items.push({ icon: '🏃', label: 'Skip school', onClick: function () { E.stat('happy', 4); e.grade = Math.max(0, e.grade - 4); if (U.chance(0.3)) { E.people(['mother', 'father']).forEach(function (p) { E.rel(p, -8); }); return done(bad('I got caught skipping school. My parents are furious.')); } done('I skipped school and hung out at the mall.'); } });
-        if ((e.stage === 'high' && m.age >= 16) || e.stage === 'uni' || e.stage === 'grad') items.push({ icon: '🚪', label: 'Drop out', danger: true, onClick: function () { ui().confirm('Drop out?', 'Are you sure you want to drop out of ' + e.school + '?', function () { E.dropOut(); done(bad('I dropped out.')); }); } });
+        if ((e.stage === 'high' && m.age >= 16) || e.stage === 'uni' || e.stage === 'grad' || e.stage === 'trade') items.push({ icon: '🚪', label: 'Drop out', danger: true, onClick: function () { ui().confirm('Drop out?', 'Are you sure you want to drop out of ' + e.school + '?', function () { E.dropOut(); done(bad('I dropped out.')); }); } });
       } else if (m.age >= 16) {
         items.push({ section: 'Education' });
         var hs = E.hasDegree('hs');
         if (!hs) items.push({ icon: '📝', label: 'Get a GED', sub: 'Earn a high-school equivalency', onClick: function () { if (U.chance(me().smarts / 110 + 0.1)) { S().degrees.push({ type: 'hs' }); S().lastGrade = 60; done(good('I passed the GED exam! 🎓')); } else done(bad('I failed the GED exam. I can try again next year.')); use('ged'); }, disabled: used('ged') > 0 });
         if (hs) items.push({ icon: '🏛️', label: 'University', sub: 'Earn a bachelor\'s degree', onClick: openUniversity });
-        if (E.hasDegree('bachelor')) items.push({ icon: '🎓', label: 'Graduate school', sub: 'Law, Medicine, MBA, PhD', onClick: gradMenu });
+        if (hs) items.push({ icon: '🔧', label: 'Trade school', sub: 'Electrician, plumber, welder, HVAC · 2 years', onClick: tradeMenu });
+        if (E.hasDegree('bachelor')) items.push({ icon: '🎓', label: 'Graduate school', sub: 'Law, Medicine, Vet, Dental, MBA, PhD', onClick: gradMenu });
       }
       // Job
       items.push({ section: 'Career' });
@@ -549,7 +575,7 @@ TL.actions = (function () {
     ui().menu('Graduate school', function () {
       return D.GRAD_SCHOOLS.map(function (g) {
         var cost = E.$(g.cost) * g.years;
-        return { icon: { law: '⚖️', med: '🩺', mba: '📊', phd: '🔬' }[g.id], label: g.name, sub: g.years + ' years · ' + (cost ? E.fmt(cost) : 'Funded') + (g.majors ? ' · pre-med major' : ''), right: E.hasDegree(g.id) ? '✔' : '', onClick: function () {
+        return { icon: { law: '⚖️', med: '🩺', mba: '📊', phd: '🔬', vet: '🐾', dental: '🦷' }[g.id], label: g.name, sub: g.years + ' years · ' + (cost ? E.fmt(cost) : 'Funded') + (g.majors ? ' · pre-med major' : ''), right: E.hasDegree(g.id) ? '✔' : '', onClick: function () {
           if (!cost) return finishEnroll(E.enrollGrad(g.id, 'loans'));
           ui().choose(g.name, 'It costs ' + E.fmt(cost) + '. How will I pay?', [
             { label: 'Student loans', fn: function () { finishEnroll(E.enrollGrad(g.id, 'loans')); } },
@@ -557,6 +583,21 @@ TL.actions = (function () {
           ]);
         } };
       });
+    });
+  }
+  function tradeMenu() {
+    if (S().edu) return done(nope('I\'m already enrolled in school.'));
+    var cost = E.$(7000) * 2;
+    ui().menu('Trade school', function () {
+      return [{ info: true, html: '<p class="muted">Two years of hands-on training. Tuition is ' + E.fmt(cost) + '. Graduates start as apprentices with solid pay.</p>' }].concat(D.TRADES.map(function (t) {
+        var had = E.hasDegree('trade', [t[0]]);
+        return { icon: t[1], label: t[0], right: had ? '✔' : '', disabled: had, onClick: function () {
+          ui().choose(t[0] + ' training', 'How will I pay ' + E.fmt(cost) + '?', [
+            { label: 'Student loans', fn: function () { finishEnroll(E.enrollTrade(t[0], 'loans')); } },
+            { label: 'Pay with savings', fn: function () { finishEnroll(E.enrollTrade(t[0], 'savings')); } }
+          ]);
+        } };
+      }));
     });
   }
   function jobBoard() {
@@ -572,14 +613,47 @@ TL.actions = (function () {
       s.yearActs.jobs.forEach(function (id) {
         var c = D.career(id), why = E.eligible(c);
         items.push({ icon: why.length ? '🔒' : '💼', label: c.levels[0][0], sub: c.name + ' · ' + E.fmt(E.$(c.levels[0][1])) + '/yr' + (why.length ? ' · ' + why.join('; ') : ''), disabled: !!why.length || used('apply' + id) > 0, onClick: function () {
-          use('apply' + id);
-          var r = E.applyJob(id);
-          if (r.ok) ui().back();
-          done(r.ok ? good(r.msg) : bad(r.msg));
+          use('apply' + id); // one interview per opening per year, even if I walk out
+          interview(c, function (bonus, reaction) {
+            var r = E.applyJob(id, bonus);
+            if (r.ok) ui().back();
+            done(r.ok ? good(reaction + ' ' + r.msg) : bad(reaction + ' ' + r.msg));
+          });
         } });
       });
       return items;
     });
+  }
+  // ---------- job interviews ----------
+  // An answer is a fixed modifier to the hire chance, 'wild' (a gamble), or a
+  // stat name (scales with that stat).
+  var INTERVIEW = [
+    { q: 'Why do you want to work here?', a: [['I\'ve followed this company for years and have ideas to help it grow.', 0.15], ['I\'m passionate about this field.', 0.08], ['Honestly? I need the money.', -0.08], ['My mom said I had to get a job.', 'wild']] },
+    { q: 'What is your greatest weakness?', a: [['I struggle to delegate, but I\'m working on it.', 0.12], ['I work too hard.', 0], ['Kryptonite.', 'wild'], ['I don\'t have any weaknesses.', -0.12]] },
+    { q: 'Where do you see yourself in five years?', a: [['Growing into a leadership role here.', 0.12], ['Sitting in your chair.', 'wild'], ['Running my own company.', -0.03], ['No idea, honestly.', -0.08]] },
+    { q: 'Tell me about a time you handled a conflict.', a: [['I listened to both sides and found a compromise.', 0.12], ['I let my boss handle it.', -0.03], ['I challenged them to a dance-off.', 'wild'], ['I don\'t really get along with people.', -0.15]] },
+    { q: 'Why should we hire you over the other candidates?', a: [['I learn fast and I deliver results.', 0.1], ['Because I\'m the best. Obviously.', 'wild'], ['I can start tomorrow.', 0.03], ['You probably shouldn\'t.', -0.2]] },
+    { q: 'How do you handle stress?', a: [['I prioritize, make a plan and take breaks.', 0.1], ['I thrive under pressure.', 0.04], ['Stress baking.', 'wild'], ['I usually just quit.', -0.2]] },
+    { q: 'Do you have any questions for us?', a: [['What does success look like in the first 90 days?', 0.12], ['How much vacation do I get?', -0.04], ['Is there free food?', 'wild'], ['No.', -0.06]] },
+    { stat: 'smarts', q: 'Brain teaser: a bat and a ball cost $1.10. The bat costs $1 more than the ball. How much is the ball?', a: [['5 cents.', 0.15], ['10 cents.', -0.08], ['Let me work it out on the whiteboard…', 'smarts'], ['Can I phone a friend?', -0.05]] },
+    { stat: 'athl', q: 'This job is physical. Can you show us you can keep up?', a: [['Drop and do 50 push-ups.', 'athl'], ['Carry the water cooler across the room.', 'athl'], ['Describe my gym routine.', 0.02], ['I\'d rather not.', -0.12]] },
+    { stat: 'looks', q: 'Our customers come first. How would you win over an angry customer?', a: [['Flash my best smile and really listen.', 'looks'], ['Offer them a discount.', 0.03], ['Kill them with kindness.', 0.08], ['Tell them to shop elsewhere.', -0.15]] }
+  ];
+  function interview(c, cb) {
+    var pool = INTERVIEW.filter(function (q) { return !q.stat; });
+    var special = INTERVIEW.filter(function (q) { return q.stat === c.stat; })[0];
+    var q = special && U.chance(0.5) ? special : U.pick(pool);
+    ui().choose('💼 Interview: ' + c.levels[0][0], q.q, U.shuffle(q.a).map(function (a) {
+      return { label: a[0], fn: function () {
+        var v = a[1], bonus, wild = v === 'wild';
+        if (typeof v === 'number') bonus = v;
+        else if (wild) bonus = U.randf(-0.15, 0.2);
+        else bonus = (E.statValue(v) - 50) / 250;
+        var reaction = wild ? (bonus > 0.03 ? 'The interviewer burst out laughing.' : 'There was a long, awkward silence.')
+          : bonus >= 0.1 ? 'The interviewer nodded, impressed.' : bonus > 0.02 ? 'The interviewer smiled.' : bonus > -0.03 ? 'The interviewer wrote something down.' : 'The interviewer frowned.';
+        cb(bonus, reaction);
+      } };
+    }));
   }
   function partTimeBoard() {
     ui().menu('Part-time jobs', function () {
@@ -702,6 +776,8 @@ TL.actions = (function () {
     ui().menu('Assets', function () {
       var s = S(), items = [];
       items.push({ info: true, html: '<div class="kv">Bank balance: <b>' + E.fmt(s.money) + '</b><br>Net worth: <b>' + E.fmt(E.netWorth()) + '</b>' + (s.studentDebt ? '<br>Student debt: <span class="neg">' + E.fmt(s.studentDebt) + '</span>' : '') + '</div>' });
+      var rc = E.rentCost();
+      items.push({ icon: E.home().type === 'homeless' ? '⛺' : E.home().type === 'palace' ? '🏰' : '🏡', label: E.homeLabel(), sub: me().age < 18 ? 'Where I live' : (rc ? E.fmt(rc) + '/yr rent · ' : '') + 'Tap to move', onClick: livingMenu });
       if (s.assets.length) {
         items.push({ section: 'My stuff' });
         s.assets.forEach(function (a) {
@@ -738,7 +814,7 @@ TL.actions = (function () {
       items.push({ info: true, html: '<div class="kv"><b>' + U.esc(a.name) + '</b><br>' + a.type + '<br>Value: ' + E.fmt(a.value) + (a.price ? ' · paid ' + E.fmt(a.price) : '') + (a.loan ? '<br>Loan balance: ' + E.fmt(a.loan) + ' (' + E.fmt(a.payment) + '/yr)' : '') + (a.cond != null && a.kind !== 'business' && a.kind !== 'jewelry' ? '<br>Condition: ' + a.cond + '%' : '') + (a.kind === 'business' ? '<br>Last year\'s profit: ' + E.fmt(a.lastProfit || 0) : '') + '</div>' });
       if (a.kind === 'house') {
         items.push({ icon: '🔨', label: 'Renovate', right: E.fmt(Math.round(a.value * 0.08)), onClick: function () { var c = Math.round(a.value * 0.08); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.cond = 100; a.value = Math.round(a.value * 1.06); done(good('I renovated ' + a.name + '. It looks amazing!')); } });
-        items.push({ icon: a.rented ? '🔑' : '🧾', label: a.rented ? 'Move back in / stop renting' : 'Rent it out', sub: a.rented ? '' : 'Earn ~' + E.fmt(Math.round(a.value * 0.055)) + '/yr', onClick: function () { a.rented = !a.rented; done(a.rented ? 'I\'m renting out ' + a.name + '.' : 'I stopped renting out ' + a.name + '.'); } });
+        items.push({ icon: a.rented ? '🔑' : '🧾', label: a.rented ? 'Stop renting it out' : 'Rent it out', sub: a.rented ? '' : 'Earn ~' + E.fmt(Math.round(a.value * 0.055)) + '/yr', onClick: function () { a.rented = !a.rented; E.validateHome(); done(a.rented ? 'I\'m renting out ' + a.name + '.' : 'I stopped renting out ' + a.name + '.'); } });
         items.push({ icon: '🎉', label: 'Throw a house party', onClick: function () { var f = diminish('houseparty'); E.stat('happy', 8 * f); E.people(['friend']).forEach(function (p) { E.rel(p, 5 * f); }); if (U.chance(0.15)) { a.cond = Math.max(0, a.cond - 15); return done(bad('The party got wild. Someone put a hole in the wall.')); } done(good('I threw an epic house party!')); } });
       }
       if (a.kind === 'car') {
@@ -754,6 +830,7 @@ TL.actions = (function () {
         ui().confirm('Sell ' + a.name + '?', 'You\'ll receive ' + E.fmt(saleValue - (a.loan || 0)) + ' after paying off any loan.', function () {
           E.addMoney(saleValue - (a.loan || 0));
           S().assets = S().assets.filter(function (x) { return x !== a; });
+          E.validateHome();
           ui().back();
           done('I sold ' + a.name + ' for ' + E.fmt(saleValue) + '.');
         });
@@ -801,6 +878,47 @@ TL.actions = (function () {
     E.stat('happy', 10);
     E.achieve('homeowner');
     done(good('I bought a ' + h.type.toLowerCase() + ' at ' + h.addr + '! 🏡'));
+    var house = S().assets[S().assets.length - 1];
+    if (E.home().type !== 'owned') ui().choose('New house', 'What do I want to do with ' + h.addr + '?', [
+      { label: '🏡 Move in', fn: function () { E.moveHome({ type: 'owned', id: house.id }); done(good('I moved into my new ' + h.type.toLowerCase() + '!')); } },
+      { label: '🧾 Rent it out', fn: function () { house.rented = true; done('I\'m renting out ' + h.addr + '.'); } },
+      { label: 'Keep it empty for now', fn: function () { } }
+    ]);
+  }
+  // Where I live: parents, a rental, one of my houses, or the street.
+  function livingMenu() {
+    ui().menu('Where I live', function () {
+      var s = S(), h = E.home(), items = [];
+      items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.homeLabel()) + '</b>' + (E.rentCost() ? '<br>Rent: ' + E.fmt(E.rentCost()) + '/yr' : '') + '</div>' });
+      if (me().age < 18) return items.concat([{ info: true, html: '<p class="muted">I can move out when I turn 18.</p>' }]);
+      if (s.prison) return items.concat([{ info: true, html: '<p class="muted">I live in a prison cell for now.</p>' }]);
+      if (h.type !== 'parents' && E.parentsAround().length) items.push({ icon: '👪', label: 'Move back in with my parents', sub: 'No rent, but less freedom', onClick: function () {
+        var p = E.parentsAround().sort(function (a, b) { return b.rel - a.rel; })[0];
+        if (!U.chance(p.rel / 100 + 0.25)) { E.rel(p, -3); return done(bad('My ' + p.role + ' said there\'s no room for me.')); }
+        done(E.moveHome({ type: 'parents' }, 'I moved back in with my parents.'));
+      } });
+      if (s.royal && h.type !== 'palace') items.push({ icon: '🏰', label: 'Move back into the palace', onClick: function () { done(E.moveHome({ type: 'palace' }, 'I moved back into the royal palace.')); } });
+      items.push({ section: 'Rent a place' });
+      E.RENT_TIERS.forEach(function (t, i) {
+        var cost = E.$(t[1]), deposit = Math.round(cost / 6), current = h.type === 'rent' && h.tier === i;
+        items.push({ icon: ['🛏️', '🏢', '🏙️', '🌆'][i], label: t[0], sub: E.fmt(cost) + '/yr' + (t[2] > 0 ? ' · happier' : t[2] < 0 ? ' · cramped' : ''), right: current ? '✔' : '', disabled: current, onClick: function () {
+          if (S().money < deposit) return done(nope('I need ' + E.fmt(deposit) + ' for the deposit and first month.'));
+          E.addMoney(-deposit);
+          done(E.moveHome({ type: 'rent', tier: i }, 'I moved into a ' + t[0].toLowerCase() + '. 📦'));
+        } });
+      });
+      var mine = s.assets.filter(function (a) { return a.kind === 'house' && !(h.type === 'owned' && h.id === a.id); });
+      if (mine.length) {
+        items.push({ section: 'My properties' });
+        mine.forEach(function (a) {
+          items.push({ icon: '🏠', label: 'Move into ' + a.name, sub: a.type + (a.rented ? ' · tenants will move out' : ''), onClick: function () {
+            a.rented = false;
+            done(E.moveHome({ type: 'owned', id: a.id }, 'I moved into my ' + a.type.toLowerCase() + ' at ' + a.name + '. 🏡'));
+          } });
+        });
+      }
+      return items;
+    });
   }
   function dealership() {
     var ls = listings('cars', function () {
@@ -915,6 +1033,8 @@ TL.actions = (function () {
       items.push({ section: 'Fun & Social' });
       if (a >= 13) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
       if (a >= 18) items.push({ icon: '🪩', label: 'Nightclub', onClick: nightclub });
+      if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
+      if (a >= 14) items.push({ icon: '🏃', label: 'Run a marathon', sub: 'Athleticism helps', disabled: used('marathon') > 0, onClick: marathon });
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });
       if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', right: E.fmt(E.$(2)), onClick: lottery });
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
@@ -926,7 +1046,9 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
       if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
-      if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
+      if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { S().flags.volunteered = (S().flags.volunteered || 0) + 1; var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
+      items.push({ icon: '📝', label: 'Bucket list', sub: TL.features.bucketCount() + ' done', onClick: TL.features.bucketMenu });
+      items.push({ icon: '⏳', label: 'Time Machine', sub: E.tmAges().length ? 'Go back up to ' + U.plural(E.tmAges().length, 'year') : 'Age up to charge it', disabled: !E.tmAges().length, onClick: function () { ui().timeMachine(); } });
       items.push({ icon: '🏆', label: 'Achievements', onClick: achievementsMenu });
       return items;
     });
@@ -1043,6 +1165,27 @@ TL.actions = (function () {
     if (r <= 30) { return done(bad('I got into a fight with a bouncer and was thrown out.')); }
     done('I danced the night away at ' + U.pick(['Club Neon', 'The Velvet Room', 'Pulse', 'Eclipse', 'Moonlight Lounge']) + '. 🪩');
   }
+  function skydive() {
+    var c = E.$(300);
+    if (!afford(c)) return done(noMoney(c));
+    E.addMoney(-c);
+    var r = U.rand(1, 100);
+    if (r <= 3) { E.addCondition('Broken Leg'); E.stat('health', -15); S().flags.skydive = true; return done(bad('My parachute opened late. I landed hard and broke my leg! 🪂')); }
+    if (r <= 10) { E.stat('happy', 4); return done('The jump was cancelled due to high winds. I got a refund... of half my money.'); }
+    S().flags.skydive = true; E.stat('happy', 12);
+    done(good('I jumped out of a plane at 13,000 feet! What a rush! 🪂'));
+  }
+  function marathon() {
+    use('marathon');
+    var m = me();
+    if (U.chance(m.athl / 110 + (TL.features.skill('fitness') / 200) + 0.05)) {
+      S().flags.marathon = true; m.athl = U.clamp(m.athl + 3, 0, 100); E.stat('happy', 10); E.stat('health', -2);
+      var mins = Math.round(360 - m.athl * 2.2 + U.rand(-15, 15));
+      return done(good('I finished the marathon in ' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm! 🏅'));
+    }
+    E.stat('health', -4);
+    done(bad('I hit the wall at mile ' + U.rand(14, 23) + ' and had to drop out.'));
+  }
   function casinoMenu() {
     ui().menu('Casino 🎰', function () {
       var bets = [10, 100, 1000, 10000, 100000].map(function (b) { return E.$(b); });
@@ -1125,6 +1268,7 @@ TL.actions = (function () {
           if (used('vacation') >= 2) return done(nope('I\'ve already been on enough vacations this year.'));
           use('vacation');
           E.addMoney(-cost); S().counts.vacations++;
+          if (v.aurora) S().flags.aurora = true;
           E.stat('happy', U.rand(10, 20)); E.stat('health', 3);
           var pt = E.partner(); if (pt) E.rel(pt, 10);
           var r = U.rand(1, 100);
@@ -1266,7 +1410,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, divorce: divorce, addPet: addPet,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet,
     achievementsMenu: achievementsMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

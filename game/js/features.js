@@ -124,7 +124,7 @@ TL.features = (function () {
   function contest(key, sk, name) {
     use(key);
     var v = skill(sk);
-    if (U.chance(v / 160)) { var prize = E.$(U.pick([500, 2000, 10000, 50000])); E.addMoney(prize); E.stat('happy', 10); E.fame(2); return done(good('🏆 I won ' + name + '! Prize: ' + E.fmt(prize) + '.')); }
+    if (U.chance(v / 160)) { S().flags.contestWin = true; var prize = E.$(U.pick([500, 2000, 10000, 50000])); E.addMoney(prize); E.stat('happy', 10); E.fame(2); return done(good('🏆 I won ' + name + '! Prize: ' + E.fmt(prize) + '.')); }
     if (U.chance(0.4)) return done('I placed in the top ten at ' + name + '.');
     done(bad('I was eliminated early in ' + name + '.'));
   }
@@ -155,6 +155,7 @@ TL.features = (function () {
     E.people('sibling').forEach(function (p) { p.job = p.age < 18 ? (p.gender === 'M' ? 'Prince' : 'Princess') : 'Royal'; p.last = st.me.last; });
     st.royal = { house: 'House of ' + st.me.last, monarchId: monarch.id, monarch: false, popularity: U.rand(50, 75) };
     st.flags.wealth = 'rich';
+    st.home = { type: 'palace' };
     st.fame = 45;
   }
   function royalBirthLog() {
@@ -262,6 +263,7 @@ TL.features = (function () {
       st.royal.distant = true;
     }
     st.fame = Math.max(st.fame, 40);
+    st.home = { type: 'palace' };
   }
 
   // ====================================================================
@@ -549,6 +551,65 @@ TL.features = (function () {
   } };
 
   // ====================================================================
+  // BUCKET LIST (v1.4)
+  // ====================================================================
+  var BUCKET = [
+    { id: 'married', icon: '💍', text: 'Get married', check: function (s) { return s.ach.indexOf('married') >= 0; } },
+    { id: 'parent', icon: '👶', text: 'Have a child', check: function (s) { return E.people('child', true).length > 0; } },
+    { id: 'home', icon: '🏠', text: 'Buy a home', check: function (s) { return s.ach.indexOf('homeowner') >= 0; } },
+    { id: 'degree', icon: '🎓', text: 'Earn a college degree', check: function () { return E.hasDegree('bachelor'); } },
+    { id: 'million', icon: '💰', text: 'Become a millionaire', check: function () { return E.netWorth() >= E.$(1000000); } },
+    { id: 'travel', icon: '✈️', text: 'Take 3 vacations', check: function (s) { return s.counts.vacations >= 3; } },
+    { id: 'aurora', icon: '🌌', text: 'See the Northern Lights', check: function (s) { return !!s.flags.aurora; } },
+    { id: 'skydive', icon: '🪂', text: 'Go skydiving', check: function (s) { return !!s.flags.skydive; } },
+    { id: 'marathon', icon: '🏃', text: 'Run a marathon', check: function (s) { return !!s.flags.marathon; } },
+    { id: 'book', icon: '📖', text: 'Write a book', check: function (s) { return s.books.length > 0; } },
+    { id: 'skill', icon: '🎯', text: 'Master a skill (60+)', check: function (s) { return SKILLS.some(function (k) { return (s.skills[k.id] || 0) >= 60; }); } },
+    { id: 'followers', icon: '📱', text: 'Reach 10,000 followers', check: function (s) { return s.followers >= 10000; } },
+    { id: 'pet', icon: '🐾', text: 'Adopt a pet', check: function (s) { return !!s.flags.hadPet || s.pets.length > 0; } },
+    { id: 'top', icon: '🏆', text: 'Reach the top of a career', check: function (s) { return s.ach.indexOf('ceo') >= 0; } },
+    { id: 'ninety', icon: '🎂', text: 'Live to 90', check: function () { return me().age >= 90; } },
+    { id: 'contest', icon: '🥇', text: 'Win a competition', check: function (s) { return !!s.flags.contestWin; } },
+    { id: 'celeb', icon: '🤩', text: 'Meet a celebrity', check: function (s) { return !!s.flags.metCeleb; } },
+    { id: 'bff', icon: '🤝', text: 'Have a best friend', check: function (s) { return s.people.some(function (p) { return p.role === 'best friend'; }); } },
+    { id: 'famous', icon: '⭐', text: 'Become famous', check: function (s) { return s.fame >= 50; } },
+    { id: 'business', icon: '📈', text: 'Start a business', check: function (s) { return s.ach.indexOf('entrepreneur') >= 0; } },
+    { id: 'volunteer', icon: '🙏', text: 'Volunteer 3 times', check: function (s) { return (s.flags.volunteered || 0) >= 3; } },
+    { id: 'retire', icon: '🌅', text: 'Retire from a career', check: function (s) { return s.ach.indexOf('retired') >= 0; } }
+  ];
+  function bucket() {
+    var s = S();
+    if (!s.bucket) s.bucket = U.shuffle(BUCKET).slice(0, 5).map(function (b) { return { id: b.id, done: false }; });
+    return s.bucket;
+  }
+  function bucketDef(id) { return BUCKET.filter(function (b) { return b.id === id; })[0]; }
+  function checkBucket() {
+    var s = S(), list = bucket(), newly = 0;
+    list.forEach(function (b) {
+      var d = bucketDef(b.id);
+      if (!b.done && d && d.check(s)) {
+        b.done = true; b.age = me().age; newly++;
+        E.log('✅ Bucket list: ' + d.text + '!', 'good');
+        E.stat('happy', 8);
+      }
+    });
+    if (newly && list.every(function (b) { return b.done; })) {
+      E.log('📝 I checked off everything on my bucket list!', 'good');
+      E.achieve('bucketlist');
+    }
+  }
+  function bucketMenu() {
+    ui().menu('Bucket list 📝', function () {
+      var list = bucket(), n = list.filter(function (b) { return b.done; }).length;
+      return [{ info: true, html: '<p class="muted">' + n + ' of ' + list.length + ' done. Every life gets its own list.</p>' }].concat(list.map(function (b) {
+        var d = bucketDef(b.id) || { icon: '•', text: b.id };
+        return { icon: d.icon, label: d.text, sub: b.done ? 'Done at age ' + b.age : 'Not yet', right: b.done ? '✅' : '⬜' };
+      }));
+    });
+  }
+  function bucketCount() { var l = bucket(); return l.filter(function (b) { return b.done; }).length + '/' + l.length; }
+
+  // ====================================================================
   // hooks
   // ====================================================================
   function yearly() {
@@ -566,7 +627,7 @@ TL.features = (function () {
   return {
     SKILLS: SKILLS, skill: skill, skillBonus: skillBonus, skillsMenu: skillsMenu,
     makeRoyal: makeRoyal, royalBirthLog: royalBirthLog, royalTitle: title, royalMenu: royalMenu, onDeath: onDeath, lineOf: lineOf,
-    schoolItems: schoolItems,
+    schoolItems: schoolItems, bucketMenu: bucketMenu, checkBucket: checkBucket, bucketCount: bucketCount, bucket: bucket,
     mobMenu: mobMenu, mobTitle: mobTitle, willMenu: willMenu, willShare: willShare,
     yearly: yearly, inherit: inherit
   };
