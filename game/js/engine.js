@@ -174,7 +174,9 @@ TL.engine = (function () {
       return st;
     }
 
-    var wealthTier = U.weighted([{ w: 25, t: 'poor', m: 4000 }, { w: 50, t: 'middle', m: 45000 }, { w: 20, t: 'upper', m: 250000 }, { w: 5, t: 'rich', m: 3000000 }]);
+    var tiers = [{ w: 25, t: 'poor', m: 4000 }, { w: 50, t: 'middle', m: 45000 }, { w: 20, t: 'upper', m: 250000 }, { w: 5, t: 'rich', m: 3000000 }];
+    var wealthTier = tiers.filter(function (t) { return t.t === opts.wealth; })[0] || U.weighted(tiers);
+    if (opts.stats) ['happy', 'health', 'smarts', 'looks'].forEach(function (k) { if (opts.stats[k] != null) st.me[k] = U.clamp(Math.round(opts.stats[k]), 0, 100); });
     st.flags.wealth = wealthTier.t;
     var momAge = U.rand(18, 42), dadAge = momAge + U.rand(-4, 8);
     var parentsMarried = U.chance(0.7);
@@ -274,6 +276,7 @@ TL.engine = (function () {
       }
       s.degrees.push({ type: 'hs' });
       log('🎓 I graduated from ' + e.school + ' with a ' + gradeLetter(e.grade) + ' average!', 'good');
+      if (e.grade >= 95) { log('🥇 I was named valedictorian of my class!', 'good'); achieve('valedictorian'); }
       stat('happy', 10);
       s.lastGrade = e.grade;
       s.edu = null;
@@ -312,6 +315,7 @@ TL.engine = (function () {
     if (funding === 'scholarship') {
       var g = s.lastGrade || 50;
       var p = g >= 90 ? 0.8 : g >= 80 ? 0.45 : g >= 70 ? 0.2 : 0.03;
+      if (s.sat) p += (s.sat - 1100) / 1500;
       if (s.flags.athleteScholar) p += 0.3;
       if (!U.chance(p)) return { ok: false, msg: 'My scholarship application was rejected.' };
       enroll('uni', { major: major, funding: 'scholarship' });
@@ -392,6 +396,7 @@ TL.engine = (function () {
     var exp = s.jobHistory.filter(function (h) { return h.career === careerId; }).reduce(function (a, h) { return a + h.years; }, 0);
     p += Math.min(0.2, exp * 0.03);
     if (TL.features) p += TL.features.skillBonus(careerId);
+    p += Math.min(0.2, (s.internships || 0) * 0.08);
     if (!U.chance(U.clamp(p, 0.08, 0.95))) return { ok: false, msg: 'After the interview, they decided not to hire me.' };
     if (s.job) quitJob(true);
     var lvl = exp >= 4 ? Math.min(c.levels.length - 2, Math.floor(exp / 4)) : 0;
@@ -920,6 +925,10 @@ TL.engine = (function () {
     if (!s.job) people('coworker').forEach(function (p) { p.role = 'former coworker'; });
 
     TL.events.roll();
+    // Yearly snapshot for the life chart.
+    s.hist = s.hist || [];
+    s.hist.push([m.age, netWorth(), m.happy]);
+    if (s.hist.length > 130) s.hist.shift();
     if (!deathCheck()) checkAchievements();
     s.updated = Date.now();
   }
@@ -993,7 +1002,11 @@ TL.engine = (function () {
     var r = [];
     if (nw >= $(50000000)) r.push(['💎', 'Tycoon', 'Died with a fortune.']);
     else if (nw >= $(2000000)) r.push(['💰', 'Rich', 'Lived a wealthy life.']);
+    if (s.royal && s.royal.monarch) r.push(['👑', 'Monarch', 'Ruled the realm.']);
+    if (s.mob && s.mob.rank >= 4) r.push(['🕴️', 'Kingpin', 'Ran the underworld.']);
+    if (s.awards && s.awards.length) r.push(['🏆', 'Acclaimed', 'Honored with the ' + s.awards[0].award + '.']);
     if (s.fame >= 70) r.push(['⭐', 'Famous', 'The world knew my name.']);
+    if (s.books && s.books.some(function (b) { return b.quality >= 85; })) r.push(['📚', 'Author', 'Wrote a bestseller.']);
     if (s.record.length >= 3) r.push(['🦹', 'Criminal', 'Crime was my career.']);
     if (hasDegree('phd') || hasDegree('med') || hasDegree('law')) r.push(['🎓', 'Scholar', 'A mind well educated.']);
     if (s.counts.exes >= 6) r.push(['💘', 'Heartbreaker', 'Loved and left many.']);

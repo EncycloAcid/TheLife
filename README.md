@@ -19,10 +19,15 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Royalty**: choose to be born into a royal family. You have a place in the line of succession, royal duties, a popularity rating, tabloid scandals and arranged matches. You can be crowned, issue decrees, knight your friends, or abdicate. A revolution may overthrow you. The crown passes down your family line.
 - **Hobbies & skills**: coding, writing, singing, painting, cooking, comedy, chess and fitness. Skills boost related careers. You can write books that earn royalties, sell paintings, build apps, and enter competitions and open mics.
 - **Wills**: name a main heir to inherit most of your estate.
+- **Awards**: win Academy Awards, Grammys, MVPs, Pulitzers and even the Nobel Prize, with ceremonies where you choose how to show up.
+- **Student life**: take the SAT, run for class president, join a fraternity or sorority, go to campus parties, land internships (which help you get hired later) and study abroad.
+- **Landlord life**: tenants who pay late, wreck the place, throw parties, or offer to buy your house.
+- **Custom lives**: set your starting happiness, health, smarts and looks, and your family's wealth.
+- **Obituary & life chart**: when you die, read your obituary and see your net worth and happiness charted across your whole life.
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~80 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **34 achievements**, tracked per life and across all lives.
+- **38 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **Settings**: text size, and deleting all data.
 - Works offline, autosaves, supports light and dark themes, and handles the Android back gesture.

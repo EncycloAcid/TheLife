@@ -117,6 +117,7 @@ TL.ui = (function () {
     sel.value = U.pick(D.COUNTRIES).name;
     $('#c-gender').value = U.chance(0.5) ? 'M' : 'F';
     randomName();
+    rerollStats();
     show('create');
   }
   function randomName() {
@@ -125,11 +126,22 @@ TL.ui = (function () {
     $('#c-first').value = U.pick(g === 'M' ? c.male : c.female);
     $('#c-last').value = U.pick(c.last);
   }
+  var STAT_ROWS = [['happy', '😊 Happiness'], ['health', '❤️ Health'], ['smarts', '🧠 Smarts'], ['looks', '✨ Looks']];
+  function rerollStats() {
+    var box = $('#c-stats');
+    box.innerHTML = STAT_ROWS.map(function (r) {
+      var v = r[0] === 'happy' ? U.rand(60, 100) : r[0] === 'health' ? U.rand(70, 100) : U.rand(5, 100);
+      return '<div class="slider"><span>' + r[1] + '</span><input type="range" min="0" max="100" value="' + v + '" data-k="' + r[0] + '"><b>' + v + '</b></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('input'), function (inp) {
+      inp.oninput = function () { inp.nextElementSibling.textContent = inp.value; };
+    });
+  }
   function createLife() {
     var g = $('#c-gender').value;
     var interest = $('#c-interest').value;
     if (interest === 'auto') interest = g === 'M' ? 'F' : 'M';
-    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked });
+    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats() });
     E.save();
     startGame();
   }
@@ -142,6 +154,49 @@ TL.ui = (function () {
   }
 
   // ---------------------------------------------------------------- game screen
+  function readStats() {
+    var o = {};
+    Array.prototype.forEach.call(document.querySelectorAll('#c-stats input'), function (inp) { o[inp.getAttribute('data-k')] = +inp.value; });
+    return o;
+  }
+  // Net worth and happiness across a life, as an inline SVG.
+  function lifeChart(hist) {
+    if (!hist || hist.length < 3) return '<p class="muted">Not enough history to chart yet.</p>';
+    var W = 320, H = 120, P = 6;
+    var ws = hist.map(function (h) { return h[1]; });
+    var lo = Math.min(0, Math.min.apply(null, ws)), hi = Math.max(1, Math.max.apply(null, ws));
+    var a0 = hist[0][0], a1 = hist[hist.length - 1][0] || a0 + 1;
+    function x(a) { return P + (a - a0) / Math.max(1, a1 - a0) * (W - 2 * P); }
+    function pts(fn) { return hist.map(function (h) { return x(h[0]).toFixed(1) + ',' + fn(h).toFixed(1); }).join(' '); }
+    var money = pts(function (h) { return H - P - (h[1] - lo) / (hi - lo) * (H - 2 * P); });
+    var happy = pts(function (h) { return H - P - h[2] / 100 * (H - 2 * P); });
+    var zero = H - P - (0 - lo) / (hi - lo) * (H - 2 * P);
+    return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Net worth and happiness over my life">' +
+      '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + zero.toFixed(1) + '" y2="' + zero.toFixed(1) + '" stroke="var(--line)" stroke-width="1"/>' +
+      '<polyline points="' + happy + '" fill="none" stroke="var(--mid)" stroke-width="1.6" stroke-linejoin="round" opacity=".8"/>' +
+      '<polyline points="' + money + '" fill="none" stroke="var(--money)" stroke-width="2.4" stroke-linejoin="round"/></svg>' +
+      '<div class="legend"><span class="lg-money">Net worth</span><span class="lg-happy">Happiness</span><em>Peak ' + E.fmt(hi) + ' · age ' + a0 + '–' + a1 + '</em></div></div>';
+  }
+  function obituary() {
+    var s = S(), m = s.me, they = m.gender === 'M' ? 'He' : 'She', their = m.gender === 'M' ? 'his' : 'her';
+    var parts = [];
+    var rt = TL.features.royalTitle();
+    parts.push((rt ? rt + ' ' : '') + m.first + ' ' + m.last + ' died at the age of ' + m.age + ' from ' + s.cause + ' in ' + (/^(United|Philippines)/.test(s.country) ? 'the ' : '') + s.country + '.');
+    var careers = s.jobHistory.map(function (h) { return h.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
+    if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? 'a ' + careers[careers.length - 2] + ' and later ' : '') + 'a ' + careers[careers.length - 1] + '.');
+    var deg = E.highestDegree();
+    if (deg && deg.type !== 'hs') parts.push(they + ' held a ' + E.degreeName(deg) + '.');
+    if (s.awards && s.awards.length) parts.push(they + ' won the ' + s.awards.map(function (a) { return a.award; }).filter(function (v, i, arr) { return arr.indexOf(v) === i; }).join(' and the ') + '.');
+    if (s.books && s.books.length) parts.push(they + ' wrote ' + U.plural(s.books.length, 'book') + ', including "' + s.books[0].title + '".');
+    if (s.record.length) parts.push(they + ' was convicted of ' + s.record.map(function (r) { return r.crime.toLowerCase(); }).slice(0, 3).join(', ') + '.');
+    var sp = E.people('spouse')[0], kids = E.people('child'), gk = E.people('grandchild');
+    var surv = [];
+    if (sp) surv.push(their + ' ' + (sp.gender === 'M' ? 'husband' : 'wife') + ' ' + sp.first);
+    if (kids.length) surv.push(U.plural(kids.length, 'child').replace('childs', 'children'));
+    if (gk.length) surv.push(U.plural(gk.length, 'grandchild').replace('grandchilds', 'grandchildren'));
+    parts.push(surv.length ? they + ' is survived by ' + surv.join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : they + ' left no surviving family.');
+    return parts.join(' ');
+  }
   function avatar(m) {
     if (!m) m = S().me;
     if (S().dead) return '💀';
@@ -217,8 +272,9 @@ TL.ui = (function () {
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);
+    if (s.awards && s.awards.length) rows.push(['🏆 Awards', s.awards.map(function (x) { return x.award + ' (' + x.year + ')'; }).join(', ')]);
     menu('About me', function () {
-      return [{ info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
+      return [{ info: true, html: lifeChart(s.hist) }, { info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
     });
   }
   function karmaWord(k) { return k >= 85 ? 'Saintly' : k >= 65 ? 'Good' : k >= 40 ? 'Neutral' : k >= 20 ? 'Shady' : 'Wicked'; }
@@ -374,8 +430,10 @@ TL.ui = (function () {
     var rows = [
       ['Net worth', E.fmt(E.netWorth())], ['Education', E.degreeName(deg)], ['Career', s.job ? E.jobTitle(s.job) : last || 'None'],
       ['Spouse', spouse ? spouse.first + ' ' + spouse.last : 'None'], ['Children', kids.length], ['Exes', s.counts.exes],
-      ['Fame', s.fame + '%'], ['Crimes', s.record.length ? s.record.length + ' convictions' : 'None'], ['Achievements', s.ach.length]
+      ['Fame', s.fame + '%'], ['Awards', (s.awards || []).length], ['Crimes', s.record.length ? s.record.length + ' convictions' : 'None'], ['Achievements', s.ach.length]
     ];
+    $('#death-obit').textContent = obituary();
+    $('#death-chart').innerHTML = lifeChart(s.hist);
     $('#death-stats').innerHTML = '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>';
     var box = $('#death-actions');
     box.innerHTML = '';
@@ -416,6 +474,7 @@ TL.ui = (function () {
     $('#c-country').onchange = randomName;
     $('#c-gender').onchange = randomName;
     $('#c-start').onclick = createLife;
+    $('#c-reroll').onclick = rerollStats;
     $('#c-back').onclick = home;
     applySettings();
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') handleBack(); });

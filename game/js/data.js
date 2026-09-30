@@ -316,7 +316,11 @@ TL.data = (function () {
     { id: 'royal', name: 'Long Live the Crown', desc: 'Become king or queen', icon: '🤴' },
     { id: 'godfather', name: 'The Godfather', desc: 'Become boss of a crime family', icon: '🕴️' },
     { id: 'author', name: 'Bestselling Author', desc: 'Publish a bestseller', icon: '📚' },
-    { id: 'polymath', name: 'Renaissance Soul', desc: 'Reach 80 in three skills', icon: '🎭' }
+    { id: 'polymath', name: 'Renaissance Soul', desc: 'Reach 80 in three skills', icon: '🎭' },
+    { id: 'award', name: 'And the Winner Is...', desc: 'Win a major award', icon: '🏆' },
+    { id: 'nobel', name: 'Nobel Laureate', desc: 'Win a Nobel Prize', icon: '🏅' },
+    { id: 'valedictorian', name: 'Valedictorian', desc: 'Graduate high school at the top of your class', icon: '🥇' },
+    { id: 'landlord', name: 'Landlord', desc: 'Rent out 3 properties at once', icon: '🔑' }
   ];
 
   var BUSINESS_TYPES = [

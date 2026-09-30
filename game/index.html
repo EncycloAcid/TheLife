@@ -37,6 +37,14 @@
       </label>
       <label>Country<select id="c-country"></select></label>
       <label class="check"><input type="checkbox" id="c-royal"> 👑 Born into the royal family</label>
+      <details class="custom">
+        <summary>🎛️ Customize starting stats</summary>
+        <div id="c-stats"></div>
+        <label>Family wealth
+          <select id="c-wealth"><option value="">Random</option><option value="poor">Poor</option><option value="middle">Middle class</option><option value="upper">Upper class</option><option value="rich">Rich</option></select>
+        </label>
+        <button id="c-reroll" class="btn ghost small" type="button">🎲 Re-roll stats</button>
+      </details>
       <button id="c-start" class="btn primary">Start Life 👶</button>
     </div>
   </section>
@@ -73,6 +81,8 @@
       <h2 id="death-name"></h2>
       <p id="death-sub" class="muted center"></p>
       <div id="death-ribbon" class="ribbon"></div>
+      <p id="death-obit" class="obit"></p>
+      <div id="death-chart" class="card"></div>
       <div id="death-stats" class="card"></div>
       <div id="death-actions" class="stack"></div>
     </div>

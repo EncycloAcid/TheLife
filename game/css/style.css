@@ -70,6 +70,19 @@ h1 { text-align: center; margin: 0; font-size: 2.6rem; letter-spacing: -1px; bac
 .form label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: .9rem; color: var(--muted); }
 .form label.check { flex-direction: row; align-items: center; gap: 10px; color: var(--text); font-size: 1rem; }
 .form label.check input { width: 22px; height: 22px; accent-color: var(--brand); }
+.custom { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.custom summary { font-weight: 700; cursor: pointer; }
+.custom[open] summary { margin-bottom: 10px; }
+.custom label { margin-bottom: 10px; }
+.slider { display: grid; grid-template-columns: 110px 1fr 36px; align-items: center; gap: 8px; margin-bottom: 8px; font-size: .9rem; }
+.slider input { width: 100%; accent-color: var(--brand); padding: 0; }
+.slider b { text-align: right; font-variant-numeric: tabular-nums; }
+.obit { font-style: italic; line-height: 1.55; margin: 0 4px 16px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: var(--muted); margin-top: 4px; }
+.chart .legend em { font-style: normal; margin-left: auto; }
+.chart .legend span::before { content: ''; display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; background: currentColor; }
+.chart .lg-money { color: var(--money); } .chart .lg-happy { color: var(--mid); }
 .form input, .form select, #d-input { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 1rem; }
 .list-body { overflow-y: auto; padding: 8px 12px calc(16px + var(--safe-b)); }
 

@@ -413,12 +413,150 @@ TL.features = (function () {
   }
 
   // ====================================================================
+  // AWARDS (v1.3)
+  // ====================================================================
+  var FIELDS = { Physics: 'Physics', Chemistry: 'Chemistry', Biology: 'Medicine', Economics: 'Economics', English: 'Literature', Mathematics: 'Physics' };
+  function nominate() {
+    var s = S(), j = s.job, nom = null;
+    if (s.prison) return;
+    if (j && j.fame && j.level >= (j.career === 'athlete' ? 2 : 3)) {
+      var p = 0.01 + s.fame / 900 + j.perf / 2500;
+      var aw = { actor: ['Academy Award', me().gender === 'F' ? 'Best Actress' : 'Best Actor'], musician: ['Grammy Award', 'Album of the Year'], athlete: ['MVP Award', 'Most Valuable Player'] }[j.career];
+      if (aw && U.chance(p)) nom = { award: aw[0], cat: aw[1], win: 0.08 + s.fame / 700 + j.perf / 1200 };
+    }
+    var fresh = s.books.filter(function (b) { return b.year === s.year - 1 && b.quality >= 80; })[0];
+    if (!nom && fresh && U.chance((fresh.quality - 70) / 60)) nom = { award: 'Pulitzer Prize', cat: 'Fiction, for "' + fresh.title + '"', win: (fresh.quality - 60) / 60 };
+    if (!nom && j && j.career === 'journalist' && j.level >= 2 && U.chance(0.04 + j.perf / 1500)) nom = { award: 'Pulitzer Prize', cat: 'Investigative Reporting', win: 0.35 + j.perf / 400 };
+    if (!nom && j && (j.career === 'scientist' || j.career === 'professor') && j.level >= 2 && U.chance(0.005 + j.perf / 3000)) {
+      var deg = s.degrees.filter(function (d) { return d.type === 'phd'; })[0];
+      nom = { award: 'Nobel Prize', cat: FIELDS[deg && deg.major] || 'Physics', win: 0.3 + me().smarts / 300, nobel: true };
+    }
+    if (!nom && j && ['surgeon', 'doctor'].indexOf(j.career) >= 0 && j.level >= 2 && U.chance(0.003)) nom = { award: 'Nobel Prize', cat: 'Medicine', win: 0.35, nobel: true };
+    if (nom) { nom.win -= (s.awards || []).length * 0.1; E.queue('award', nom); }
+  }
+  TL.events.defs.award = { id: 'award', scripted: true, w: 0, build: function (d) {
+    function win(absent) {
+      var s = S();
+      s.awards = s.awards || [];
+      s.awards.push({ award: d.award, cat: d.cat, year: s.year });
+      E.fame(d.nobel ? 15 : 10); E.stat('happy', 20);
+      if (d.nobel) { E.addMoney(E.$(1000000)); E.achieve('nobel'); }
+      if (s.job && s.job.fame) s.job.mult = (s.job.mult || 1) * 1.2;
+      E.achieve('award');
+      return good('🏆 I won the ' + d.award + ' for ' + d.cat + '!' + (absent ? ' Someone accepted it on my behalf.' : '') + (d.nobel ? ' The prize includes ' + E.fmt(E.$(1000000)) + '.' : ''));
+    }
+    return { icon: '🏆', title: d.award, text: 'I\'ve been nominated for the ' + d.award + ' for ' + d.cat + '!', choices: [
+      { label: 'Attend the ceremony', run: function () {
+        if (U.chance(U.clamp(d.win, 0.05, 0.85))) return win(false);
+        return U.pick(['I lost, but smiled and clapped for the winner.', 'I lost. The camera caught my face at the worst moment.', 'Another nominee won. I\'ll get it next time.']);
+      } },
+      { label: 'Give a speech if I win... about politics', run: function () {
+        if (U.chance(U.clamp(d.win, 0.05, 0.85))) { var r = win(false); E.fame(3); r.text += ' My fiery speech went viral.'; return r; }
+        return 'I lost, so nobody heard my speech.';
+      } },
+      { label: 'Skip the ceremony', run: function () { if (U.chance(U.clamp(d.win - 0.05, 0.05, 0.8))) return win(true); return 'I skipped it and didn\'t win anyway.'; } }
+    ] };
+  } };
+
+  // ====================================================================
+  // STUDENT LIFE (v1.3)
+  // ====================================================================
+  function schoolItems(e) {
+    var s = S(), m = me(), items = [];
+    if (e.stage === 'high' && m.age >= 15) {
+      items.push({ icon: '📝', label: 'Take the SAT', sub: s.sat ? 'Best score: ' + s.sat : 'Boosts scholarship chances', disabled: used('sat') > 0, onClick: function () {
+        use('sat');
+        var score = U.clamp(Math.round((400 + m.smarts * 8 + e.grade * 3 + U.rand(-120, 120)) / 10) * 10, 400, 1600);
+        s.sat = Math.max(s.sat || 0, score);
+        done(score >= 1400 ? good('I scored ' + score + ' on the SAT! 🎉') : score < 900 ? bad('I scored ' + score + ' on the SAT.') : 'I scored ' + score + ' on the SAT.');
+      } });
+    }
+    if (e.stage === 'high' || e.stage === 'uni') {
+      items.push({ icon: '🗳️', label: 'Run for class president', disabled: used('council') > 0 || e.president, sub: e.president ? 'I\'m class president' : '', onClick: function () {
+        use('council');
+        if (U.chance(0.15 + (e.popularity || 30) / 150 + m.looks / 400)) { e.president = true; e.popularity = Math.min(100, (e.popularity || 30) + 15); return done(good('I was elected class president! 🎉')); }
+        done(bad('I lost the election by ' + U.rand(2, 60) + ' votes.'));
+      } });
+    }
+    if (e.stage !== 'uni') return items;
+    if (!e.greek) items.push({ icon: '🏛️', label: 'Rush a ' + (m.gender === 'M' ? 'fraternity' : 'sorority'), disabled: used('rush') > 0, onClick: function () {
+      use('rush');
+      var name = U.pick(['Alpha', 'Beta', 'Delta', 'Gamma', 'Kappa', 'Sigma', 'Omega', 'Theta', 'Zeta']) + ' ' + U.pick(['Chi', 'Pi', 'Tau', 'Phi', 'Nu', 'Rho', 'Psi']);
+      if (!U.chance(0.35 + m.looks / 250 + (e.popularity || 30) / 300)) return done(bad(name + ' didn\'t offer me a bid.'));
+      if (U.chance(0.15)) E.stat('health', -U.rand(5, 15));
+      e.greek = name; e.popularity = Math.min(100, (e.popularity || 30) + 20); E.stat('happy', 10);
+      E.addPerson({ role: 'friend', age: m.age, rel: U.rand(55, 80), gender: m.gender });
+      done(good('I joined ' + name + '! I made a lifelong friend during pledging.'));
+    } });
+    items.push({ icon: '🎉', label: 'Go to a campus party', onClick: function () {
+      var f = diminish('campusparty');
+      E.stat('happy', 6 * f); e.grade = Math.max(0, e.grade - 1);
+      if (U.chance(0.12 * f) && !E.partner()) { var c = E.addPerson({ role: 'partner', age: m.age + U.rand(-2, 2), gender: m.interest === 'A' ? undefined : m.interest, rel: 55 }); return done(good('I hit it off with ' + c.first + ' at the party. We\'re dating!')); }
+      if (U.chance(0.1)) { E.stat('health', -6); return done(bad('I woke up with the worst hangover of my life.')); }
+      done('I partied at ' + (e.greek ? 'the ' + e.greek + ' house' : 'a dorm') + ' until sunrise.');
+    } });
+    if (e.year >= 2) items.push({ icon: '🧑‍💼', label: 'Apply for an internship', sub: s.internships ? U.plural(s.internships, 'internship') + ' so far' : 'Helps land a job later', disabled: used('intern') > 0, onClick: function () {
+      use('intern');
+      if (!U.chance(0.2 + e.grade / 150 + m.smarts / 400)) return done(bad('Every company rejected my internship applications.'));
+      s.internships = (s.internships || 0) + 1;
+      var pay = E.$(U.rand(2000, 9000)); E.addMoney(pay);
+      done(good('I landed a summer internship at ' + U.pick(['Apex', 'Summit', 'Nova', 'Atlas', 'Pioneer', 'Vertex']) + ' ' + U.pick(['Labs', 'Group', 'Capital', 'Media', 'Health']) + ' and earned ' + E.fmt(pay) + '.'));
+    } });
+    if (!e.abroad) {
+      var cost = E.$(15000);
+      items.push({ icon: '🌍', label: 'Study abroad for a semester', right: E.fmt(cost), onClick: function () {
+        var place = U.pick(['Florence', 'Barcelona', 'Tokyo', 'Seoul', 'Paris', 'Cape Town', 'Buenos Aires', 'Prague', 'Sydney', 'Edinburgh']);
+        if (S().money >= cost) E.addMoney(-cost); else S().studentDebt += cost;
+        e.abroad = place; E.stat('happy', 12); E.stat('smarts', 4); S().counts.vacations++;
+        if (U.chance(0.25) && !E.partner()) { var c = E.addPerson({ role: 'partner', age: m.age + U.rand(-2, 3), gender: m.interest === 'A' ? undefined : m.interest, rel: 65, country: U.pick(D.COUNTRIES).name }); return done(good('I studied abroad in ' + place + ' and fell for ' + c.first + '! 💕')); }
+        done(good('I spent an unforgettable semester studying in ' + place + '. 🌍'));
+      } });
+    }
+    return items;
+  }
+
+  // ====================================================================
+  // LANDLORD (v1.3)
+  // ====================================================================
+  function yearlyTenants() {
+    var s = S(), rented = s.assets.filter(function (a) { return a.kind === 'house' && a.rented; });
+    if (rented.length >= 3) E.achieve('landlord');
+    var pick = rented.filter(function () { return U.chance(0.18); })[0];
+    if (pick) E.queue('tenant', { aid: pick.id, kind: U.pick(['late', 'damage', 'buy', 'party']) });
+  }
+  TL.events.defs.tenant = { id: 'tenant', scripted: true, w: 0, build: function (d) {
+    var h = S().assets.filter(function (a) { return a.id === d.aid && a.rented; })[0];
+    if (!h) return null;
+    var t = E.makePerson({ age: U.rand(22, 70) }), rent = h.rentIncome || Math.round(h.value * 0.055);
+    if (d.kind === 'late') return { icon: '🏚️', title: 'Tenant trouble', text: 'My tenant ' + t.first + ' at ' + h.name + ' is 3 months behind on rent.', choices: [
+      { label: 'Evict them', run: function () { E.addMoney(-Math.round(rent / 4)); E.karma(-2); return 'I evicted ' + t.first + '. The legal fees ate into my rent.'; } },
+      { label: 'Offer a payment plan', run: function () { E.karma(3); if (U.chance(0.7)) return good(t.first + ' caught up on the rent. Crisis averted.'); E.addMoney(-Math.round(rent / 3)); return bad(t.first + ' skipped town without paying.'); } },
+      { label: 'Forgive the debt', run: function () { E.karma(6); E.addMoney(-Math.round(rent / 4)); return good(t.first + ' cried and thanked me. It felt good to help.'); } }
+    ] };
+    if (d.kind === 'damage') return { icon: '🔨', title: 'Property damage', text: 'My tenants at ' + h.name + ' ' + U.pick(['flooded the bathroom', 'let their dog chew the floors', 'punched holes in the walls', 'painted every room black']) + '.', choices: [
+      { label: 'Keep their deposit', run: function () { h.cond = Math.max(0, h.cond - 8); return 'Their deposit covered most of the repairs.'; } },
+      { label: 'Sue them', run: function () { if (U.chance(0.55)) { E.addMoney(Math.round(rent / 3)); return good('I won in small claims court.'); } E.addMoney(-E.$(2000)); h.cond = Math.max(0, h.cond - 15); return bad('I lost the case and paid for the repairs myself.'); } },
+      { label: 'Fix it myself', run: function () { E.addMoney(-Math.round(h.value * 0.02)); h.cond = Math.min(100, h.cond + 5); return 'I spent a weekend repairing ' + h.name + '.'; } }
+    ] };
+    if (d.kind === 'buy') { var offer = Math.round(h.value * U.randf(1.02, 1.2)); return { icon: '🤝', title: 'Purchase offer', text: 'My tenant ' + t.first + ' loves ' + h.name + ' and offers to buy it for ' + E.fmt(offer) + '.', choices: [
+      { label: 'Sell it', run: function () { E.addMoney(offer - (h.loan || 0)); S().assets = S().assets.filter(function (a) { return a !== h; }); return good('I sold ' + h.name + ' to ' + t.first + ' for ' + E.fmt(offer) + '.'); } },
+      { label: 'Keep renting', run: function () { return 'I politely declined.'; } }
+    ] }; }
+    return { icon: '🎶', title: 'Noise complaints', text: 'Neighbors say my tenants at ' + h.name + ' throw loud parties every weekend.', choices: [
+      { label: 'Warn the tenants', run: function () { return U.chance(0.7) ? 'The parties stopped.' : bad('They ignored me. The HOA fined me ' + E.fmt(E.$(500)) + '.'); } },
+      { label: 'Ignore it', run: function () { h.value = Math.round(h.value * 0.99); return 'The neighbors aren\'t happy with me.'; } }
+    ] };
+  } };
+
+  // ====================================================================
   // hooks
   // ====================================================================
   function yearly() {
     yearlyCreative();
     yearlyRoyal();
     yearlyMob();
+    yearlyTenants();
+    nominate();
   }
   // Called by continueAs after the heir's new life exists.
   function inherit(prev, c, st, heirs) {
@@ -428,6 +566,7 @@ TL.features = (function () {
   return {
     SKILLS: SKILLS, skill: skill, skillBonus: skillBonus, skillsMenu: skillsMenu,
     makeRoyal: makeRoyal, royalBirthLog: royalBirthLog, royalTitle: title, royalMenu: royalMenu, onDeath: onDeath, lineOf: lineOf,
+    schoolItems: schoolItems,
     mobMenu: mobMenu, mobTitle: mobTitle, willMenu: willMenu, willShare: willShare,
     yearly: yearly, inherit: inherit
   };
