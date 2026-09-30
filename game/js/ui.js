@@ -107,7 +107,7 @@ TL.ui = (function () {
     ]);
   }
   var TEXT_SIZES = [['Small', 14], ['Normal', 16], ['Large', 18], ['Extra large', 20]];
-  var THEMES = [['system', 'Match my phone'], ['dark', 'Dark'], ['light', 'Light']];
+  var THEMES = [['system', 'Match my phone', '📱'], ['dark', 'Dark', '🌙'], ['light', 'Light', '☀️']];
   function applySettings() {
     var st = E.loadGlobal().settings || {};
     document.documentElement.style.fontSize = (st.textSize || 16) + 'px';
@@ -128,17 +128,19 @@ TL.ui = (function () {
     } catch (e) { }
   }
   function settingsMenu() {
-    var g = E.loadGlobal(), cur = (g.settings || {}).textSize || 16, theme = (g.settings || {}).theme || 'system';
-    choose('Settings', 'Theme: ' + THEMES.filter(function (t) { return t[0] === theme; })[0][1] + ' · Text: ' + TEXT_SIZES.filter(function (t) { return t[1] === cur; }).map(function (t) { return t[0]; })[0] + '.',
-      THEMES.map(function (t) {
-        return { label: (t[0] === 'dark' ? '🌙 ' : t[0] === 'light' ? '☀️ ' : '📱 ') + 'Theme: ' + t[1] + (t[0] === theme ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.theme = t[0]; E.saveGlobal(g); applySettings(); } };
-      }).concat(TEXT_SIZES.map(function (t) {
-        return { label: 'Aa Text: ' + t[0] + (t[1] === cur ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.textSize = t[1]; E.saveGlobal(g); applySettings(); } };
-      })).concat([{ label: '🗑️ Delete all data', fn: function () {
+    menu('Settings', function () {
+      var g = E.loadGlobal(), st = g.settings || {}, size = st.textSize || 16, theme = st.theme || 'system';
+      function set(key, val) { g.settings = g.settings || {}; g.settings[key] = val; E.saveGlobal(g); applySettings(); renderSheet(); }
+      return [{ section: 'Theme' }].concat(THEMES.map(function (t) {
+        return { icon: t[2], label: t[1], check: t[0] === theme, onClick: function () { set('theme', t[0]); } };
+      }), [{ section: 'Text size' }], TEXT_SIZES.map(function (t) {
+        return { icon: '<b style="font-size:' + (t[1] - 3) + 'px">Aa</b>', label: t[0], check: t[1] === size, onClick: function () { set('textSize', t[1]); } };
+      }), [{ section: 'Data' }, { icon: '🗑️', label: 'Delete all data', sub: 'Lives, achievements and the graveyard', danger: true, onClick: function () {
         confirm('Delete everything?', 'All saved lives, achievements and the graveyard will be permanently erased. Make a backup first if you want to keep them.', function () {
-          E.wipeAll(); home(); alert('', 'All data deleted.', '');
+          closeAll(); E.wipeAll(); home(); alert('', 'All data deleted.', '');
         });
-      } }, { label: 'Close', fn: function () { } }]));
+      } }]);
+    });
   }
   function copyText(t) {
     try { if (navigator.clipboard) { navigator.clipboard.writeText(t); return; } } catch (e) { }
