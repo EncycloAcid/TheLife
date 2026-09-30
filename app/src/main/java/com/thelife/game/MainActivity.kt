@@ -8,10 +8,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 
@@ -33,8 +35,9 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
+        val night = isNightMode()
         webView = WebView(this).apply {
-            setBackgroundColor(Color.parseColor(if (isNightMode()) "#12101C" else "#F4F2FB"))
+            setBackgroundColor(Color.parseColor(if (night) "#12101C" else "#F4F2FB"))
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
@@ -52,14 +55,29 @@ class MainActivity : ComponentActivity() {
                     request.url.host != GAME_HOST
             }
         }
-        setContentView(webView)
+        // A WebView ignores its own padding (its page still draws edge to edge),
+        // so it sits inside a container that absorbs the system-bar insets. The
+        // container is painted the same colour as the game's header and nav bar.
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor(if (night) "#1C1929" else "#FFFFFF"))
+            addView(webView, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        }
+        setContentView(root)
 
-        // Keep the game clear of the status and navigation bars.
-        ViewCompat.setOnApplyWindowInsetsListener(webView) { v, insets ->
+        // Keep the game clear of the status bar, notch, gesture bar and keyboard.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
             WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(root)
+
+        // Dark status/nav icons on the light theme, light icons on the dark theme.
+        WindowCompat.getInsetsController(window, root).apply {
+            isAppearanceLightStatusBars = !night
+            isAppearanceLightNavigationBars = !night
         }
 
         if (savedInstanceState != null) {

@@ -64,7 +64,7 @@ TL.features = (function () {
   }
   function practice(sk) {
     var s = S(), f = diminish('skill' + sk.id);
-    if (f < 0.2) return done('I\'ve practiced ' + sk.name.toLowerCase() + ' enough this year.');
+    if (f < 0.2) return done(TL.actions.nope('I\'ve practiced ' + sk.name.toLowerCase() + ' enough this year.'));
     var gain = Math.max(1, Math.round(U.rand(2, 6) * f * (me().smarts / 150 + 0.7) * (skill(sk.id) > 80 ? 0.5 : 1)));
     s.skills[sk.id] = Math.min(100, skill(sk.id) + gain);
     E.stat('happy', 1);

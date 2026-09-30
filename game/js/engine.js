@@ -29,9 +29,19 @@ TL.engine = (function () {
   function his(p, cap) { var w = p.gender === 'M' ? 'his' : 'her'; return cap ? U.cap(w) : w; }
   function him(p) { return p.gender === 'M' ? 'him' : 'her'; }
 
+  // Entries that differ only in numbers ("I practiced painting (4/100)" then
+  // "(5/100)") collapse into the newest one with a count, keeping the log readable.
+  function logKey(t) { return t.replace(/\(.*?\)/g, '').replace(/[\d.,]+/g, '#'); }
   function log(text, cls) {
+    if (typeof text !== 'string' || !text) return;
     var s = S();
     var y = s.log[s.log.length - 1];
+    var last = y.entries[y.entries.length - 1];
+    if (last && (last.c || '') === (cls || '') && logKey(last.t) === logKey(text)) {
+      last.n = (last.n || 1) + 1;
+      last.t = text;
+      return;
+    }
     y.entries.push({ t: text, c: cls || '' });
   }
 

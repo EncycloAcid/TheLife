@@ -261,7 +261,7 @@ TL.ui = (function () {
     years.forEach(function (y, i) {
       html += '<div class="year' + (i === years.length - 1 ? ' latest' : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div>';
       if (!y.entries.length) html += '<div class="entry quiet">Nothing much happened.</div>';
-      y.entries.forEach(function (e) { html += '<div class="entry ' + e.c + '">' + U.esc(e.t) + '</div>'; });
+      y.entries.forEach(function (e) { html += '<div class="entry ' + e.c + '">' + U.esc(e.t) + (e.n > 1 ? ' <span class="times">×' + e.n + '</span>' : '') + '</div>'; });
       html += '</div>';
     });
     el.innerHTML = html;
