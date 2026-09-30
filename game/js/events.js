@@ -730,7 +730,7 @@ TL.events = (function () {
 
   // ---------- v1.4 home events ----------
   function homeIs(t) { return me().age >= 18 && !S().prison && E.home().type === t; }
-  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent; }, build: function () {
+  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent && E.parentsAround().length > 0; }, build: function () {
     var rent = E.$(U.pick([3000, 5000, 8000]));
     var p = E.parentsAround()[0];
     return { icon: '🏠', title: 'House rules', text: 'My ' + p.role + ' says it\'s time I either pay rent or move out.', choices: [

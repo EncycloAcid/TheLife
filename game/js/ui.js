@@ -407,14 +407,16 @@ TL.ui = (function () {
       return;
     }
     while (s.pending.length) {
-      var p = s.pending[0];
-      var ev = TL.events.build(p);
+      var p = s.pending[0], ev = null;
+      // A broken event must never block aging up: drop it and move on.
+      try { ev = TL.events.build(p); } catch (err) { if (window.console) console.error(err); }
       if (!ev) { s.pending.shift(); continue; }
       showDialog({
         icon: ev.icon, title: ev.title, text: ev.text,
         buttons: ev.choices.map(function (c, i) {
           return { label: c.label, fn: function () {
-            var res = TL.events.resolve(i);
+            var res = null;
+            try { res = TL.events.resolve(i); } catch (err) { if (window.console) console.error(err); }
             E.checkAchievements();
             E.save();
             refresh();
