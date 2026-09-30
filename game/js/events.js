@@ -671,6 +671,62 @@ TL.events = (function () {
     ] };
   } });
 
+  // ---------- v1.2 events ----------
+  function hasCar() { return S().assets.some(function (a) { return a.kind === 'car' && ['Private Jet', 'Superyacht'].indexOf(a.type) < 0; }); }
+  def('speeding', { min: 16, max: 95, w: 4, cond: hasCar, build: function () {
+    var fine = E.$(U.pick([150, 300, 600]));
+    return { icon: '🚓', title: 'Pulled over', text: 'A cop pulled me over for doing 25 over the speed limit.', choices: [
+      { label: 'Accept the ticket (' + E.fmt(fine) + ')', run: function () { E.addMoney(-fine); return 'I paid the ' + E.fmt(fine) + ' fine.'; } },
+      { label: 'Talk my way out of it', run: function () { if (U.chance(me().looks / 200 + 0.15)) return good('The officer let me off with a warning. 😇'); E.addMoney(-fine * 2); return bad('The officer was not charmed. Double fine.'); } },
+      { label: 'Floor it', run: function () {
+        E.karma(-4);
+        if (U.chance(0.3)) { E.stat('happy', 6); return 'I lost them in traffic! My heart is pounding.'; }
+        E.jail(U.rand(0, 2), 'Evading Police'); return bad('They caught me after a high-speed chase.');
+      } }
+    ] };
+  } });
+  def('dui', { min: 18, max: 90, w: 3, cond: hasCar, build: function () {
+    return { icon: '🍻', title: 'Last call', text: 'I had a few too many drinks at a bar. My car is in the parking lot.', choices: [
+      { label: 'Call a rideshare', run: function () { E.addMoney(-E.$(30)); E.karma(1); return 'I got home safe and picked up my car the next day.'; } },
+      { label: 'Drive home anyway', run: function () {
+        E.karma(-5);
+        var r = U.rand(1, 100);
+        if (r <= 20) { E.jail(U.rand(0, 1), 'DUI'); E.addMoney(-E.$(5000)); S().flags.license = false; return bad('I was arrested for drunk driving and lost my license.'); }
+        if (r <= 30) { E.stat('health', -U.rand(15, 35)); var car = S().assets.filter(function (a) { return a.kind === 'car'; })[0]; if (car) car.cond = Math.max(0, car.cond - 50); return bad('I crashed into a tree. I\'m lucky to be alive.'); }
+        return 'I made it home... this time.';
+      } }
+    ] };
+  } });
+  def('road_rage', { min: 17, max: 90, w: 3, cond: hasCar, build: function () {
+    return { icon: '🤬', title: 'Road rage', text: 'Someone cut me off and is now tailgating me, honking and yelling.', choices: [
+      { label: 'Let them pass', run: function () { E.karma(1); return 'I let them go. Not worth it.'; } },
+      { label: 'Brake check them', run: function () { if (U.chance(0.3)) { E.addMoney(-E.$(2500)); return bad('They rear-ended me and it was ruled my fault.'); } return 'They backed off.'; } },
+      { label: 'Pull over and confront them', run: function () { if (U.chance(me().athl / 150)) { E.stat('happy', 5); return 'They drove off the moment I got out of the car.'; } E.stat('health', -U.rand(8, 20)); return bad('It turned into a fistfight. I lost.'); } }
+    ] };
+  } });
+  def('royal_suitor', { min: 18, max: 45, w: 6, cond: function () { return S().royal && !E.partner(); }, build: function () {
+    var c = E.makePerson({ age: U.clamp(me().age + U.rand(-4, 4), 18, 60), gender: me().interest === 'A' ? undefined : me().interest, role: 'partner' });
+    c.job = U.pick(['Duke', 'Countess', 'Heir to a shipping fortune', 'Olympic rower', 'Diplomat', 'Barista']);
+    return { icon: '💌', title: 'A royal match?', text: 'The palace wants to introduce me to ' + c.first + ' ' + c.last + ' (' + c.job.toLowerCase() + ').', choices: [
+      { label: 'Agree to meet', run: function () { if (U.chance(0.55)) { c.rel = 60; S().people.push(c); S().royal.popularity = Math.min(100, S().royal.popularity + 5); return good('We got along wonderfully. The tabloids are thrilled about the royal romance.'); } return c.first + ' was charming but there was no spark.'; } },
+      { label: 'I\'ll choose my own partner', run: function () { S().royal.popularity = Math.max(0, S().royal.popularity - 2); return 'I told the palace I\'ll find love on my own terms.'; } }
+    ] };
+  } });
+  def('royal_tabloid', { min: 14, max: 100, w: 5, cond: function () { return S().royal; }, build: function () {
+    return { icon: '📰', title: 'Tabloid story', text: 'A tabloid claims I ' + U.pick(['was rude to a waiter', 'spent a fortune on a yacht', 'am secretly feuding with my family', 'fell asleep during a state dinner']) + '.', choices: [
+      { label: 'Issue a statement', run: function () { S().royal.popularity = Math.max(0, S().royal.popularity - 2); return 'The palace issued a statement. The story faded.'; } },
+      { label: 'Sue the tabloid', run: function () { if (U.chance(0.5)) { var w = E.$(250000); E.addMoney(w); return good('I won the lawsuit and ' + E.fmt(w) + ' in damages.'); } S().royal.popularity = Math.max(0, S().royal.popularity - 6); return bad('I lost the case. The story got even bigger.'); } },
+      { label: 'Ignore it', run: function () { S().royal.popularity = Math.max(0, S().royal.popularity - 4); return 'I never complain, never explain.'; } }
+    ] };
+  } });
+  def('mob_favor', { min: 18, max: 100, w: 6, cond: function () { return S().mob && !S().prison; }, build: function () {
+    var mob = S().mob;
+    return { icon: '🕴️', title: 'A favor', text: 'The ' + mob.family + ' family needs me to hide a package for a few weeks. No questions asked.', choices: [
+      { label: 'Do it', run: function () { mob.respect = Math.min(100, mob.respect + 8); mob.heat = Math.min(100, mob.heat + 6); E.karma(-2); return 'I kept the package safe. The family won\'t forget it.'; } },
+      { label: 'Refuse', run: function () { mob.respect = Math.max(0, mob.respect - 12); return bad('The family is unhappy with me.'); } }
+    ] };
+  } });
+
   // ---------- rolling ----------
   function eligible(def) {
     var s = S(), a = me().age;

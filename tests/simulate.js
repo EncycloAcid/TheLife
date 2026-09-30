@@ -5,7 +5,7 @@ var fs = require('fs'), path = require('path'), vm = require('vm');
 var ctx = { console: console, Math: Math, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'engine', 'events', 'actions'].forEach(function (f) {
+['util', 'data', 'engine', 'events', 'actions', 'features'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;
@@ -59,7 +59,7 @@ function check(S) {
 
 var N = +process.argv[2] || 200, ages = [], gens = 0, rich = 0, jailed = 0, married = 0, deg = 0;
 for (var n = 0; n < N; n++) {
-  TL.engine.newLife({});
+  TL.engine.newLife({ royal: Math.random() < 0.3 });
   var lives = 0;
   while (true) {
     var S = TL.S, years = 0;

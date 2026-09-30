@@ -15,10 +15,16 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Health**: 29 illnesses, injuries and addictions. Doctors, herbalists, therapy, rehab and plastic surgery.
 - **Activities**: gym, library, meditation, martial arts, instruments, social media, casino (blackjack, slots, roulette, horse racing), lottery, vacations, pets (8 species) and volunteering.
 - **Crime & prison**: from shoplifting to jewelry heists, then trials with lawyers, prison gangs, appeals, escape attempts and good behavior.
-- **~75 random life events** with choices, gated by age and circumstances.
+- **Organized crime**: join a crime family and rise from Associate to Boss. You run jobs, earn respect, bribe detectives to cool the heat, survive FBI raids and rival families, or flip and become an informant.
+- **Royalty**: choose to be born into a royal family. You have a place in the line of succession, royal duties, a popularity rating, tabloid scandals and arranged matches. You can be crowned, issue decrees, knight your friends, or abdicate. A revolution may overthrow you. The crown passes down your family line.
+- **Hobbies & skills**: coding, writing, singing, painting, cooking, comedy, chess and fitness. Skills boost related careers. You can write books that earn royalties, sell paintings, build apps, and enter competitions and open mics.
+- **Wills**: name a main heir to inherit most of your estate.
+- **Driving**: speeding tickets, drunk-driving choices and road rage.
+- **~80 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **30 achievements**, tracked per life and across all lives.
+- **34 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
+- **Settings**: text size, and deleting all data.
 - Works offline, autosaves, supports light and dark themes, and handles the Android back gesture.
 
 ## Install on Android
@@ -51,6 +57,7 @@ game/                  The game (packaged into the APK as assets)
   js/engine.js         Core simulation: aging, school, jobs, money, health, family, prison, legacy, saves
   js/events.js         Random and scripted life events with choices
   js/actions.js        Everything you can do from the four menus
+  js/features.js       Royalty, organized crime, skills & books, wills
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs
 app/                   Android wrapper (Kotlin, WebView + WebViewAssetLoader)
 tests/simulate.js      Headless fuzz test that plays hundreds of random lives

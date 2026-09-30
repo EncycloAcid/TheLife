@@ -897,6 +897,9 @@ TL.actions = (function () {
       if (a >= 5) items.push({ icon: '🎹', label: 'Learn an instrument', onClick: function () { var f = diminish('instr'); E.stat('smarts', 2 * f); S().flags.music = (S().flags.music || 0) + f; done('I practiced the ' + U.pick(['piano', 'guitar', 'violin', 'drums', 'saxophone', 'ukulele']) + '. 🎶'); } });
       if (a >= 5) items.push({ icon: '🎨', label: 'Acting lessons', right: E.fmt(E.$(100)), onClick: function () { if (!afford(E.$(100))) return done(noMoney(E.$(100))); E.addMoney(-E.$(100)); var f = diminish('actl'); S().flags.acting = (S().flags.acting || 0) + f; E.stat('looks', f); done('I took an acting class. 🎭'); } });
 
+      if (a >= 5) items.push({ icon: '🎯', label: 'Hobbies & skills', sub: 'Coding, writing, singing, painting…', onClick: TL.features.skillsMenu });
+      if (S().royal && a >= 6) items.push({ icon: '👑', label: 'Royal duties', sub: TL.features.royalTitle() + ' · popularity ' + S().royal.popularity + '%', onClick: TL.features.royalMenu });
+
       items.push({ section: 'Health' });
       items.push({ icon: '🩺', label: 'Doctor', sub: S().conditions.length ? S().conditions.join(', ') : 'No known conditions', onClick: doctorMenu });
       if (a >= 12) items.push({ icon: '🛋️', label: 'Therapist', right: E.fmt(E.$(200)), onClick: therapy });
@@ -915,6 +918,7 @@ TL.actions = (function () {
 
       items.push({ section: 'Life' });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
+      if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
       if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
       items.push({ icon: '🏆', label: 'Achievements', onClick: achievementsMenu });
@@ -1185,6 +1189,7 @@ TL.actions = (function () {
   function crimeMenu() {
     ui().menu('Crime 🦹', function () {
       var items = [{ info: true, html: '<p class="muted">Crime pays... until it doesn\'t. Getting caught means a trial and possibly prison.</p>' }];
+      if (me().age >= 16) items.push({ icon: '🕴️', label: 'Organized crime', sub: S().mob ? TL.features.mobTitle() : 'Join a crime family', onClick: TL.features.mobMenu });
       D.CRIMES.forEach(function (c) {
         var dis = me().age < c.minAge || (c.needsJob && !(S().job && !S().job.partTime && !S().job.fame));
         items.push({ icon: '🦹', label: c.name, sub: c.desc + (me().age < c.minAge ? ' · age ' + c.minAge + '+' : c.needsJob && dis ? ' · needs a job' : ''), disabled: dis, onClick: function () { commitCrime(c); } });

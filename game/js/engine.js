@@ -198,16 +198,18 @@ TL.engine = (function () {
       if (gp.age > 88) gp.age = 88;
     }
 
+    if (opts.royal && TL.features) TL.features.makeRoyal(st);
     var m = st.me;
     log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + ctry.name + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
     log('My mother is ' + fullName(mom) + ', a ' + mom.job.toLowerCase() + ' (age ' + mom.age + ').');
     log('My father is ' + fullName(dad) + ', a ' + dad.job.toLowerCase() + ' (age ' + dad.age + ').');
-    if (!parentsMarried) log('My parents aren\'t married.');
+    if (!mom.married) log('My parents aren\'t married.');
     people('sibling').forEach(function (s) {
       log('I have ' + (s.gender === 'M' ? 'an older brother' : 'an older sister') + ', ' + s.first + ' (age ' + s.age + ').');
     });
-    if (wealthTier.t === 'rich') log('My family is extremely wealthy. 💎', 'good');
+    if (st.royal) TL.features.royalBirthLog();
+    else if (wealthTier.t === 'rich') log('My family is extremely wealthy. 💎', 'good');
     else if (wealthTier.t === 'poor') log('My family struggles to make ends meet.', 'bad');
     return st;
   }
@@ -389,6 +391,7 @@ TL.engine = (function () {
     if (c.edu === 'none') p += 0.25;
     var exp = s.jobHistory.filter(function (h) { return h.career === careerId; }).reduce(function (a, h) { return a + h.years; }, 0);
     p += Math.min(0.2, exp * 0.03);
+    if (TL.features) p += TL.features.skillBonus(careerId);
     if (!U.chance(U.clamp(p, 0.08, 0.95))) return { ok: false, msg: 'After the interview, they decided not to hire me.' };
     if (s.job) quitJob(true);
     var lvl = exp >= 4 ? Math.min(c.levels.length - 2, Math.floor(exp / 4)) : 0;
@@ -447,7 +450,7 @@ TL.engine = (function () {
     if (j.partTime) return earned;
     if (j.politics) return politicsYear(j, earned);
     var c = D.career(j.career);
-    j.perf = U.clamp(Math.round(j.perf + U.rand(-10, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0)), 0, 100);
+    j.perf = U.clamp(Math.round(j.perf + U.rand(-10, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0) + (TL.features ? TL.features.skillBonus(j.career) * 12 : 0)), 0, 100);
     j.workHard = 0;
     if (j.fame) return earned;
     if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= 2 && U.chance(0.35 + (j.perf - 70) / 60)) {
@@ -495,6 +498,7 @@ TL.engine = (function () {
     var office = c.levels[level][0];
     if (m.age < c.minAge + level * 3) return { ok: false, msg: 'I must be at least ' + (c.minAge + level * 3) + ' to run for ' + office + '.' };
     if (level > 0 && !(j && j.politics && j.level === level - 1)) return { ok: false, msg: 'I need to hold the office of ' + c.levels[level - 1][0] + ' first.' };
+    if (s.royal) return { ok: false, msg: 'Members of the royal family must stay out of politics.' };
     if (s.flags.nextRun && s.year < s.flags.nextRun) return { ok: false, msg: 'I just lost an election. My party wants me to wait until ' + s.flags.nextRun + ' before running again.' };
     var cost = campaignCost(tier, level);
     if (s.money < cost) return { ok: false, msg: 'I can\'t afford that campaign (' + fmt(cost) + ').' };
@@ -555,7 +559,7 @@ TL.engine = (function () {
     if (m.age < c.minAge) return { ok: false, msg: 'I\'m too young.' };
     if (c.maxAge && m.age > c.maxAge) return { ok: false, msg: 'I\'m too old to go pro.' };
     var sv = statValue(c.stat);
-    var p = (sv - 40) / 120 + s.fame / 200 + (id === 'athlete' ? (m.athl - 70) / 60 : 0.05);
+    var p = (sv - 40) / 120 + s.fame / 200 + (id === 'athlete' ? (m.athl - 70) / 60 : 0.05) + (TL.features ? TL.features.skillBonus(id) : 0);
     if (!U.chance(U.clamp(p, 0.03, 0.85))) {
       return { ok: false, msg: { actor: 'The casting director said I wasn\'t right for the role.', musician: 'No labels responded to my demo.', athlete: 'I didn\'t make the team.' }[id] };
     }
@@ -741,6 +745,7 @@ TL.engine = (function () {
         var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
         log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
         if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
+        if (TL.features) TL.features.onDeath(p);
         if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
       }
     });
@@ -894,6 +899,7 @@ TL.engine = (function () {
     if (m.age >= 16 || s.money !== 0 || s.assets.length) yearlyFinances(earned);
     yearlyHealth();
     yearlyPeople();
+    if (TL.features) TL.features.yearly();
     if (m.age === 18 && !s.prison) log('I\'m officially an adult now! 🎉');
     // Allowance for kids from parents
     if (m.age >= 6 && m.age < 18 && !s.prison) {
@@ -931,7 +937,8 @@ TL.engine = (function () {
     var kids = heirs();
     var viaGrandchild = c.role === 'grandchild';
     var estateTax = worth > $(5000000) ? 0.35 : 0.05;
-    var inheritance = Math.round(worth * (1 - estateTax) * (kids.length ? 1 / kids.length : 1) * (c.rel > 30 ? 1 : 0.5));
+    var share = TL.features ? TL.features.willShare(c, kids) : (kids.length ? 1 / kids.length : 1);
+    var inheritance = Math.round(worth * (1 - estateTax) * share * (c.rel > 30 ? 1 : 0.5));
     var dead = me();
     var newPeople = [];
     // the dead player becomes a (dead) parent or grandparent
@@ -976,6 +983,7 @@ TL.engine = (function () {
     if (c.age >= 18) st.degrees.push({ type: 'hs' });
     st.flags.wealth = inheritance > $(1000000) ? 'rich' : 'middle';
     if (gen >= 3) achieve('dynasty');
+    if (TL.features) TL.features.inherit(s, c, st, kids);
     return st;
   }
 
@@ -1031,6 +1039,11 @@ TL.engine = (function () {
       idx.slice(12).forEach(function (x) { if (keep.indexOf(x.id) < 0) store.removeItem('thelife.save.' + x.id); });
     } catch (e) { }
   }
+  function wipeAll() {
+    listSaves().forEach(function (x) { store.removeItem('thelife.save.' + x.id); });
+    store.removeItem('thelife.index');
+    store.removeItem('thelife.global');
+  }
   function listSaves() {
     try { return JSON.parse(store.getItem('thelife.index') || '[]'); } catch (e) { return []; }
   }
@@ -1070,7 +1083,7 @@ TL.engine = (function () {
   }
 
   return {
-    exportAll: exportAll, importAll: importAll,
+    exportAll: exportAll, importAll: importAll, wipeAll: wipeAll,
     S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,

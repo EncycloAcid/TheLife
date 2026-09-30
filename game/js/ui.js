@@ -31,6 +31,7 @@ TL.ui = (function () {
     if (saves.length) addBtn(el, '📂 Saved Lives', '', savesScreen);
     addBtn(el, '🪦 Graveyard', '', graveyard);
     addBtn(el, '💾 Backup & Restore', '', backupMenu);
+    addBtn(el, '⚙️ Settings', 'ghost', settingsMenu);
     addBtn(el, '🏆 Achievements', '', function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = E.loadGlobal().ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc }; })); });
     show('home');
   }
@@ -87,6 +88,22 @@ TL.ui = (function () {
       } }
     ]);
   }
+  var TEXT_SIZES = [['Small', 14], ['Normal', 16], ['Large', 18], ['Extra large', 20]];
+  function applySettings() {
+    var st = E.loadGlobal().settings || {};
+    document.documentElement.style.fontSize = (st.textSize || 16) + 'px';
+  }
+  function settingsMenu() {
+    var g = E.loadGlobal(), cur = (g.settings || {}).textSize || 16;
+    choose('Settings', 'Text size is currently ' + TEXT_SIZES.filter(function (t) { return t[1] === cur; }).map(function (t) { return t[0]; })[0] + '.',
+      TEXT_SIZES.map(function (t) {
+        return { label: 'Text: ' + t[0] + (t[1] === cur ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.textSize = t[1]; E.saveGlobal(g); applySettings(); } };
+      }).concat([{ label: '🗑️ Delete all data', fn: function () {
+        confirm('Delete everything?', 'All saved lives, achievements and the graveyard will be permanently erased. Make a backup first if you want to keep them.', function () {
+          E.wipeAll(); home(); alert('', 'All data deleted.', '');
+        });
+      } }, { label: 'Close', fn: function () { } }]));
+  }
   function copyText(t) {
     try { if (navigator.clipboard) { navigator.clipboard.writeText(t); return; } } catch (e) { }
     var a = $('#d-area'); a.style.display = ''; a.value = t; a.select();
@@ -112,7 +129,7 @@ TL.ui = (function () {
     var g = $('#c-gender').value;
     var interest = $('#c-interest').value;
     if (interest === 'auto') interest = g === 'M' ? 'F' : 'M';
-    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest });
+    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked });
     E.save();
     startGame();
   }
@@ -138,9 +155,11 @@ TL.ui = (function () {
     if (s.dead) return 'Deceased';
     if (s.prison) return '⛓️ Inmate at ' + s.prison.name;
     var parts = [];
+    var rt = TL.features.royalTitle();
+    if (rt) parts.push('👑 ' + rt);
     if (s.job) parts.push(E.jobTitle(s.job));
     if (s.edu) parts.push(s.edu.stage === 'uni' ? s.edu.major + ' student' : s.edu.stage === 'grad' ? 'Grad student' : s.edu.school);
-    if (!parts.length) parts.push(s.me.age < 5 ? 'Baby' : s.retired ? 'Retired' : s.me.age < 18 ? 'Kid' : 'Unemployed');
+    if (parts.length === (rt ? 1 : 0)) parts.push(s.me.age < 5 ? 'Baby' : s.retired ? 'Retired' : s.me.age < 18 ? 'Kid' : 'Unemployed');
     return parts.join(' · ');
   }
   function renderHeader() {
@@ -193,6 +212,11 @@ TL.ui = (function () {
       ['🌍 Country', E.country().flag + ' ' + s.country], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
       ['🩺 Conditions', s.conditions.length ? s.conditions.join(', ') : 'None'], ['🏅 Achievements', s.ach.length]
     ];
+    if (s.royal) rows.splice(3, 0, ['👑 Royalty', TL.features.royalTitle() + ' · ' + s.royal.house + ' · popularity ' + s.royal.popularity + '%']);
+    if (s.mob) rows.push(['🕴️ Crime family', TL.features.mobTitle()]);
+    var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
+    if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
+    if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);
     menu('About me', function () {
       return [{ info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
     });
@@ -393,6 +417,7 @@ TL.ui = (function () {
     $('#c-gender').onchange = randomName;
     $('#c-start').onclick = createLife;
     $('#c-back').onclick = home;
+    applySettings();
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') handleBack(); });
     home();
   }
