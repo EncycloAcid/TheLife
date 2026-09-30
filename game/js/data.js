@@ -1,0 +1,355 @@
+/* TheLife — static game data. All money values are in base "US dollars"; the
+ * engine scales them with the current country's `k` factor (currency * wealth). */
+TL.data = (function () {
+  var COUNTRIES = [
+    { name: 'United States', flag: '🇺🇸', cur: '$', k: 1, life: 79, tax: 0.24,
+      male: ['James', 'Michael', 'Jayden', 'Ethan', 'Noah', 'Liam', 'Mason', 'Logan', 'Tyrone', 'Marcus', 'Carter', 'Wyatt', 'Andre', 'Caleb', 'Hunter', 'Dylan'],
+      female: ['Emma', 'Olivia', 'Ava', 'Sophia', 'Madison', 'Aaliyah', 'Harper', 'Chloe', 'Brianna', 'Kayla', 'Zoe', 'Abigail', 'Destiny', 'Hailey', 'Riley', 'Nevaeh'],
+      last: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Davis', 'Miller', 'Wilson', 'Jackson', 'Thompson', 'Harris', 'Robinson', 'Walker', 'Young', 'King', 'Carter', 'Washington', 'Brooks'] },
+    { name: 'United Kingdom', flag: '🇬🇧', cur: '£', k: 0.8, life: 81, tax: 0.25,
+      male: ['Oliver', 'George', 'Harry', 'Jack', 'Charlie', 'Alfie', 'Freddie', 'Archie', 'Theo', 'Oscar', 'Callum', 'Rhys', 'Kian', 'Declan'],
+      female: ['Amelia', 'Isla', 'Poppy', 'Ella', 'Lily', 'Evie', 'Freya', 'Sienna', 'Imogen', 'Maisie', 'Niamh', 'Rosie', 'Phoebe', 'Tilly'],
+      last: ['Smith', 'Jones', 'Taylor', 'Brown', 'Evans', 'Wright', 'Walker', 'Hughes', 'Green', 'Hall', 'Clarke', 'Patel', 'Wood', 'Turner', 'Cooper', 'Ward'] },
+    { name: 'Canada', flag: '🇨🇦', cur: 'C$', k: 1.25, life: 82, tax: 0.26,
+      male: ['Liam', 'Lucas', 'Benjamin', 'William', 'Nathan', 'Owen', 'Félix', 'Logan', 'Samuel', 'Jacob', 'Connor', 'Émile'],
+      female: ['Charlotte', 'Olivia', 'Emma', 'Léa', 'Chloé', 'Avery', 'Maya', 'Sophie', 'Zoé', 'Brooklyn', 'Megan', 'Camille'],
+      last: ['Tremblay', 'Gagnon', 'Roy', 'Côté', 'Smith', 'Brown', 'Martin', 'Campbell', 'MacDonald', 'Wilson', 'Leblanc', 'Anderson', 'Singh', 'Bouchard'] },
+    { name: 'Australia', flag: '🇦🇺', cur: 'A$', k: 1.4, life: 83, tax: 0.27,
+      male: ['Jack', 'Cooper', 'Lachlan', 'Riley', 'Hudson', 'Harrison', 'Mitchell', 'Bailey', 'Flynn', 'Kai', 'Jayden', 'Tom'],
+      female: ['Charlotte', 'Matilda', 'Isla', 'Mia', 'Grace', 'Ruby', 'Chloe', 'Sienna', 'Jasmine', 'Tahlia', 'Kirra', 'Holly'],
+      last: ['Smith', 'Jones', 'Williams', 'Brown', 'Wilson', 'Taylor', 'Nguyen', 'Kelly', 'Ryan', 'Murphy', 'Mitchell', "O'Brien", 'Kennedy'] },
+    { name: 'Mexico', flag: '🇲🇽', cur: 'MX$', k: 7, life: 75, tax: 0.2,
+      male: ['Santiago', 'Mateo', 'Diego', 'José', 'Luis', 'Juan', 'Carlos', 'Miguel', 'Alejandro', 'Emiliano', 'Jorge', 'Ricardo'],
+      female: ['Sofía', 'Valentina', 'Regina', 'Camila', 'Ximena', 'María', 'Guadalupe', 'Fernanda', 'Daniela', 'Mariana', 'Lucía', 'Renata'],
+      last: ['Hernández', 'García', 'Martínez', 'López', 'González', 'Pérez', 'Rodríguez', 'Sánchez', 'Ramírez', 'Cruz', 'Flores', 'Gómez', 'Morales', 'Reyes'] },
+    { name: 'Brazil', flag: '🇧🇷', cur: 'R$', k: 2.4, life: 76, tax: 0.22,
+      male: ['Miguel', 'Arthur', 'Heitor', 'Bernardo', 'Davi', 'Gabriel', 'Pedro', 'Lucas', 'Rafael', 'Thiago', 'João', 'Caio'],
+      female: ['Alice', 'Helena', 'Laura', 'Manuela', 'Valentina', 'Sophia', 'Isabella', 'Beatriz', 'Larissa', 'Ana', 'Júlia', 'Yasmin'],
+      last: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes', 'Costa', 'Ribeiro', 'Carvalho'] },
+    { name: 'Germany', flag: '🇩🇪', cur: '€', k: 0.85, life: 81, tax: 0.3,
+      male: ['Ben', 'Paul', 'Leon', 'Finn', 'Elias', 'Jonas', 'Luis', 'Felix', 'Lukas', 'Maximilian', 'Tobias', 'Niklas'],
+      female: ['Mia', 'Emma', 'Hannah', 'Sofia', 'Anna', 'Lea', 'Lena', 'Marie', 'Clara', 'Lina', 'Johanna', 'Greta'],
+      last: ['Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Schulz', 'Hoffmann', 'Koch', 'Richter', 'Wolf'] },
+    { name: 'France', flag: '🇫🇷', cur: '€', k: 0.82, life: 82, tax: 0.3,
+      male: ['Gabriel', 'Léo', 'Raphaël', 'Louis', 'Arthur', 'Hugo', 'Jules', 'Adam', 'Lucas', 'Théo', 'Mathis', 'Enzo'],
+      female: ['Jade', 'Louise', 'Emma', 'Alice', 'Chloé', 'Lina', 'Léa', 'Manon', 'Inès', 'Camille', 'Margaux', 'Juliette'],
+      last: ['Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Richard', 'Petit', 'Durand', 'Leroy', 'Moreau', 'Simon', 'Laurent', 'Lefebvre'] },
+    { name: 'Italy', flag: '🇮🇹', cur: '€', k: 0.7, life: 83, tax: 0.3,
+      male: ['Leonardo', 'Francesco', 'Alessandro', 'Lorenzo', 'Mattia', 'Andrea', 'Gabriele', 'Riccardo', 'Marco', 'Giuseppe', 'Luca', 'Matteo'],
+      female: ['Sofia', 'Giulia', 'Aurora', 'Alice', 'Ginevra', 'Emma', 'Giorgia', 'Beatrice', 'Chiara', 'Francesca', 'Martina', 'Elena'],
+      last: ['Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo', 'Conti'] },
+    { name: 'Spain', flag: '🇪🇸', cur: '€', k: 0.65, life: 83, tax: 0.28,
+      male: ['Hugo', 'Martín', 'Lucas', 'Pablo', 'Daniel', 'Alejandro', 'Álvaro', 'Adrián', 'Javier', 'Sergio', 'Diego', 'Mario'],
+      female: ['Lucía', 'Sofía', 'Martina', 'María', 'Paula', 'Julia', 'Carmen', 'Valeria', 'Alba', 'Noa', 'Irene', 'Elena'],
+      last: ['García', 'Fernández', 'González', 'Rodríguez', 'López', 'Martínez', 'Sánchez', 'Pérez', 'Gómez', 'Martín', 'Jiménez', 'Ruiz', 'Navarro'] },
+    { name: 'Japan', flag: '🇯🇵', cur: '¥', k: 110, life: 85, tax: 0.23,
+      male: ['Haruto', 'Sota', 'Yuto', 'Riku', 'Hinata', 'Ren', 'Kaito', 'Takumi', 'Daiki', 'Kenji', 'Hiroshi', 'Shota'],
+      female: ['Yui', 'Himari', 'Mio', 'Sakura', 'Hina', 'Aoi', 'Rin', 'Yuna', 'Akari', 'Emi', 'Haruka', 'Nanami'],
+      last: ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Watanabe', 'Ito', 'Yamamoto', 'Nakamura', 'Kobayashi', 'Kato', 'Yoshida', 'Yamada', 'Sasaki'] },
+    { name: 'South Korea', flag: '🇰🇷', cur: '₩', k: 950, life: 83, tax: 0.24,
+      male: ['Min-jun', 'Seo-jun', 'Do-yun', 'Ji-ho', 'Ha-jun', 'Joon-woo', 'Hyun-woo', 'Ji-hoon', 'Sung-min', 'Tae-yang'],
+      female: ['Seo-yeon', 'Ji-woo', 'Ha-eun', 'Min-seo', 'Soo-ah', 'Ji-yoo', 'Yoon-seo', 'Chae-won', 'Da-eun', 'Ye-jin'],
+      last: ['Kim', 'Lee', 'Park', 'Choi', 'Jung', 'Kang', 'Cho', 'Yoon', 'Jang', 'Lim', 'Han', 'Shin'] },
+    { name: 'India', flag: '🇮🇳', cur: '₹', k: 22, life: 70, tax: 0.18,
+      male: ['Aarav', 'Vivaan', 'Aditya', 'Arjun', 'Sai', 'Rohan', 'Ishaan', 'Kabir', 'Rahul', 'Vikram', 'Amit', 'Karan'],
+      female: ['Aadhya', 'Ananya', 'Diya', 'Saanvi', 'Priya', 'Isha', 'Kavya', 'Meera', 'Riya', 'Neha', 'Pooja', 'Aarohi'],
+      last: ['Sharma', 'Patel', 'Singh', 'Kumar', 'Gupta', 'Reddy', 'Iyer', 'Nair', 'Mehta', 'Joshi', 'Das', 'Rao', 'Chopra', 'Verma'] },
+    { name: 'Nigeria', flag: '🇳🇬', cur: '₦', k: 300, life: 62, tax: 0.18,
+      male: ['Chinedu', 'Emeka', 'Oluwaseun', 'Tunde', 'Ifeanyi', 'Chukwuemeka', 'Ayodele', 'Babajide', 'Obinna', 'Kelechi', 'Femi', 'Musa'],
+      female: ['Adaeze', 'Chiamaka', 'Ngozi', 'Folake', 'Funmilayo', 'Amaka', 'Temitope', 'Zainab', 'Ifeoma', 'Yetunde', 'Aisha', 'Blessing'],
+      last: ['Okafor', 'Adeyemi', 'Okonkwo', 'Balogun', 'Nwosu', 'Eze', 'Ogunleye', 'Bello', 'Ibrahim', 'Okeke', 'Adebayo', 'Chukwu'] },
+    { name: 'South Africa', flag: '🇿🇦', cur: 'R', k: 7, life: 66, tax: 0.24,
+      male: ['Thabo', 'Sipho', 'Lwazi', 'Bandile', 'Kagiso', 'Pieter', 'Johan', 'Liam', 'Mandla', 'Tshepo', 'Themba', 'Ethan'],
+      female: ['Lerato', 'Naledi', 'Ayanda', 'Zanele', 'Thandiwe', 'Anele', 'Lindiwe', 'Amahle', 'Busisiwe', 'Chloe', 'Nomvula', 'Mia'],
+      last: ['Nkosi', 'Dlamini', 'Ndlovu', 'Khumalo', 'Mokoena', 'van der Merwe', 'Botha', 'Naidoo', 'Mahlangu', 'Zulu', 'Pretorius', 'Mthembu'] },
+    { name: 'Philippines', flag: '🇵🇭', cur: '₱', k: 20, life: 72, tax: 0.2,
+      male: ['Jose', 'Juan', 'Mark', 'John Paul', 'Christian', 'Angelo', 'Paolo', 'Miguel', 'Carlo', 'Rafael', 'Jericho', 'Nathaniel'],
+      female: ['Maria', 'Angel', 'Princess', 'Mary Grace', 'Kristine', 'Jasmine', 'Andrea', 'Nicole', 'Bea', 'Althea', 'Joy', 'Camille'],
+      last: ['Santos', 'Reyes', 'Cruz', 'Bautista', 'Ocampo', 'Garcia', 'Mendoza', 'Torres', 'Villanueva', 'Ramos', 'Aquino', 'Dela Cruz'] },
+    { name: 'Jamaica', flag: '🇯🇲', cur: 'J$', k: 90, life: 75, tax: 0.25,
+      male: ['Andre', 'Dwayne', 'Kemar', 'Jermaine', 'Omar', 'Rohan', 'Shamar', 'Delroy', 'Tajay', 'Romario', 'Javane', 'Leon'],
+      female: ['Shanice', 'Tanisha', 'Kimone', 'Shantel', 'Monique', 'Tamara', 'Alecia', 'Kerry-Ann', 'Rushane', 'Nadine', 'Sasha', 'Jada'],
+      last: ['Brown', 'Williams', 'Campbell', 'Thomas', 'Clarke', 'Grant', 'Reid', 'Morgan', 'Francis', 'Stewart', 'Henry', 'Bailey'] }
+  ];
+
+  // Education ranks: higher number = more education.
+  var EDU_RANK = { none: 0, hs: 1, bachelor: 2, mba: 3, law: 3, med: 3, phd: 4 };
+
+  var MAJORS = ['Accounting', 'Architecture', 'Art', 'Biology', 'Business', 'Chemistry', 'Communications',
+    'Computer Science', 'Criminal Justice', 'Economics', 'Education', 'Engineering', 'English', 'Finance',
+    'Graphic Design', 'History', 'Journalism', 'Marketing', 'Mathematics', 'Music', 'Nursing', 'Philosophy',
+    'Physics', 'Political Science', 'Psychology', 'Theater'];
+  var PREMED = ['Biology', 'Chemistry', 'Nursing', 'Psychology', 'Physics'];
+
+  var GRAD_SCHOOLS = [
+    { id: 'law', name: 'Law School', years: 3, cost: 50000, minSmarts: 60, degree: 'Juris Doctor' },
+    { id: 'med', name: 'Medical School', years: 4, cost: 60000, minSmarts: 72, majors: PREMED, degree: 'Doctor of Medicine' },
+    { id: 'mba', name: 'Business School (MBA)', years: 2, cost: 60000, minSmarts: 55, degree: 'MBA' },
+    { id: 'phd', name: 'Graduate School (PhD)', years: 5, cost: 0, minSmarts: 70, degree: 'PhD' }
+  ];
+
+  /* Careers. levels: [title, base salary]. edu: minimum degree. majors: required
+   * bachelor majors (any if omitted). stat: governing stat used for hiring and
+   * performance. */
+  var CAREERS = [
+    // No education
+    { id: 'fastfood', name: 'Fast Food', edu: 'none', minAge: 16, stat: 'happy', levels: [['Crew Member', 19000], ['Shift Leader', 24000], ['Assistant Manager', 32000], ['Restaurant Manager', 48000]] },
+    { id: 'retail', name: 'Retail', edu: 'none', minAge: 16, stat: 'looks', levels: [['Sales Associate', 22000], ['Senior Associate', 27000], ['Department Lead', 34000], ['Store Manager', 52000]] },
+    { id: 'janitor', name: 'Custodial', edu: 'none', minAge: 18, stat: 'health', levels: [['Janitor', 24000], ['Senior Janitor', 29000], ['Head Custodian', 36000]] },
+    { id: 'construction', name: 'Construction', edu: 'none', minAge: 18, stat: 'athl', levels: [['Laborer', 32000], ['Carpenter', 45000], ['Foreman', 62000], ['Site Manager', 88000]] },
+    { id: 'waiter', name: 'Hospitality', edu: 'none', minAge: 16, stat: 'looks', levels: [['Busser', 18000], ['Waiter', 26000], ['Head Waiter', 34000], ['Maître d\'', 46000]] },
+    { id: 'driver', name: 'Transport', edu: 'none', minAge: 21, stat: 'health', levels: [['Delivery Driver', 34000], ['Truck Driver', 52000], ['Senior Trucker', 64000], ['Fleet Manager', 80000]] },
+    { id: 'security', name: 'Security', edu: 'none', minAge: 18, stat: 'athl', levels: [['Security Guard', 28000], ['Senior Guard', 34000], ['Security Supervisor', 46000]] },
+    { id: 'barber', name: 'Salon', edu: 'none', minAge: 18, stat: 'looks', levels: [['Hairstylist Apprentice', 21000], ['Hairstylist', 32000], ['Senior Stylist', 45000], ['Salon Owner', 70000]] },
+    { id: 'model', name: 'Modeling', edu: 'none', minAge: 16, stat: 'looks', minStat: 78, fame: 2, levels: [['Catalog Model', 30000], ['Fashion Model', 70000], ['Runway Model', 160000], ['Supermodel', 900000]] },
+    // High school
+    { id: 'military', name: 'Military', edu: 'hs', minAge: 18, stat: 'athl', levels: [['Private', 25000], ['Corporal', 32000], ['Sergeant', 42000], ['Lieutenant', 56000], ['Captain', 72000], ['Major', 90000], ['Colonel', 115000], ['General', 195000]] },
+    { id: 'police', name: 'Law Enforcement', edu: 'hs', minAge: 21, stat: 'athl', noRecord: true, levels: [['Police Officer', 48000], ['Detective', 70000], ['Sergeant', 82000], ['Lieutenant', 96000], ['Police Chief', 145000]] },
+    { id: 'firefighter', name: 'Fire Department', edu: 'hs', minAge: 18, stat: 'athl', levels: [['Firefighter', 45000], ['Engineer', 58000], ['Fire Captain', 76000], ['Fire Chief', 115000]] },
+    { id: 'mechanic', name: 'Auto Repair', edu: 'hs', minAge: 18, stat: 'smarts', levels: [['Apprentice Mechanic', 30000], ['Mechanic', 45000], ['Master Mechanic', 62000], ['Shop Owner', 90000]] },
+    { id: 'realestate', name: 'Real Estate', edu: 'hs', minAge: 18, stat: 'looks', levels: [['Leasing Agent', 32000], ['Real Estate Agent', 60000], ['Senior Broker', 110000], ['Brokerage Owner', 200000]] },
+    { id: 'chef', name: 'Culinary', edu: 'hs', minAge: 18, stat: 'smarts', levels: [['Line Cook', 28000], ['Sous Chef', 42000], ['Head Chef', 65000], ['Executive Chef', 98000]] },
+    { id: 'flight', name: 'Aviation', edu: 'hs', minAge: 21, stat: 'looks', levels: [['Flight Attendant', 45000], ['Senior Flight Attendant', 58000], ['Purser', 72000]] },
+    // Bachelor
+    { id: 'software', name: 'Software', edu: 'bachelor', majors: ['Computer Science', 'Mathematics', 'Engineering', 'Physics'], minAge: 20, stat: 'smarts', levels: [['Junior Developer', 72000], ['Software Engineer', 98000], ['Senior Engineer', 138000], ['Staff Engineer', 175000], ['Engineering Director', 220000], ['CTO', 340000]] },
+    { id: 'accountant', name: 'Accounting', edu: 'bachelor', majors: ['Accounting', 'Finance', 'Business', 'Economics', 'Mathematics'], minAge: 20, stat: 'smarts', levels: [['Junior Accountant', 52000], ['Accountant', 68000], ['Senior Accountant', 88000], ['Controller', 125000], ['CFO', 260000]] },
+    { id: 'teacher', name: 'Teaching', edu: 'bachelor', minAge: 21, stat: 'smarts', levels: [['Substitute Teacher', 32000], ['Teacher', 50000], ['Senior Teacher', 62000], ['Vice Principal', 82000], ['Principal', 105000]] },
+    { id: 'nurse', name: 'Nursing', edu: 'bachelor', majors: ['Nursing', 'Biology'], minAge: 21, stat: 'smarts', levels: [['Nursing Assistant', 36000], ['Registered Nurse', 76000], ['Charge Nurse', 90000], ['Nurse Manager', 112000]] },
+    { id: 'journalist', name: 'Journalism', edu: 'bachelor', majors: ['Journalism', 'English', 'Communications', 'Political Science', 'History'], minAge: 21, stat: 'smarts', fame: 1, levels: [['Staff Writer', 40000], ['Reporter', 55000], ['Senior Correspondent', 78000], ['Editor', 98000], ['Editor-in-Chief', 160000]] },
+    { id: 'design', name: 'Design', edu: 'bachelor', majors: ['Art', 'Graphic Design', 'Architecture', 'Marketing', 'Communications'], minAge: 21, stat: 'smarts', levels: [['Junior Designer', 45000], ['Graphic Designer', 60000], ['Senior Designer', 82000], ['Art Director', 120000], ['Creative Director', 175000]] },
+    { id: 'marketing', name: 'Marketing', edu: 'bachelor', majors: ['Marketing', 'Business', 'Communications', 'Economics', 'Psychology', 'Journalism'], minAge: 21, stat: 'looks', levels: [['Marketing Coordinator', 46000], ['Marketing Specialist', 62000], ['Marketing Manager', 95000], ['Marketing Director', 150000], ['CMO', 250000]] },
+    { id: 'engineer', name: 'Engineering', edu: 'bachelor', majors: ['Engineering', 'Physics', 'Mathematics'], minAge: 21, stat: 'smarts', levels: [['Engineer in Training', 65000], ['Engineer', 85000], ['Senior Engineer', 110000], ['Principal Engineer', 145000], ['Chief Engineer', 190000]] },
+    { id: 'finance', name: 'Finance', edu: 'bachelor', majors: ['Finance', 'Economics', 'Mathematics', 'Business', 'Accounting'], minAge: 21, stat: 'smarts', levels: [['Financial Analyst', 75000], ['Associate', 120000], ['Vice President', 190000], ['Director', 300000], ['Managing Director', 650000]] },
+    { id: 'architect', name: 'Architecture', edu: 'bachelor', majors: ['Architecture', 'Engineering', 'Art'], minAge: 22, stat: 'smarts', levels: [['Architectural Intern', 50000], ['Architect', 82000], ['Senior Architect', 110000], ['Principal Architect', 160000]] },
+    { id: 'social', name: 'Social Work', edu: 'bachelor', majors: ['Psychology', 'Education', 'Philosophy', 'Criminal Justice', 'History', 'English'], minAge: 21, stat: 'happy', levels: [['Caseworker', 38000], ['Social Worker', 52000], ['Senior Social Worker', 64000], ['Program Director', 85000]] },
+    { id: 'detective', name: 'Federal Agency', edu: 'bachelor', majors: ['Criminal Justice', 'Political Science', 'Psychology', 'Computer Science', 'Accounting'], minAge: 23, stat: 'athl', noRecord: true, levels: [['Special Agent Trainee', 58000], ['Special Agent', 82000], ['Senior Special Agent', 108000], ['Special Agent in Charge', 150000], ['Bureau Director', 220000]] },
+    { id: 'pilot', name: 'Airline Pilot', edu: 'bachelor', minAge: 23, stat: 'smarts', minStat: 55, levels: [['First Officer', 85000], ['Captain', 190000], ['Senior Captain', 260000]] },
+    // Graduate
+    { id: 'lawyer', name: 'Law', edu: 'law', minAge: 24, stat: 'smarts', levels: [['Junior Associate', 90000], ['Associate', 135000], ['Senior Associate', 180000], ['Partner', 340000], ['Managing Partner', 600000]] },
+    { id: 'judge', name: 'Judiciary', edu: 'law', minAge: 38, stat: 'smarts', minStat: 70, noRecord: true, levels: [['Magistrate', 140000], ['District Judge', 205000], ['Appeals Judge', 235000], ['Supreme Court Justice', 285000]] },
+    { id: 'doctor', name: 'Medicine', edu: 'med', minAge: 26, stat: 'smarts', levels: [['Resident', 64000], ['Physician', 215000], ['Attending Physician', 290000], ['Chief of Medicine', 430000]] },
+    { id: 'surgeon', name: 'Surgery', edu: 'med', minAge: 27, stat: 'smarts', minStat: 75, levels: [['Surgical Resident', 68000], ['Surgeon', 360000], ['Senior Surgeon', 480000], ['Chief of Surgery', 650000]] },
+    { id: 'executive', name: 'Corporate', edu: 'mba', minAge: 24, stat: 'smarts', levels: [['Management Associate', 105000], ['Manager', 140000], ['Vice President', 230000], ['Senior VP', 380000], ['CEO', 1200000]] },
+    { id: 'professor', name: 'Academia', edu: 'phd', minAge: 26, stat: 'smarts', levels: [['Postdoc', 56000], ['Assistant Professor', 82000], ['Associate Professor', 108000], ['Professor', 150000], ['Dean', 240000]] },
+    { id: 'scientist', name: 'Research', edu: 'phd', minAge: 26, stat: 'smarts', levels: [['Research Scientist', 96000], ['Senior Scientist', 132000], ['Principal Scientist', 180000], ['Chief Scientist', 260000]] }
+  ];
+
+  // Part-time and freelance work for teens and students.
+  var PART_TIME = [
+    { id: 'pt_babysit', name: 'Babysitter', minAge: 13, salary: 5000 },
+    { id: 'pt_paper', name: 'Newspaper Delivery', minAge: 12, salary: 3500 },
+    { id: 'pt_dogwalk', name: 'Dog Walker', minAge: 12, salary: 4000 },
+    { id: 'pt_lifeguard', name: 'Lifeguard', minAge: 15, salary: 8000, stat: 'athl' },
+    { id: 'pt_grocery', name: 'Grocery Bagger', minAge: 14, salary: 7000 },
+    { id: 'pt_barista', name: 'Barista', minAge: 16, salary: 10000 },
+    { id: 'pt_tutor', name: 'Tutor', minAge: 15, salary: 9000, stat: 'smarts', minStat: 65 },
+    { id: 'pt_cashier', name: 'Cashier', minAge: 15, salary: 8500 },
+    { id: 'pt_rideshare', name: 'Rideshare Driver', minAge: 21, salary: 16000 },
+    { id: 'pt_valet', name: 'Valet', minAge: 18, salary: 12000 }
+  ];
+
+  // Fame careers: entered through auditions/tryouts, pay scales with fame.
+  var FAME_CAREERS = [
+    { id: 'actor', name: 'Acting', verb: 'Audition', stat: 'looks', minAge: 8,
+      levels: [['Extra', 12000], ['Background Actor', 25000], ['Supporting Actor', 90000], ['Lead Actor', 450000], ['Movie Star', 4000000], ['A-List Legend', 15000000]] },
+    { id: 'musician', name: 'Music', verb: 'Record a demo', stat: 'smarts', minAge: 12,
+      levels: [['Street Performer', 8000], ['Local Act', 22000], ['Signed Artist', 120000], ['Chart Topper', 1500000], ['Superstar', 9000000], ['Icon', 25000000]] },
+    { id: 'athlete', name: 'Pro Sports', verb: 'Try out', stat: 'athl', minAge: 17, maxAge: 32,
+      levels: [['Practice Squad', 60000], ['Bench Player', 450000], ['Starter', 2500000], ['All-Star', 12000000], ['MVP', 30000000]] }
+  ];
+  var SPORTS = ['Basketball', 'Football', 'Soccer', 'Baseball', 'Hockey', 'Tennis'];
+  var GENRES = ['Pop', 'Hip Hop', 'Rock', 'Country', 'R&B', 'EDM', 'Jazz', 'Reggae', 'Indie', 'Latin'];
+
+  var HOUSES = [
+    { type: 'Studio Apartment', min: 60000, max: 140000, beds: 0, upkeep: 0.012 },
+    { type: 'Condo', min: 120000, max: 320000, beds: 2, upkeep: 0.012 },
+    { type: 'Townhouse', min: 180000, max: 420000, beds: 3, upkeep: 0.012 },
+    { type: 'Starter Home', min: 150000, max: 300000, beds: 2, upkeep: 0.014 },
+    { type: 'Family House', min: 280000, max: 600000, beds: 4, upkeep: 0.014 },
+    { type: 'Farmhouse', min: 250000, max: 700000, beds: 4, upkeep: 0.015 },
+    { type: 'Beach House', min: 600000, max: 2200000, beds: 4, upkeep: 0.016 },
+    { type: 'Penthouse', min: 1200000, max: 6000000, beds: 3, upkeep: 0.012 },
+    { type: 'Luxury Villa', min: 1800000, max: 7000000, beds: 6, upkeep: 0.016 },
+    { type: 'Mansion', min: 4000000, max: 25000000, beds: 10, upkeep: 0.018 },
+    { type: 'Castle', min: 15000000, max: 60000000, beds: 25, upkeep: 0.02 }
+  ];
+  var STREETS = ['Oak', 'Maple', 'Cedar', 'Pine', 'Elm', 'Willow', 'Lake', 'Hill', 'Sunset', 'River', 'Park', 'Birch', 'Harbor', 'Ocean', 'Highland', 'Meadow', 'Ridge', 'Valley'];
+  var STREET_TYPES = ['St', 'Ave', 'Rd', 'Ln', 'Blvd', 'Way', 'Ct', 'Dr'];
+
+  var CARS = [
+    { type: 'Used Hatchback', min: 3000, max: 9000 },
+    { type: 'Scooter', min: 1500, max: 4000 },
+    { type: 'Motorcycle', min: 6000, max: 22000 },
+    { type: 'Compact Sedan', min: 18000, max: 28000 },
+    { type: 'Minivan', min: 30000, max: 45000 },
+    { type: 'Pickup Truck', min: 32000, max: 65000 },
+    { type: 'Family SUV', min: 35000, max: 60000 },
+    { type: 'Electric Sedan', min: 42000, max: 95000 },
+    { type: 'Luxury Sedan', min: 60000, max: 140000 },
+    { type: 'Sports Coupe', min: 70000, max: 180000 },
+    { type: 'Luxury SUV', min: 90000, max: 220000 },
+    { type: 'Supercar', min: 250000, max: 600000 },
+    { type: 'Hypercar', min: 1500000, max: 3500000 },
+    { type: 'Private Jet', min: 3000000, max: 70000000 },
+    { type: 'Superyacht', min: 8000000, max: 150000000 }
+  ];
+  var CAR_COLORS = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray', 'Green', 'Yellow', 'Orange', 'Midnight Blue', 'Pearl White'];
+
+  var JEWELRY = [
+    { type: 'Silver Necklace', price: 400 }, { type: 'Gold Watch', price: 4500 }, { type: 'Diamond Earrings', price: 9000 },
+    { type: 'Engagement Ring', price: 6000, ring: true }, { type: 'Luxury Engagement Ring', price: 30000, ring: true },
+    { type: 'Pearl Necklace', price: 2500 }, { type: 'Ruby Bracelet', price: 12000 }, { type: 'Diamond Tiara', price: 250000 },
+    { type: 'Rare Painting', price: 750000 }
+  ];
+
+  var PETS = [
+    { species: 'Dog', breeds: ['Labrador', 'German Shepherd', 'Golden Retriever', 'Beagle', 'Poodle', 'Bulldog', 'Husky', 'Chihuahua', 'Pit Bull', 'Mutt'], price: 800, life: 13 },
+    { species: 'Cat', breeds: ['Tabby', 'Siamese', 'Persian', 'Maine Coon', 'Sphynx', 'Bengal', 'Calico'], price: 300, life: 15 },
+    { species: 'Rabbit', breeds: ['Holland Lop', 'Lionhead', 'Rex'], price: 120, life: 9 },
+    { species: 'Parrot', breeds: ['African Grey', 'Macaw', 'Cockatoo', 'Budgie'], price: 1500, life: 40 },
+    { species: 'Hamster', breeds: ['Syrian', 'Dwarf'], price: 40, life: 3 },
+    { species: 'Snake', breeds: ['Ball Python', 'Corn Snake', 'Boa'], price: 250, life: 20 },
+    { species: 'Horse', breeds: ['Arabian', 'Thoroughbred', 'Mustang', 'Clydesdale'], price: 12000, life: 28 },
+    { species: 'Tortoise', breeds: ['Sulcata', 'Russian'], price: 350, life: 80 }
+  ];
+  var PET_NAMES = ['Max', 'Bella', 'Charlie', 'Luna', 'Rocky', 'Daisy', 'Milo', 'Coco', 'Buddy', 'Lola', 'Zeus', 'Nala', 'Toby', 'Pepper', 'Shadow', 'Oreo', 'Biscuit', 'Ginger', 'Bruno', 'Mochi'];
+
+  /* Illnesses. dmg: health lost per year untreated. cure: chance a doctor cures.
+   * incurable conditions can only be managed (treatment halves damage). */
+  var ILLNESSES = [
+    { name: 'Common Cold', minAge: 0, p: 0.07, dmg: 3, cure: 0.95, cost: 80, selfHeal: 0.8 },
+    { name: 'Flu', minAge: 0, p: 0.05, dmg: 8, cure: 0.9, cost: 150, selfHeal: 0.6 },
+    { name: 'Ear Infection', minAge: 0, maxAge: 12, p: 0.04, dmg: 4, cure: 0.95, cost: 120, selfHeal: 0.4 },
+    { name: 'Chickenpox', minAge: 1, maxAge: 12, p: 0.02, dmg: 6, cure: 0.9, cost: 100, selfHeal: 0.8 },
+    { name: 'Strep Throat', minAge: 3, p: 0.025, dmg: 6, cure: 0.95, cost: 150, selfHeal: 0.2 },
+    { name: 'Asthma', minAge: 2, p: 0.008, dmg: 1, cure: 0, cost: 400, incurable: true },
+    { name: 'Acne', minAge: 12, maxAge: 25, p: 0.06, dmg: 0, looks: -5, cure: 0.8, cost: 200, selfHeal: 0.3 },
+    { name: 'Migraine', minAge: 10, p: 0.02, dmg: 3, cure: 0.6, cost: 250, selfHeal: 0.2 },
+    { name: 'Depression', minAge: 12, p: 0.02, dmg: 4, happy: -15, cure: 0.45, cost: 600, therapy: true },
+    { name: 'Anxiety', minAge: 10, p: 0.02, dmg: 2, happy: -10, cure: 0.5, cost: 500, therapy: true },
+    { name: 'Insomnia', minAge: 15, p: 0.015, dmg: 4, happy: -6, cure: 0.6, cost: 300, selfHeal: 0.2 },
+    { name: 'Food Poisoning', minAge: 3, p: 0.03, dmg: 6, cure: 0.95, cost: 200, selfHeal: 0.9 },
+    { name: 'Kidney Stones', minAge: 25, p: 0.012, dmg: 6, cure: 0.85, cost: 3500, selfHeal: 0.5 },
+    { name: 'Pneumonia', minAge: 0, p: 0.01, dmg: 14, cure: 0.8, cost: 2500, oldRisk: true, selfHeal: 0.35 },
+    { name: 'High Blood Pressure', minAge: 35, p: 0.025, dmg: 2, cure: 0, cost: 600, incurable: true },
+    { name: 'Type 2 Diabetes', minAge: 35, p: 0.012, dmg: 3, cure: 0, cost: 1200, incurable: true },
+    { name: 'Arthritis', minAge: 50, p: 0.03, dmg: 1, cure: 0, cost: 800, incurable: true },
+    { name: 'Heart Disease', minAge: 45, p: 0.008, dmg: 6, cure: 0.3, cost: 45000, oldRisk: true, selfHeal: 0 },
+    { name: 'Cancer', minAge: 30, p: 0.006, dmg: 16, cure: 0.45, cost: 80000, oldRisk: true, selfHeal: 0.05 },
+    { name: 'Dementia', minAge: 68, p: 0.015, dmg: 3, smarts: -10, cure: 0, cost: 5000, incurable: true },
+    { name: 'Osteoporosis', minAge: 55, p: 0.02, dmg: 1, cure: 0, cost: 900, incurable: true },
+    { name: 'Chlamydia', minAge: 16, p: 0, dmg: 3, cure: 0.95, cost: 150, std: true },
+    { name: 'Herpes', minAge: 16, p: 0, dmg: 1, happy: -4, cure: 0, cost: 400, incurable: true, std: true },
+    { name: 'Broken Arm', minAge: 3, p: 0, dmg: 5, cure: 0.98, cost: 2500, selfHeal: 0.5, injury: true },
+    { name: 'Broken Leg', minAge: 3, p: 0, dmg: 8, cure: 0.98, cost: 4000, selfHeal: 0.4, injury: true },
+    { name: 'Concussion', minAge: 3, p: 0, dmg: 6, smarts: -3, cure: 0.9, cost: 1500, selfHeal: 0.6, injury: true },
+    { name: 'Alcoholism', minAge: 14, p: 0, dmg: 6, happy: -5, cure: 0.35, cost: 15000, addiction: true, rehab: true },
+    { name: 'Gambling Addiction', minAge: 18, p: 0, dmg: 1, happy: -8, cure: 0.4, cost: 8000, addiction: true, rehab: true },
+    { name: 'Nicotine Addiction', minAge: 10, p: 0, dmg: 3, cure: 0.5, cost: 1500, addiction: true, rehab: true }
+  ];
+
+  // Crimes: p = success chance baseline, reward range, sentence years if caught.
+  var CRIMES = [
+    { id: 'shoplift', name: 'Shoplift', minAge: 8, p: 0.7, reward: [20, 400], jail: [0, 1], karma: -3, desc: 'Swipe something from a store' },
+    { id: 'pickpocket', name: 'Pickpocket', minAge: 10, p: 0.6, reward: [10, 900], jail: [0, 1], karma: -4, desc: 'Lift a wallet from a stranger' },
+    { id: 'vandalism', name: 'Vandalism', minAge: 10, p: 0.7, reward: [0, 0], jail: [0, 1], karma: -3, desc: 'Spray-paint a building' },
+    { id: 'burglary', name: 'Burglary', minAge: 14, p: 0.5, reward: [300, 18000], jail: [1, 4], karma: -8, desc: 'Break into a house' },
+    { id: 'gta', name: 'Grand Theft Auto', minAge: 14, p: 0.45, reward: [2000, 60000], jail: [2, 6], karma: -9, desc: 'Steal a car and fence it' },
+    { id: 'fraud', name: 'Credit Card Fraud', minAge: 16, p: 0.5, reward: [1000, 30000], jail: [2, 7], karma: -8, desc: 'Run stolen card numbers', stat: 'smarts' },
+    { id: 'embezzle', name: 'Embezzle from Employer', minAge: 18, p: 0.55, reward: [5000, 250000], jail: [3, 12], karma: -10, desc: 'Skim from your company', needsJob: true, stat: 'smarts' },
+    { id: 'bank', name: 'Bank Robbery', minAge: 18, p: 0.3, reward: [20000, 900000], jail: [8, 25], karma: -15, desc: 'Rob a bank' },
+    { id: 'heist', name: 'Jewelry Heist', minAge: 20, p: 0.2, reward: [100000, 5000000], jail: [10, 30], karma: -15, desc: 'Pull off a high-end heist', stat: 'smarts' }
+  ];
+
+  var CLUBS = ['Chess Club', 'Drama Club', 'Debate Team', 'Robotics Club', 'Student Council', 'Band', 'Choir', 'Art Club', 'Yearbook', 'Science Olympiad'];
+  var SPORTS_TEAMS = ['Basketball Team', 'Soccer Team', 'Track Team', 'Swim Team', 'Football Team', 'Volleyball Team', 'Cheerleading', 'Wrestling Team', 'Baseball Team', 'Tennis Team'];
+
+  var VACATIONS = [
+    { name: 'Road Trip', cost: 1200 }, { name: 'Camping in the Mountains', cost: 600 }, { name: 'Beach Resort in Cancún', cost: 4000 },
+    { name: 'Paris Getaway', cost: 6000 }, { name: 'Tokyo Adventure', cost: 7000 }, { name: 'Safari in Kenya', cost: 9000 },
+    { name: 'Bali Retreat', cost: 5000 }, { name: 'Maldives Overwater Villa', cost: 18000 }, { name: 'Antarctica Expedition', cost: 30000 },
+    { name: 'Private Island Charter', cost: 250000 }
+  ];
+
+  var TRAITS = ['Ambitious', 'Lazy', 'Kind', 'Mean', 'Funny', 'Shy', 'Outgoing', 'Jealous', 'Loyal', 'Greedy', 'Generous', 'Moody', 'Cheerful', 'Nerdy', 'Athletic', 'Artsy', 'Romantic', 'Stubborn'];
+
+  var ZODIAC = [
+    ['Capricorn', 1, 19], ['Aquarius', 2, 18], ['Pisces', 3, 20], ['Aries', 4, 19], ['Taurus', 5, 20], ['Gemini', 6, 20],
+    ['Cancer', 7, 22], ['Leo', 8, 22], ['Virgo', 9, 22], ['Libra', 10, 22], ['Scorpio', 11, 21], ['Sagittarius', 12, 21], ['Capricorn', 12, 31]
+  ];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  var ACHIEVEMENTS = [
+    { id: 'centenarian', name: 'Centenarian', desc: 'Live to 100', icon: '🎂' },
+    { id: 'millionaire', name: 'Millionaire', desc: 'Have a net worth of 1M (local)', icon: '💰' },
+    { id: 'billionaire', name: 'Billionaire', desc: 'Have a net worth of 1B (local)', icon: '🏦' },
+    { id: 'graduate', name: 'Graduate', desc: 'Earn a bachelor\'s degree', icon: '🎓' },
+    { id: 'doctorate', name: 'Doctor Doctor', desc: 'Earn an MD or PhD', icon: '🩺' },
+    { id: 'lawyer', name: 'Objection!', desc: 'Earn a law degree', icon: '⚖️' },
+    { id: 'married', name: 'Tied the Knot', desc: 'Get married', icon: '💍' },
+    { id: 'divorced', name: 'It\'s Not You', desc: 'Get divorced', icon: '💔' },
+    { id: 'parent', name: 'Parenthood', desc: 'Have a child', icon: '👶' },
+    { id: 'bigfamily', name: 'Cheaper by the Dozen', desc: 'Have 5 or more children', icon: '👨‍👩‍👧‍👦' },
+    { id: 'homeowner', name: 'Homeowner', desc: 'Buy a house', icon: '🏠' },
+    { id: 'mogul', name: 'Real Estate Mogul', desc: 'Own 5 properties at once', icon: '🏘️' },
+    { id: 'jailbird', name: 'Jailbird', desc: 'Go to prison', icon: '⛓️' },
+    { id: 'escape', name: 'Great Escape', desc: 'Break out of prison', icon: '🏃' },
+    { id: 'famous', name: 'Famous', desc: 'Reach 80 fame', icon: '⭐' },
+    { id: 'influencer', name: 'Influencer', desc: 'Get 1 million followers', icon: '📱' },
+    { id: 'ceo', name: 'Top of the Ladder', desc: 'Reach the top level of any career', icon: '🏆' },
+    { id: 'lottery', name: 'Jackpot', desc: 'Win the lottery jackpot', icon: '🎰' },
+    { id: 'petlover', name: 'Pet Lover', desc: 'Own 3 pets at once', icon: '🐾' },
+    { id: 'globetrotter', name: 'Globetrotter', desc: 'Take 5 vacations', icon: '✈️' },
+    { id: 'emigrant', name: 'New Beginnings', desc: 'Emigrate to another country', icon: '🧳' },
+    { id: 'saint', name: 'Saint', desc: 'Have extremely high karma', icon: '😇' },
+    { id: 'villain', name: 'Villain', desc: 'Have extremely low karma', icon: '😈' },
+    { id: 'gymrat', name: 'Gym Rat', desc: 'Reach 95 athleticism', icon: '💪' },
+    { id: 'genius', name: 'Genius', desc: 'Reach 100 smarts', icon: '🧠' },
+    { id: 'heartbreaker', name: 'Heartbreaker', desc: 'Have 10 exes', icon: '💘' },
+    { id: 'entrepreneur', name: 'Entrepreneur', desc: 'Start a business', icon: '📈' },
+    { id: 'dynasty', name: 'Dynasty', desc: 'Reach the 3rd generation', icon: '👑' },
+    { id: 'survivor', name: 'Survivor', desc: 'Beat cancer', icon: '🎗️' },
+    { id: 'retired', name: 'Golden Years', desc: 'Retire from a career', icon: '🌅' }
+  ];
+
+  var BUSINESS_TYPES = [
+    { type: 'Food Truck', cost: 60000, base: 0.35 }, { type: 'Coffee Shop', cost: 150000, base: 0.3 },
+    { type: 'Gym', cost: 300000, base: 0.28 }, { type: 'Restaurant', cost: 500000, base: 0.25 },
+    { type: 'Tech Startup', cost: 250000, base: 0.6, volatile: true }, { type: 'Clothing Brand', cost: 120000, base: 0.35, volatile: true },
+    { type: 'Car Dealership', cost: 1500000, base: 0.2 }, { type: 'Nightclub', cost: 900000, base: 0.3, volatile: true },
+    { type: 'Hotel', cost: 6000000, base: 0.16 }
+  ];
+
+  var STOCKS = [
+    { sym: 'FRUT', name: 'Fruit Computers', vol: 0.25, drift: 0.09 },
+    { sym: 'MEGA', name: 'MegaMart Retail', vol: 0.15, drift: 0.05 },
+    { sym: 'ROKT', name: 'Rocketeer Space', vol: 0.55, drift: 0.12 },
+    { sym: 'OILX', name: 'Crude Energy Co', vol: 0.3, drift: 0.04 },
+    { sym: 'HLTH', name: 'Wellspring Pharma', vol: 0.3, drift: 0.07 },
+    { sym: 'BANK', name: 'Granite Bank', vol: 0.2, drift: 0.05 },
+    { sym: 'INDX', name: 'Total Market Index', vol: 0.16, drift: 0.07 },
+    { sym: 'COIN', name: 'MoonCoin (crypto)', vol: 0.9, drift: 0.15 }
+  ];
+
+  return {
+    COUNTRIES: COUNTRIES, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
+    CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, SPORTS: SPORTS, GENRES: GENRES,
+    HOUSES: HOUSES, STREETS: STREETS, STREET_TYPES: STREET_TYPES, CARS: CARS, CAR_COLORS: CAR_COLORS,
+    JEWELRY: JEWELRY, PETS: PETS, PET_NAMES: PET_NAMES, ILLNESSES: ILLNESSES, CRIMES: CRIMES, CLUBS: CLUBS,
+    SPORTS_TEAMS: SPORTS_TEAMS, VACATIONS: VACATIONS, TRAITS: TRAITS, ZODIAC: ZODIAC, MONTHS: MONTHS,
+    ACHIEVEMENTS: ACHIEVEMENTS, BUSINESS_TYPES: BUSINESS_TYPES, STOCKS: STOCKS,
+    career: function (id) {
+      var all = CAREERS.concat(FAME_CAREERS);
+      for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+      return null;
+    },
+    illness: function (name) {
+      for (var i = 0; i < ILLNESSES.length; i++) if (ILLNESSES[i].name === name) return ILLNESSES[i];
+      return null;
+    },
+    country: function (name) {
+      for (var i = 0; i < COUNTRIES.length; i++) if (COUNTRIES[i].name === name) return COUNTRIES[i];
+      return COUNTRIES[0];
+    }
+  };
+})();

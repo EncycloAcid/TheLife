@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#5b3df5">
+  <meta name="description" content="TheLife — a deep text-based life simulator. Live from birth to death, one year at a time.">
+  <title>TheLife</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- HOME -->
+  <section id="screen-home" class="screen active">
+    <div class="home-wrap">
+      <div class="logo">🌱</div>
+      <h1>TheLife</h1>
+      <p class="tagline">Every choice. Every year. One life.</p>
+      <div id="home-actions" class="stack"></div>
+      <p class="muted small center">Your lives are saved on this device.</p>
+    </div>
+  </section>
+
+  <!-- CREATE -->
+  <section id="screen-create" class="screen">
+    <div class="topbar"><button id="c-back" class="icon-btn" aria-label="Back">‹</button><h2>New Life</h2><span></span></div>
+    <div class="form">
+      <label>First name<input id="c-first" maxlength="20" autocomplete="off"></label>
+      <label>Last name<input id="c-last" maxlength="24" autocomplete="off"></label>
+      <button id="c-random" class="btn ghost small">🎲 Random name</button>
+      <label>Gender
+        <select id="c-gender"><option value="M">Male</option><option value="F">Female</option></select>
+      </label>
+      <label>Attracted to
+        <select id="c-interest"><option value="auto">Opposite gender</option><option value="M">Men</option><option value="F">Women</option><option value="A">Everyone</option></select>
+      </label>
+      <label>Country<select id="c-country"></select></label>
+      <button id="c-start" class="btn primary">Start Life 👶</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <header class="gh">
+      <button id="h-menu" class="icon-btn" aria-label="Main menu">☰</button>
+      <div id="h-avatar" class="avatar">👶</div>
+      <div class="gh-mid">
+        <div id="h-name" class="gh-name"></div>
+        <div id="h-sub" class="gh-sub"></div>
+      </div>
+      <div class="gh-right">
+        <div id="h-money" class="money"></div>
+        <div id="h-age" class="gh-sub"></div>
+      </div>
+    </header>
+    <main id="log" class="log"></main>
+    <div id="stats" class="stats" title="Tap for more"></div>
+    <nav class="nav">
+      <button id="nav-occ" class="nav-btn"><span>💼</span>Occupation</button>
+      <button id="nav-assets" class="nav-btn"><span>🏠</span>Assets</button>
+      <button id="btn-ageup" class="ageup"><span class="plus">＋</span><span id="ageup-label">Age</span></button>
+      <button id="nav-rel" class="nav-btn"><span>❤️</span>Relationships</button>
+      <button id="nav-act" class="nav-btn"><span>⭐</span>Activities</button>
+    </nav>
+  </section>
+
+  <!-- DEATH -->
+  <section id="screen-death" class="screen">
+    <div class="death-wrap">
+      <div class="tomb">🪦</div>
+      <h2 id="death-name"></h2>
+      <p id="death-sub" class="muted center"></p>
+      <div id="death-ribbon" class="ribbon"></div>
+      <div id="death-stats" class="card"></div>
+      <div id="death-actions" class="stack"></div>
+    </div>
+  </section>
+
+  <!-- GENERIC LIST -->
+  <section id="screen-list" class="screen">
+    <div class="topbar"><button id="list-back" class="icon-btn" aria-label="Back">‹</button><h2 id="list-title"></h2><span></span></div>
+    <div id="list-body" class="list-body"></div>
+  </section>
+
+  <!-- BOTTOM SHEET -->
+  <div id="sheet" class="sheet">
+    <div id="sheet-scrim" class="scrim"></div>
+    <div class="sheet-panel">
+      <div class="sheet-head"><button id="sheet-back" class="icon-btn">✕</button><h3 id="sheet-title"></h3><span></span></div>
+      <div id="sheet-body" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <!-- DIALOG -->
+  <div id="dialog" class="dialog">
+    <div class="dialog-card">
+      <div id="d-icon" class="d-icon"></div>
+      <h3 id="d-title"></h3>
+      <p id="d-text" class="d-text"></p>
+      <input id="d-input" maxlength="40">
+      <div id="d-buttons" class="stack"></div>
+    </div>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/actions.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    TL.ui.init();
+    // Android hardware back button bridge: the native wrapper calls this.
+    window.__tlBack = function () { return TL.ui.handleBack(); };
+    if ('serviceWorker' in navigator && location.protocol === 'https:' && location.hostname !== 'appassets.androidplatform.net') {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+  </script>
+</body>
+</html>
