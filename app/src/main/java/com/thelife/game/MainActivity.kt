@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -24,6 +25,7 @@ import androidx.webkit.WebViewAssetLoader
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var root: FrameLayout
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,8 +38,9 @@ class MainActivity : ComponentActivity() {
             .build()
 
         val night = isNightMode()
+        val background = Color.parseColor(if (night) DARK_BG else LIGHT_BG)
         webView = WebView(this).apply {
-            setBackgroundColor(Color.parseColor(if (night) "#12101C" else "#F4F2FB"))
+            setBackgroundColor(background)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
@@ -54,12 +57,14 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     request.url.host != GAME_HOST
             }
+            // Lets the game recolour the system-bar areas to match its theme.
+            addJavascriptInterface(SystemBarsBridge(), "TheLifeAndroid")
         }
         // A WebView ignores its own padding (its page still draws edge to edge),
         // so it sits inside a container that absorbs the system-bar insets. The
-        // container is painted the same colour as the game's header and nav bar.
-        val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor(if (night) "#1C1929" else "#FFFFFF"))
+        // container is painted the game's background colour so the bars blend in.
+        root = FrameLayout(this).apply {
+            setBackgroundColor(background)
             addView(webView, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         }
@@ -75,10 +80,7 @@ class MainActivity : ComponentActivity() {
         ViewCompat.requestApplyInsets(root)
 
         // Dark status/nav icons on the light theme, light icons on the dark theme.
-        WindowCompat.getInsetsController(window, root).apply {
-            isAppearanceLightStatusBars = !night
-            isAppearanceLightNavigationBars = !night
-        }
+        setBarIcons(dark = night)
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
@@ -98,6 +100,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
+    }
+
+    private fun setBarIcons(dark: Boolean) {
+        WindowCompat.getInsetsController(window, root).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
+
+    /** Called from the game's JavaScript whenever its theme changes. */
+    private inner class SystemBarsBridge {
+        @JavascriptInterface
+        fun setSystemBars(color: String, dark: Boolean) {
+            val hex = color.trim()
+            if (!HEX_COLOR.matches(hex)) return
+            val parsed = Color.parseColor(hex)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                root.setBackgroundColor(parsed)
+                webView.setBackgroundColor(parsed)
+                setBarIcons(dark)
+            }
+        }
     }
 
     private fun isNightMode(): Boolean =
@@ -128,6 +153,9 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val GAME_HOST = "appassets.androidplatform.net"
+        private const val DARK_BG = "#0B0A14"
+        private const val LIGHT_BG = "#F5F4FB"
+        private val HEX_COLOR = Regex("#[0-9A-Fa-f]{6}")
         private val GAME_URL = Uri.Builder().scheme("https").authority(GAME_HOST)
             .appendPath("assets").appendPath("index.html").build().toString()
     }

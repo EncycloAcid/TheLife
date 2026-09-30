@@ -29,7 +29,8 @@ TL.ui = (function () {
     el.innerHTML = '';
     if (alive.length) {
       var c = addBtn(el, '', 'primary continue', function () { if (E.load(alive[0].id)) startGame(); });
-      c.innerHTML = '<span class="c-play">▶</span><span class="c-text"><b>Continue</b><small>' + U.esc(alive[0].name) + ' · age ' + alive[0].age + '</small></span>';
+      var initials = alive[0].name.split(' ').map(function (w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase();
+      c.innerHTML = '<span class="c-play">' + U.esc(initials) + '</span><span class="c-text"><b>Continue</b><small>' + U.esc(alive[0].name) + ' · age ' + alive[0].age + ' · ' + D.country(alive[0].country).flag + '</small></span><span class="c-go">' + TL.icons('chev') + '</span>';
     }
     var row = document.createElement('div'); row.className = 'row2'; el.appendChild(row);
     addBtn(row, '＋ New Life', alive.length ? '' : 'primary', function () { createScreen(); });
@@ -38,7 +39,7 @@ TL.ui = (function () {
     var tiles = document.createElement('div'); tiles.className = 'tiles'; el.appendChild(tiles);
     [['📂', 'Saved lives', U.plural(saves.length, 'life').replace('lifes', 'lives'), savesScreen, !saves.length],
      ['🪦', 'Graveyard', U.plural(g.history.length, 'grave'), graveyard],
-     ['🏆', 'Trophies', g.ach.length + ' of ' + D.ACHIEVEMENTS.length, function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = g.ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc, right: got ? '✔' : '' }; })); }],
+     ['🏆', 'Trophies', g.ach.length + ' of ' + D.ACHIEVEMENTS.length, function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = g.ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc, check: got }; })); }],
      ['💾', 'Backup', 'Save & restore', backupMenu]].forEach(function (t) {
       if (t[4]) return;
       var b = document.createElement('button');
@@ -72,7 +73,7 @@ TL.ui = (function () {
   function savesScreen() {
     var saves = E.listSaves();
     listScreen('Saved Lives', saves.map(function (sv) {
-      return { icon: sv.dead ? '🪦' : '🙂', label: sv.name + (sv.gen > 1 ? ' (Gen ' + sv.gen + ')' : ''), sub: 'Age ' + sv.age + ' · ' + sv.country + ' · ' + new Date(sv.updated).toLocaleDateString(), right: '›', onClick: function () {
+      return { icon: sv.dead ? '🪦' : '🙂', label: sv.name + (sv.gen > 1 ? ' (Gen ' + sv.gen + ')' : ''), sub: 'Age ' + sv.age + ' · ' + sv.country + ' · ' + new Date(sv.updated).toLocaleDateString(), onClick: function () {
         choose(sv.name, 'What do you want to do with this life?', [
           { label: sv.dead ? 'View' : 'Play', fn: function () { if (E.load(sv.id)) { if (S().dead) { startGame(); deathScreen(); } else startGame(); } } },
           { label: 'Delete', fn: function () { E.deleteSave(sv.id); savesScreen(); } },
@@ -106,16 +107,34 @@ TL.ui = (function () {
     ]);
   }
   var TEXT_SIZES = [['Small', 14], ['Normal', 16], ['Large', 18], ['Extra large', 20]];
+  var THEMES = [['system', 'Match my phone'], ['dark', 'Dark'], ['light', 'Light']];
   function applySettings() {
     var st = E.loadGlobal().settings || {};
     document.documentElement.style.fontSize = (st.textSize || 16) + 'px';
+    if (st.theme && st.theme !== 'system') document.documentElement.setAttribute('data-theme', st.theme);
+    else document.documentElement.removeAttribute('data-theme');
+    syncSystemBars();
+  }
+  // Tell the Android wrapper which color and icon style to use for the
+  // status/navigation bar areas so they blend with the current theme.
+  function syncSystemBars() {
+    try {
+      var bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta && bg) meta.setAttribute('content', bg);
+      var dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+        (!document.documentElement.getAttribute('data-theme') && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+      if (window.TheLifeAndroid && TheLifeAndroid.setSystemBars) TheLifeAndroid.setSystemBars(bg, !!dark);
+    } catch (e) { }
   }
   function settingsMenu() {
-    var g = E.loadGlobal(), cur = (g.settings || {}).textSize || 16;
-    choose('Settings', 'Text size is currently ' + TEXT_SIZES.filter(function (t) { return t[1] === cur; }).map(function (t) { return t[0]; })[0] + '.',
-      TEXT_SIZES.map(function (t) {
-        return { label: 'Text: ' + t[0] + (t[1] === cur ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.textSize = t[1]; E.saveGlobal(g); applySettings(); } };
-      }).concat([{ label: '🗑️ Delete all data', fn: function () {
+    var g = E.loadGlobal(), cur = (g.settings || {}).textSize || 16, theme = (g.settings || {}).theme || 'system';
+    choose('Settings', 'Theme: ' + THEMES.filter(function (t) { return t[0] === theme; })[0][1] + ' · Text: ' + TEXT_SIZES.filter(function (t) { return t[1] === cur; }).map(function (t) { return t[0]; })[0] + '.',
+      THEMES.map(function (t) {
+        return { label: (t[0] === 'dark' ? '🌙 ' : t[0] === 'light' ? '☀️ ' : '📱 ') + 'Theme: ' + t[1] + (t[0] === theme ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.theme = t[0]; E.saveGlobal(g); applySettings(); } };
+      }).concat(TEXT_SIZES.map(function (t) {
+        return { label: 'Aa Text: ' + t[0] + (t[1] === cur ? ' ✔' : ''), fn: function () { g.settings = g.settings || {}; g.settings.textSize = t[1]; E.saveGlobal(g); applySettings(); } };
+      })).concat([{ label: '🗑️ Delete all data', fn: function () {
         confirm('Delete everything?', 'All saved lives, achievements and the graveyard will be permanently erased. Make a backup first if you want to keep them.', function () {
           E.wipeAll(); home(); alert('', 'All data deleted.', '');
         });
@@ -239,32 +258,57 @@ TL.ui = (function () {
     $('#h-avatar').textContent = avatar();
     $('#h-name').textContent = m.first + ' ' + m.last;
     $('#h-sub').textContent = c.flag + ' ' + statusLine();
-    $('#h-money').textContent = E.fmt(s.money);
-    $('#h-money').className = 'money' + (s.money < 0 ? ' neg' : '');
+    var cash = E.fmt(s.money);
+    $('#h-money').textContent = cash;
+    $('#h-money').className = 'money' + (s.money < 0 ? ' neg' : '') + (cash.length > 9 ? ' long' : '');
     $('#h-age').textContent = 'Age ' + m.age;
     $('#ageup-label').textContent = m.age < 1 ? 'Age' : 'Age';
   }
+  // Four ring gauges. Built once, then updated in place so changes animate.
+  var RING_R = 20, RING_C = 2 * Math.PI * RING_R;
+  var STAT_DEFS = [['happy', '😊', 'Happy', '#F5A524'], ['health', '❤️', 'Health', '#FF4D6D'], ['smarts', '🧠', 'Smarts', '#4D8BFF'], ['looks', '✨', 'Looks', '#B45CFF']];
   function renderStats() {
-    var m = S().me;
-    var rows = [['😊', 'Happiness', m.happy], ['❤️', 'Health', m.health], ['🧠', 'Smarts', m.smarts], ['✨', 'Looks', m.looks]];
-    var html = '';
-    rows.forEach(function (r) {
-      html += '<div class="stat"><div class="stat-top"><span>' + r[0] + ' ' + r[1] + '</span><b>' + r[2] + '%</b></div><div class="track"><div class="fill ' + cls(r[2]) + '" style="width:' + r[2] + '%"></div></div></div>';
+    var m = S().me, box = $('#stats');
+    if (!box.querySelector('.ring')) {
+      box.innerHTML = STAT_DEFS.map(function (d) {
+        return '<div class="stat" data-k="' + d[0] + '" style="--c:' + d[3] + '"><div class="ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="' + RING_R + '"/><circle class="rf" cx="25" cy="25" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(1) + '" stroke-dashoffset="' + RING_C.toFixed(1) + '"/></svg><span class="ring-ico">' + d[1] + '</span></div><div class="stat-lbl">' + d[2] + ' <b></b></div></div>';
+      }).join('');
+    }
+    STAT_DEFS.forEach(function (d) {
+      var v = m[d[0]], el = box.querySelector('[data-k="' + d[0] + '"]');
+      el.querySelector('.rf').setAttribute('stroke-dashoffset', (RING_C * (1 - v / 100)).toFixed(1));
+      el.querySelector('b').textContent = v;
+      el.classList.toggle('low', v < 25);
     });
-    $('#stats').innerHTML = html;
   }
   function cls(v) { return v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo'; }
+  // A leading emoji becomes the entry's icon bubble; otherwise a small dot.
+  // Built at runtime so an old WebView without Unicode property escapes falls
+  // back to a surrogate-pair pattern instead of failing to parse this file.
+  var LEAD_EMOJI;
+  try {
+    LEAD_EMOJI = new RegExp('^((?:\\p{Extended_Pictographic}|\\p{Regional_Indicator})(?:\\uFE0F|\\u200D(?:\\p{Extended_Pictographic}|\\p{Emoji_Modifier})|\\p{Emoji_Modifier}|\\p{Regional_Indicator})*)\\s*', 'u');
+  } catch (e) {
+    LEAD_EMOJI = /^((?:[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])(?:\uFE0F|\u200D(?:[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])|[\uD800-\uDBFF][\uDC00-\uDFFF])*)\s*/;
+  }
+  var freshYear = false;
+  function entryHtml(e) {
+    var m = e.t.match(LEAD_EMOJI), ico = m ? m[1] : null, txt = m ? e.t.slice(m[0].length) : e.t;
+    return '<div class="entry ' + (e.c || '') + '"><span class="e-ico">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
+  }
   function renderLog() {
     var s = S(), el = $('#log');
     var years = s.log.slice(-60);
     var html = '';
     years.forEach(function (y, i) {
-      html += '<div class="year' + (i === years.length - 1 ? ' latest' : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div>';
-      if (!y.entries.length) html += '<div class="entry quiet">Nothing much happened.</div>';
-      y.entries.forEach(function (e) { html += '<div class="entry ' + e.c + '">' + U.esc(e.t) + (e.n > 1 ? ' <span class="times">×' + e.n + '</span>' : '') + '</div>'; });
+      var last = i === years.length - 1;
+      html += '<div class="year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div>';
+      if (!y.entries.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
+      y.entries.forEach(function (e) { html += entryHtml(e); });
       html += '</div>';
     });
     el.innerHTML = html;
+    freshYear = false;
   }
   function scrollLog() { var el = $('#log'); el.scrollTop = el.scrollHeight; }
   function refresh() {
@@ -337,6 +381,7 @@ TL.ui = (function () {
     if (dialogOpen || s.pending.length) { runPending(); return; }
     closeAll();
     var before = s.money;
+    freshYear = true;
     E.ageUp();
     E.save();
     refresh();
@@ -390,10 +435,13 @@ TL.ui = (function () {
     var ov = $('#dialog');
     if (!cfg) { dialogOpen = false; ov.classList.remove('open'); return; }
     dialogOpen = true;
-    $('#d-icon').textContent = cfg.icon || '';
-    $('#d-icon').style.display = cfg.icon ? '' : 'none';
-    $('#d-title').textContent = cfg.title || '';
-    $('#d-title').style.display = cfg.title ? '' : 'none';
+    // A title that starts with an emoji shows it in the icon bubble instead.
+    var icon = cfg.icon || '', title = cfg.title || '', lead = !icon && title.match(LEAD_EMOJI);
+    if (lead && lead[0].length < title.length) { icon = lead[1]; title = title.slice(lead[0].length); }
+    $('#d-icon').textContent = icon;
+    $('#d-icon').style.display = icon ? '' : 'none';
+    $('#d-title').textContent = title;
+    $('#d-title').style.display = title ? '' : 'none';
     var t = $('#d-text');
     t.textContent = cfg.text || '';
     t.className = 'd-text ' + (cfg.cls || '');
@@ -438,13 +486,20 @@ TL.ui = (function () {
     sheets.push({ title: title, build: build });
     renderSheet();
     $('#sheet').classList.add('open');
-    $('#sheet-body').scrollTop = 0;
+    var body = $('#sheet-body');
+    body.scrollTop = 0;
+    body.classList.remove('enter'); void body.offsetWidth; body.classList.add('enter');
+    clearTimeout(menu.t);
+    menu.t = setTimeout(function () { body.classList.remove('enter'); }, 450);
+  }
+  function setActiveNav(id) {
+    ['nav-occ', 'nav-assets', 'nav-rel', 'nav-act'].forEach(function (n) { var b = $('#' + n); if (b) b.classList.toggle('active', n === id); });
   }
   function renderSheet() {
     var top = sheets[sheets.length - 1];
     if (!top) return;
     $('#sheet-title').textContent = top.title;
-    $('#sheet-back').textContent = sheets.length > 1 ? '‹' : '✕';
+    $('#sheet-back').innerHTML = TL.icons(sheets.length > 1 ? 'back' : 'close');
     var body = $('#sheet-body'), st = body.scrollTop;
     body.innerHTML = '';
     var items = top.build(), group = null;
@@ -463,26 +518,35 @@ TL.ui = (function () {
     if (it.info) { el = document.createElement('div'); el.className = 'info'; el.innerHTML = it.html; return el; }
     el = document.createElement('button');
     el.className = 'item' + (it.disabled ? ' disabled' : '') + (it.danger ? ' danger' : '');
-    var html = '<span class="i-ico">' + (it.icon || '•') + '</span><span class="i-main"><span class="i-label">' + U.esc(it.label) + '</span>';
+    var html = '<span class="i-ico" style="--h:' + hue(it.label) + '">' + (it.icon || '•') + '</span><span class="i-main"><span class="i-label">' + U.esc(it.label) + '</span>';
     if (it.sub) html += '<span class="i-sub">' + U.esc(it.sub) + '</span>';
     if (it.bar != null) html += '<span class="track small"><span class="fill ' + cls(it.bar) + '" style="width:' + it.bar + '%"></span></span>';
     html += '</span>';
-    if (it.right) html += '<span class="i-right">' + U.esc(it.right) + '</span>';
-    else if (it.onClick && !it.disabled) html += '<span class="i-chev">›</span>';
+    var check = it.check != null ? it.check : it.right === '✔' ? true : null;
+    if (check != null) html += '<span class="i-check' + (check ? ' on' : '') + '">' + (check ? TL.icons('check') : '') + '</span>';
+    else if (it.right) html += '<span class="i-right">' + U.esc(it.right) + '</span>';
+    else if (it.onClick && !it.disabled) html += '<span class="i-chev">' + TL.icons('chev') + '</span>';
     el.innerHTML = html;
     if (it.onClick && !it.disabled) el.onclick = function () { it.onClick(); };
     else if (!it.onClick) el.classList.add('static');
     return el;
   }
+  // Stable pastel hue per label for icon bubbles.
+  function hue(label) {
+    var h = 0, s = String(label || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return h;
+  }
   function back() {
     sheets.pop();
-    if (!sheets.length) { $('#sheet').classList.remove('open'); return; }
+    if (!sheets.length) { $('#sheet').classList.remove('open'); setActiveNav(null); return; }
     renderSheet();
   }
   function closeAll() {
     sheets = [];
     var sh = $('#sheet');
     if (sh) sh.classList.remove('open');
+    setActiveNav(null);
   }
 
   // ---------------------------------------------------------------- death
@@ -501,7 +565,7 @@ TL.ui = (function () {
     ];
     $('#death-obit').textContent = obituary();
     $('#death-chart').innerHTML = lifeChart(s.hist);
-    $('#death-stats').innerHTML = '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>';
+    $('#death-stats').innerHTML = rows.map(function (r) { return '<div class="dstat"><small>' + r[0] + '</small><b>' + U.esc(String(r[1])) + '</b></div>'; }).join('');
     var box = $('#death-actions');
     box.innerHTML = '';
     var heirs = E.heirs();
@@ -530,10 +594,9 @@ TL.ui = (function () {
 
   function init() {
     $('#btn-ageup').onclick = ageUp;
-    $('#nav-occ').onclick = function () { closeAll(); if (!S().dead) TL.actions.occupationMenu(); };
-    $('#nav-assets').onclick = function () { closeAll(); if (!S().dead) TL.actions.assetsMenu(); };
-    $('#nav-rel').onclick = function () { closeAll(); if (!S().dead) TL.actions.relationshipsMenu(); };
-    $('#nav-act').onclick = function () { closeAll(); if (!S().dead) TL.actions.activitiesMenu(); };
+    [['nav-occ', 'occupationMenu'], ['nav-assets', 'assetsMenu'], ['nav-rel', 'relationshipsMenu'], ['nav-act', 'activitiesMenu']].forEach(function (n) {
+      $('#' + n[0]).onclick = function () { closeAll(); if (!S().dead) { TL.actions[n[1]](); setActiveNav(n[0]); } };
+    });
     $('#sheet-back').onclick = back;
     $('#sheet-scrim').onclick = closeAll;
     $('#stats').onclick = moreStats;
@@ -545,6 +608,10 @@ TL.ui = (function () {
     $('#c-reroll').onclick = rerollStats;
     $('#c-back').onclick = home;
     applySettings();
+    if (window.matchMedia) {
+      var mq = matchMedia('(prefers-color-scheme: dark)');
+      if (mq.addEventListener) mq.addEventListener('change', syncSystemBars); else if (mq.addListener) mq.addListener(syncSystemBars);
+    }
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') handleBack(); });
     home();
   }

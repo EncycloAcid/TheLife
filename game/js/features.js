@@ -603,7 +603,7 @@ TL.features = (function () {
       var list = bucket(), n = list.filter(function (b) { return b.done; }).length;
       return [{ info: true, html: '<p class="muted">' + n + ' of ' + list.length + ' done. Every life gets its own list.</p>' }].concat(list.map(function (b) {
         var d = bucketDef(b.id) || { icon: '•', text: b.id };
-        return { icon: d.icon, label: d.text, sub: b.done ? 'Done at age ' + b.age : 'Not yet', right: b.done ? '✅' : '⬜' };
+        return { icon: d.icon, label: d.text, sub: b.done ? 'Done at age ' + b.age : 'Not yet', check: !!b.done };
       }));
     });
   }

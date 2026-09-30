@@ -34,8 +34,9 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
 - **43 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
-- **Settings**: text size, and deleting all data.
-- Works offline, autosaves, supports light and dark themes, and handles the Android back gesture.
+- **Modern design**: dark-first, with a light theme; ring gauges for your stats; a feed-style life log; colour-coded menus; and a floating dock with a big Age button. The phone's status and navigation bars follow the theme.
+- **Settings**: theme (match your phone, dark or light), text size, and deleting all data.
+- Works offline, autosaves, and handles the Android back gesture.
 
 ## Install on Android
 
@@ -56,7 +57,7 @@ The release build is signed with the debug key so it installs directly. Before p
 
 ## Play in a browser
 
-The game itself is plain HTML, CSS and JavaScript in [`game/`](game/), with no build step. Open `game/index.html` in any browser, or host the folder as a PWA.
+The game itself is plain HTML, CSS and JavaScript in [`game/`](game/), with no build step. Open `game/index.html` in any browser, or host the folder as a PWA. Browsers block fonts on `file://` pages, so serve the folder (for example `python3 -m http.server` inside `game/`) to see the bundled font.
 
 ## Project layout
 
@@ -68,7 +69,10 @@ game/                  The game (packaged into the APK as assets)
   js/events.js         Random and scripted life events with choices
   js/actions.js        Everything you can do from the four menus
   js/features.js       Royalty, organized crime, skills & books, wills
-  js/ui.js             Screens, life log, bottom-sheet menus, dialogs
+  js/icons.js          Line icons (SVG) for the dock and menus
+  js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes
+  css/style.css        The design system: light and dark tokens, components, motion
+  fonts/               Plus Jakarta Sans (SIL Open Font License, see OFL.txt)
 app/                   Android wrapper (Kotlin, WebView + WebViewAssetLoader)
 tests/simulate.js      Headless fuzz test that plays hundreds of random lives
 ```

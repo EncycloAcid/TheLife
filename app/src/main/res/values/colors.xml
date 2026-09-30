@@ -1,6 +1,6 @@
 <resources>
-    <color name="bg">#F4F2FB</color>
-    <color name="brand">#5B3DF5</color>
+    <color name="bg">#F5F4FB</color>
+    <color name="brand">#6D4DFF</color>
     <color name="icon_start">#5B3DF5</color>
     <color name="icon_end">#E0469A</color>
 </resources>
