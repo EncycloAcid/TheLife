@@ -60,16 +60,17 @@
       </div>
       <div class="gh-right">
         <div id="h-money" class="money"></div>
+        <div id="h-delta" class="delta"></div>
         <div id="h-age" class="gh-sub"></div>
       </div>
     </header>
     <main id="log" class="log"></main>
     <div id="stats" class="stats" title="Tap for more"></div>
     <nav class="nav">
-      <button id="nav-occ" class="nav-btn"><span>💼</span>Occupation</button>
+      <button id="nav-occ" class="nav-btn"><span>💼</span>Career</button>
       <button id="nav-assets" class="nav-btn"><span>🏠</span>Assets</button>
       <button id="btn-ageup" class="ageup"><span class="plus">＋</span><span id="ageup-label">Age</span></button>
-      <button id="nav-rel" class="nav-btn"><span>❤️</span>Relationships</button>
+      <button id="nav-rel" class="nav-btn"><span>❤️</span>People</button>
       <button id="nav-act" class="nav-btn"><span>⭐</span>Activities</button>
     </nav>
   </section>
@@ -98,10 +99,13 @@
   <div id="sheet" class="sheet">
     <div id="sheet-scrim" class="scrim"></div>
     <div class="sheet-panel">
+      <div class="grip"></div>
       <div class="sheet-head"><button id="sheet-back" class="icon-btn">✕</button><h3 id="sheet-title"></h3><span></span></div>
       <div id="sheet-body" class="sheet-body"></div>
     </div>
   </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <!-- DIALOG -->
   <div id="dialog" class="dialog">

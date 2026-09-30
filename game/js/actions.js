@@ -16,7 +16,10 @@ TL.actions = (function () {
     E.checkAchievements();
     E.save();
     ui().refresh();
-    ui().alert(title || '', res.text, res.cls, function () { ui().runPending(); });
+    // Everyday results show as a toast so the player can keep tapping; long
+    // or titled messages still get a dialog.
+    if (ui().toast && !title && res.text.length < 160) { ui().toast(res.text, res.cls); ui().runPending(); }
+    else ui().alert(title || '', res.text, res.cls, function () { ui().runPending(); });
   }
   // Per-year usage counter; returns previous count.
   function use(key) {

@@ -15,6 +15,15 @@ TL.engine = (function () {
     return Math.round(v);
   }
   function fmt(n) { return U.money(n, country().cur); }
+  // "the United States", "the Philippines"; other countries take no article.
+  function countryName(n) { return (/^(United|Philippines)/.test(n) ? 'the ' : '') + n; }
+  // "a nurse", "an engineer", "unemployed", "retired".
+  function jobPhrase(job) {
+    var j = job.toLowerCase();
+    if (j === 'unemployed' || j === 'retired') return j;
+    return (/^[aeiou]/.test(j) ? 'an ' : 'a ') + j;
+  }
+  function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
   function fullName(p) { return p.first + ' ' + p.last; }
   function he(p, cap) { var w = p.gender === 'M' ? 'he' : 'she'; return cap ? U.cap(w) : w; }
   function his(p, cap) { var w = p.gender === 'M' ? 'his' : 'her'; return cap ? U.cap(w) : w; }
@@ -202,10 +211,10 @@ TL.engine = (function () {
 
     if (opts.royal && TL.features) TL.features.makeRoyal(st);
     var m = st.me;
-    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + ctry.name + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
+    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
-    log('My mother is ' + fullName(mom) + ', a ' + mom.job.toLowerCase() + ' (age ' + mom.age + ').');
-    log('My father is ' + fullName(dad) + ', a ' + dad.job.toLowerCase() + ' (age ' + dad.age + ').');
+    log('My mother is ' + fullName(mom) + ', ' + jobPhrase(mom.job) + ' (age ' + mom.age + ').');
+    log('My father is ' + fullName(dad) + ', ' + jobPhrase(dad.job) + ' (age ' + dad.age + ').');
     if (!mom.married) log('My parents aren\'t married.');
     people('sibling').forEach(function (s) {
       log('I have ' + (s.gender === 'M' ? 'an older brother' : 'an older sister') + ', ' + s.first + ' (age ' + s.age + ').');
@@ -402,7 +411,7 @@ TL.engine = (function () {
     var lvl = exp >= 4 ? Math.min(c.levels.length - 2, Math.floor(exp / 4)) : 0;
     s.job = { career: careerId, level: Math.max(0, lvl), perf: 55, years: 0, levelYears: 0, mult: U.randf(0.92, 1.12), company: companyName(c) };
     s.counts.jobs++;
-    return { ok: true, msg: 'I got the job! I\'m now a ' + jobTitle(s.job) + ' at ' + s.job.company + ', earning ' + fmt(jobSalary(s.job)) + '/yr.' };
+    return { ok: true, msg: 'I got the job! I\'m now ' + an(jobTitle(s.job)) + ' at ' + s.job.company + ', earning ' + fmt(jobSalary(s.job)) + '/yr.' };
   }
   function applyPartTime(id) {
     var s = S(), pt = D.PART_TIME.filter(function (p) { return p.id === id; })[0];
@@ -411,7 +420,7 @@ TL.engine = (function () {
     if (!U.chance(0.75)) return { ok: false, msg: 'They hired someone else.' };
     if (s.job) quitJob(true);
     s.job = { career: id, partTime: true, level: 0, perf: 55, years: 0, levelYears: 0, company: U.pick(['Local', 'Corner', 'Main Street', 'Downtown']) + ' ' + U.pick(['Shop', 'Co.', 'Services', 'Market']) };
-    return { ok: true, msg: 'I was hired as a ' + pt.name + '! It pays about ' + fmt($(pt.salary)) + '/yr.' };
+    return { ok: true, msg: 'I was hired as ' + an(pt.name) + '! It pays about ' + fmt($(pt.salary)) + '/yr.' };
   }
   var CO_A = ['Apex', 'Blue', 'Summit', 'Vertex', 'Pioneer', 'Nova', 'Liberty', 'Crescent', 'Evergreen', 'Atlas', 'Iron', 'Golden', 'Northstar', 'Harbor'];
   var CO_B = { software: 'Labs', accountant: 'Accounting', teacher: 'Academy', nurse: 'Medical Center', doctor: 'Hospital', surgeon: 'Hospital', lawyer: 'Law Group', finance: 'Capital', executive: 'Holdings', military: 'Army', police: 'Police Dept.', firefighter: 'Fire Dept.' };
@@ -425,12 +434,12 @@ TL.engine = (function () {
     var s = S();
     if (!s.job) return;
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, company: s.job.company });
-    if (!silent) log('I quit my job as a ' + jobTitle(s.job) + '.');
+    if (!silent) log('I quit my job as ' + an(jobTitle(s.job)) + '.');
     s.job = null;
   }
   function fire(reason) {
     var s = S();
-    log('I was fired from my job as a ' + jobTitle(s.job) + '. ' + (reason || ''), 'bad');
+    log('I was fired from my job as ' + an(jobTitle(s.job)) + '. ' + (reason || ''), 'bad');
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, fired: true });
     s.job = null;
     stat('happy', -20);
@@ -441,7 +450,7 @@ TL.engine = (function () {
     if (me().age < 55) return { ok: false, msg: 'I\'m too young to retire.' };
     var total = s.jobHistory.reduce(function (a, h) { return a + h.years; }, 0) + s.job.years;
     s.pension = Math.round(jobSalary(s.job) * Math.min(0.7, 0.012 * total + (s.job.years >= 10 ? 0.15 : 0)));
-    var msg = 'I retired from my career as a ' + jobTitle(s.job) + '. My pension is ' + fmt(s.pension) + '/yr.';
+    var msg = 'I retired from my career as ' + an(jobTitle(s.job)) + '. My pension is ' + fmt(s.pension) + '/yr.';
     quitJob(true);
     s.retired = true;
     achieve('retired');
@@ -522,7 +531,7 @@ TL.engine = (function () {
     fame(5 + level * 6);
     stat('happy', 15);
     if (level === c.levels.length - 1) achieve('ceo');
-    return { ok: true, msg: '🗳️ I won the election! I\'m now ' + (level === 4 ? 'the President' : 'a ' + office) + ', defeating ' + fullName(opp) + '.' };
+    return { ok: true, msg: '🗳️ I won the election! I\'m now ' + (level === 4 ? 'the President' : an(office)) + ', defeating ' + fullName(opp) + '.' };
   }
   function reelect(tier) {
     var s = S(), j = s.job;
@@ -550,7 +559,7 @@ TL.engine = (function () {
     if (j.level < c.levels.length - 1 && U.chance(0.12 + s.fame / 250 + j.perf / 400)) {
       j.level++;
       fame(U.rand(6, 15));
-      log('🌟 My career took off: I\'m now a ' + jobTitle(j) + '!', 'good');
+      log('🌟 My career took off: I\'m now ' + an(jobTitle(j)) + '!', 'good');
       if (j.level === c.levels.length - 1) achieve('ceo');
     }
     if (c.id === 'athlete' && me().age > 34 && U.chance(0.35)) {
@@ -640,7 +649,7 @@ TL.engine = (function () {
     expense += s.pets.length * $(700);
 
     addMoney(income - expense);
-    if (income || expense) log('💵 Income ' + fmt(income) + ' · Expenses ' + fmt(expense), 'money');
+    if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
     if (s.money < 0) {
       stat('happy', -8);
       if (s.money < -$(20000) && U.chance(0.35)) bankruptcy();
@@ -1097,6 +1106,7 @@ TL.engine = (function () {
 
   return {
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll,
+    countryName: countryName, jobPhrase: jobPhrase, an: an,
     S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,

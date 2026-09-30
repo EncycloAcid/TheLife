@@ -18,6 +18,8 @@ TL.ui = (function () {
       if (el) el.classList.toggle('active', n === name);
     });
     closeAll();
+    var t = $('#toast');
+    if (t) t.classList.remove('show');
   }
 
   function home() {
@@ -25,14 +27,29 @@ TL.ui = (function () {
     var alive = saves.filter(function (x) { return !x.dead; });
     var el = $('#home-actions');
     el.innerHTML = '';
-    if (alive.length) addBtn(el, '▶ Continue ' + alive[0].name + ' (' + alive[0].age + ')', 'primary', function () { if (E.load(alive[0].id)) startGame(); });
-    addBtn(el, '＋ New Life', alive.length ? '' : 'primary', function () { createScreen(); });
-    addBtn(el, '🎲 Random Life', '', function () { E.newLife({}); E.save(); startGame(); });
-    if (saves.length) addBtn(el, '📂 Saved Lives', '', savesScreen);
-    addBtn(el, '🪦 Graveyard', '', graveyard);
-    addBtn(el, '💾 Backup & Restore', '', backupMenu);
-    addBtn(el, '⚙️ Settings', 'ghost', settingsMenu);
-    addBtn(el, '🏆 Achievements', '', function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = E.loadGlobal().ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc }; })); });
+    if (alive.length) {
+      var c = addBtn(el, '', 'primary continue', function () { if (E.load(alive[0].id)) startGame(); });
+      c.innerHTML = '<span class="c-play">▶</span><span class="c-text"><b>Continue</b><small>' + U.esc(alive[0].name) + ' · age ' + alive[0].age + '</small></span>';
+    }
+    var row = document.createElement('div'); row.className = 'row2'; el.appendChild(row);
+    addBtn(row, '＋ New Life', alive.length ? '' : 'primary', function () { createScreen(); });
+    addBtn(row, '🎲 Random', '', function () { E.newLife({}); E.save(); startGame(); });
+    var g = E.loadGlobal();
+    var tiles = document.createElement('div'); tiles.className = 'tiles'; el.appendChild(tiles);
+    [['📂', 'Saved lives', U.plural(saves.length, 'life').replace('lifes', 'lives'), savesScreen, !saves.length],
+     ['🪦', 'Graveyard', U.plural(g.history.length, 'grave'), graveyard],
+     ['🏆', 'Trophies', g.ach.length + ' of ' + D.ACHIEVEMENTS.length, function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = g.ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc, right: got ? '✔' : '' }; })); }],
+     ['💾', 'Backup', 'Save & restore', backupMenu]].forEach(function (t) {
+      if (t[4]) return;
+      var b = document.createElement('button');
+      b.className = 'tile';
+      b.innerHTML = '<span class="t-ico">' + t[0] + '</span><span class="t-text"><span class="t-label">' + t[1] + '</span>' + (t[2] !== '' ? '<small>' + t[2] + '</small>' : '') + '</span>';
+      b.onclick = t[3];
+      tiles.appendChild(b);
+    });
+    var st = document.createElement('button');
+    st.className = 'linkbtn'; st.textContent = '⚙️ Settings'; st.onclick = settingsMenu;
+    el.appendChild(st);
     show('home');
   }
   function addBtn(parent, label, cls, fn) {
@@ -181,9 +198,9 @@ TL.ui = (function () {
     var s = S(), m = s.me, they = m.gender === 'M' ? 'He' : 'She', their = m.gender === 'M' ? 'his' : 'her';
     var parts = [];
     var rt = TL.features.royalTitle();
-    parts.push((rt ? rt + ' ' : '') + m.first + ' ' + m.last + ' died at the age of ' + m.age + ' from ' + s.cause + ' in ' + (/^(United|Philippines)/.test(s.country) ? 'the ' : '') + s.country + '.');
+    parts.push((rt ? rt + ' ' : '') + m.first + ' ' + m.last + ' died at the age of ' + m.age + ' from ' + s.cause + ' in ' + E.countryName(s.country) + '.');
     var careers = s.jobHistory.map(function (h) { return h.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
-    if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? 'a ' + careers[careers.length - 2] + ' and later ' : '') + 'a ' + careers[careers.length - 1] + '.');
+    if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? E.an(careers[careers.length - 2]) + ' and later ' : '') + E.an(careers[careers.length - 1]) + '.');
     var deg = E.highestDegree();
     if (deg && deg.type !== 'hs') parts.push(they + ' held a ' + E.degreeName(deg) + '.');
     if (s.awards && s.awards.length) parts.push(they + ' won the ' + s.awards.map(function (a) { return a.award; }).filter(function (v, i, arr) { return arr.indexOf(v) === i; }).join(' and the ') + '.');
@@ -232,7 +249,7 @@ TL.ui = (function () {
     var rows = [['😊', 'Happiness', m.happy], ['❤️', 'Health', m.health], ['🧠', 'Smarts', m.smarts], ['✨', 'Looks', m.looks]];
     var html = '';
     rows.forEach(function (r) {
-      html += '<div class="stat"><span class="stat-ico">' + r[0] + '</span><span class="stat-name">' + r[1] + '</span><div class="track"><div class="fill ' + cls(r[2]) + '" style="width:' + r[2] + '%"></div></div><span class="stat-val">' + r[2] + '%</span></div>';
+      html += '<div class="stat"><div class="stat-top"><span>' + r[0] + ' ' + r[1] + '</span><b>' + r[2] + '%</b></div><div class="track"><div class="fill ' + cls(r[2]) + '" style="width:' + r[2] + '%"></div></div></div>';
     });
     $('#stats').innerHTML = html;
   }
@@ -241,9 +258,9 @@ TL.ui = (function () {
     var s = S(), el = $('#log');
     var years = s.log.slice(-60);
     var html = '';
-    years.forEach(function (y) {
-      html += '<div class="year"><div class="year-h">Age ' + y.age + ' <span>' + y.year + '</span></div>';
-      if (!y.entries.length) html += '<div class="entry muted">Nothing much happened.</div>';
+    years.forEach(function (y, i) {
+      html += '<div class="year' + (i === years.length - 1 ? ' latest' : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div>';
+      if (!y.entries.length) html += '<div class="entry quiet">Nothing much happened.</div>';
       y.entries.forEach(function (e) { html += '<div class="entry ' + e.c + '">' + U.esc(e.t) + '</div>'; });
       html += '</div>';
     });
@@ -277,6 +294,25 @@ TL.ui = (function () {
       return [{ info: true, html: lifeChart(s.hist) }, { info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
     });
   }
+  function moneyDelta(d) {
+    var el = $('#h-delta');
+    if (!el || !d) return;
+    el.textContent = (d > 0 ? '+' : '−') + E.fmt(Math.abs(d));
+    el.className = 'delta ' + (d > 0 ? 'up' : 'down');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+  var toastTimer = null;
+  // Brief, non-blocking result message (used for everyday actions).
+  function toast(text, c) {
+    var el = $('#toast');
+    el.textContent = text;
+    el.className = 'toast ' + (c || '');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, Math.min(5000, 1800 + text.length * 35));
+  }
   function karmaWord(k) { return k >= 85 ? 'Saintly' : k >= 65 ? 'Good' : k >= 40 ? 'Neutral' : k >= 20 ? 'Shady' : 'Wicked'; }
 
   function ageUp() {
@@ -284,9 +320,11 @@ TL.ui = (function () {
     if (!s || s.dead) return;
     if (dialogOpen || s.pending.length) { runPending(); return; }
     closeAll();
+    var before = s.money;
     E.ageUp();
     E.save();
     refresh();
+    moneyDelta(s.money - before);
     scrollLog();
     var btn = $('#btn-ageup');
     btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
@@ -387,8 +425,14 @@ TL.ui = (function () {
     $('#sheet-back').textContent = sheets.length > 1 ? '‹' : '✕';
     var body = $('#sheet-body'), st = body.scrollTop;
     body.innerHTML = '';
-    var items = top.build();
-    items.forEach(function (it) { body.appendChild(menuItem(it)); });
+    var items = top.build(), group = null;
+    // Consecutive tappable rows share one rounded card, like native settings lists.
+    items.forEach(function (it) {
+      var el = menuItem(it);
+      if (it.section || it.info) { group = null; body.appendChild(el); return; }
+      if (!group) { group = document.createElement('div'); group.className = 'group'; body.appendChild(group); }
+      group.appendChild(el);
+    });
     body.scrollTop = st;
   }
   function menuItem(it) {
@@ -402,6 +446,7 @@ TL.ui = (function () {
     if (it.bar != null) html += '<span class="track small"><span class="fill ' + cls(it.bar) + '" style="width:' + it.bar + '%"></span></span>';
     html += '</span>';
     if (it.right) html += '<span class="i-right">' + U.esc(it.right) + '</span>';
+    else if (it.onClick && !it.disabled) html += '<span class="i-chev">›</span>';
     el.innerHTML = html;
     if (it.onClick && !it.disabled) el.onclick = function () { it.onClick(); };
     else if (!it.onClick) el.classList.add('static');
@@ -483,6 +528,6 @@ TL.ui = (function () {
 
   return {
     init: init, menu: menu, back: back, closeAll: closeAll, refresh: refresh, alert: alert, choose: choose,
-    confirm: confirm, prompt: prompt, runPending: runPending, handleBack: handleBack, home: home, ageUp: ageUp
+    confirm: confirm, prompt: prompt, toast: toast, runPending: runPending, handleBack: handleBack, home: home, ageUp: ageUp
   };
 })();
