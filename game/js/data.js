@@ -157,6 +157,9 @@ TL.data = (function () {
     { id: 'athlete', name: 'Pro Sports', verb: 'Try out', stat: 'athl', minAge: 17, maxAge: 32,
       levels: [['Practice Squad', 60000], ['Bench Player', 450000], ['Starter', 2500000], ['All-Star', 12000000], ['MVP', 30000000]] }
   ];
+  // Politics: offices are won in elections, then held for 4-year terms.
+  var POLITICS = { id: 'politician', name: 'Politics', stat: 'looks', minAge: 25, termLimit: 2,
+    levels: [['City Council Member', 45000], ['Mayor', 120000], ['Governor', 180000], ['Senator', 175000], ['President', 400000]] };
   var SPORTS = ['Basketball', 'Football', 'Soccer', 'Baseball', 'Hockey', 'Tennis'];
   var GENRES = ['Pop', 'Hip Hop', 'Rock', 'Country', 'R&B', 'EDM', 'Jazz', 'Reggae', 'Indie', 'Latin'];
 
@@ -333,13 +336,13 @@ TL.data = (function () {
 
   return {
     COUNTRIES: COUNTRIES, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
-    CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, SPORTS: SPORTS, GENRES: GENRES,
+    CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, POLITICS: POLITICS, SPORTS: SPORTS, GENRES: GENRES,
     HOUSES: HOUSES, STREETS: STREETS, STREET_TYPES: STREET_TYPES, CARS: CARS, CAR_COLORS: CAR_COLORS,
     JEWELRY: JEWELRY, PETS: PETS, PET_NAMES: PET_NAMES, ILLNESSES: ILLNESSES, CRIMES: CRIMES, CLUBS: CLUBS,
     SPORTS_TEAMS: SPORTS_TEAMS, VACATIONS: VACATIONS, TRAITS: TRAITS, ZODIAC: ZODIAC, MONTHS: MONTHS,
     ACHIEVEMENTS: ACHIEVEMENTS, BUSINESS_TYPES: BUSINESS_TYPES, STOCKS: STOCKS,
     career: function (id) {
-      var all = CAREERS.concat(FAME_CAREERS);
+      var all = CAREERS.concat(FAME_CAREERS, [POLITICS]);
       for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
       return null;
     },

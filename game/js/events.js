@@ -528,6 +528,149 @@ TL.events = (function () {
     ] };
   } });
 
+  // ---------- v1.1 events ----------
+  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids || ids.indexOf(j.career) >= 0); }
+  function houses() { return S().assets.filter(function (a) { return a.kind === 'house'; }); }
+  def('reelection', {
+    scripted: true,
+    build: function () {
+      var j = S().job;
+      if (!j || !j.politics) return null;
+      var limit = j.level === D.POLITICS.levels.length - 1 && j.terms >= D.POLITICS.termLimit;
+      var title = E.jobTitle(j);
+      var retire = { label: 'Retire from politics', run: function () { E.quitJob(true); if (j.level >= 2) { S().retired = true; S().pension = Math.round(E.jobSalary(j) * 0.5); } return 'I stepped down as ' + title + ' after ' + U.plural(j.years, 'year') + ' in office.'; } };
+      if (limit) return { icon: '🏛️', title: 'Term limit', text: 'I\'ve served the maximum number of terms as President. It\'s time to leave office.', choices: [retire] };
+      var choices = E.campaigns.slice(0, 3).map(function (c, i) {
+        var cost = E.campaignCost(i, j.level);
+        return { label: 'Run again: ' + c[0] + (cost ? ' (' + E.fmt(cost) + ')' : ''), run: function () { return E.reelect(i); } };
+      });
+      choices.push(retire);
+      return { icon: '🗳️', title: 'Election year', text: 'My term as ' + title + ' is ending. My approval rating is ' + j.perf + '%. Do I run for re-election?', choices: choices };
+    }
+  });
+  def('political_scandal', { min: 25, max: 100, w: 8, cond: function () { return S().job && S().job.politics; }, build: function () {
+    var what = U.pick(['old photos of me at a college party', 'my use of campaign funds for a vacation', 'an affair rumor', 'a leaked recording of me insulting voters', 'my unpaid parking tickets']);
+    return { icon: '📰', title: 'Scandal!', text: 'A reporter is about to publish a story about ' + what + '.', choices: [
+      { label: 'Deny everything', run: function () { var j = S().job; if (U.chance(0.5)) return 'The story fizzled out.'; j.perf = Math.max(0, j.perf - 20); E.karma(-2); return bad('Nobody believed me. My approval rating plunged.'); } },
+      { label: 'Apologize publicly', run: function () { var j = S().job; j.perf = Math.max(0, j.perf - 6); E.karma(2); return 'My sincere apology limited the damage.'; } },
+      { label: 'Pay the reporter off', run: function () { var c = E.$(50000); if (S().money < c) return bad('I couldn\'t afford it. The story ran.'); E.addMoney(-c); E.karma(-5); if (U.chance(0.25)) { S().job.perf = Math.max(0, S().job.perf - 35); return bad('The bribe attempt became an even bigger story!'); } return 'The story quietly disappeared.'; } }
+    ] };
+  } });
+  def('campaign_donor', { min: 25, max: 100, w: 6, cond: function () { return S().job && S().job.politics; }, build: function () {
+    var amt = E.$(U.pick([50000, 200000, 1000000]) * (S().job.level + 1));
+    return { icon: '🤝', title: 'Wealthy donor', text: 'A billionaire offers ' + E.fmt(amt) + ' for my "campaign", in exchange for a few favors.', choices: [
+      { label: 'Accept', run: function () { E.addMoney(amt); E.karma(-8); if (U.chance(0.2)) { E.jail(U.rand(2, 6), 'Corruption'); return bad('Federal agents uncovered the deal.'); } return 'I accepted the "donation".'; } },
+      { label: 'Refuse', run: function () { E.karma(4); S().job.perf = Math.min(100, S().job.perf + 3); return good('I refused. Word got out and voters respect my integrity.'); } }
+    ] };
+  } });
+  def('natural_disaster', { min: 18, max: 100, w: 2, cond: function () { return houses().length; }, build: function () {
+    var h = U.pick(houses()), kind = U.pick(['flood', 'earthquake', 'wildfire', 'tornado', 'hurricane']);
+    var dmg = Math.round(h.value * U.randf(0.1, 0.35));
+    return { icon: '🌪️', title: 'Natural disaster', text: 'A ' + kind + ' damaged my property at ' + h.name + '.', choices: [
+      { label: 'Repair it (' + E.fmt(dmg) + ')', run: function () { E.addMoney(-dmg); h.cond = Math.max(h.cond, 70); return 'I paid ' + E.fmt(dmg) + ' to repair the damage.'; } },
+      { label: 'File an insurance claim', run: function () { if (U.chance(0.6)) { h.cond = Math.max(h.cond, 60); return good('Insurance covered the repairs.'); } h.cond = Math.max(0, h.cond - 35); h.value = Math.round(h.value * 0.8); return bad('The insurer denied my claim, citing an "act of God".'); } },
+      { label: 'Leave it', run: function () { h.cond = Math.max(0, h.cond - 35); h.value = Math.round(h.value * 0.8); return bad('The damage is dragging down the property value.'); } }
+    ] };
+  } });
+  def('tax_audit', { min: 25, max: 100, w: 2, cond: function () { return S().money > E.$(100000); }, build: function () {
+    var owed = Math.round(S().money * U.randf(0.03, 0.12));
+    return { icon: '🧾', title: 'Tax audit', text: 'The tax office is auditing me and says I owe ' + E.fmt(owed) + '.', choices: [
+      { label: 'Pay it', run: function () { E.addMoney(-owed); return 'I paid the back taxes.'; } },
+      { label: 'Hire an accountant (' + E.fmt(E.$(5000)) + ')', run: function () { E.addMoney(-E.$(5000)); if (U.chance(0.6)) return good('My accountant got the claim thrown out.'); E.addMoney(-owed); return bad('They still made me pay.'); } },
+      { label: 'Hide my money offshore', run: function () { E.karma(-5); if (U.chance(0.35)) { E.addMoney(-owed * 2); E.jail(U.rand(1, 4), 'Tax Evasion'); return bad('I was caught hiding assets.'); } return 'The auditors couldn\'t find anything.'; } }
+    ] };
+  } });
+  def('reunion', { min: 28, max: 55, w: 4, once: true, cond: function () { return E.hasDegree('hs'); }, build: function () {
+    return { icon: '🎉', title: 'High school reunion', text: 'I\'ve been invited to my high school reunion.', choices: [
+      { label: 'Go and brag about my life', run: function () { var nw = E.netWorth(); if (nw > E.$(500000) || S().fame > 30) { E.stat('happy', 10); return good('Everyone was impressed by how well I\'m doing.'); } E.stat('happy', -5); return 'People could tell I was exaggerating.'; } },
+      { label: 'Find my old crush', run: function () {
+        if (E.partner() && E.partner().role !== 'partner') { E.karma(-2); return 'We reminisced about old times. Nothing more.'; }
+        var c = E.makePerson({ age: me().age + U.rand(-1, 1), gender: me().interest === 'A' ? undefined : me().interest, role: 'partner' });
+        if (!E.partner() && U.chance(0.4)) { c.rel = 65; S().people.push(c); return good('Sparks flew with ' + c.first + '. We\'re dating now!'); }
+        return c.first + ' is happily married with three kids.';
+      } },
+      { label: 'Skip it', run: function () { return 'I have no interest in the past.'; } }
+    ] };
+  } });
+  def('headhunter', { min: 24, max: 62, w: 4, cond: function () { return hasJob() && !S().job.fame && !S().job.politics; }, build: function () {
+    var j = S().job, boost = U.randf(1.12, 1.35);
+    return { icon: '📞', title: 'Recruiter call', text: 'A headhunter offers me the same role at a competitor for ' + Math.round((boost - 1) * 100) + '% more money.', choices: [
+      { label: 'Take the offer', run: function () { j.mult = (j.mult || 1) * boost; j.perf = 55; j.levelYears = 0; j.company = U.pick(['Apex', 'Summit', 'Nova', 'Atlas', 'Pioneer']) + ' ' + U.pick(['Group', 'Inc.', 'Partners']); return good('I switched to ' + j.company + '. New salary: ' + E.fmt(E.jobSalary(j)) + '.'); } },
+      { label: 'Use it to get a raise', run: function () { if (U.chance(0.5)) { j.mult = (j.mult || 1) * (1 + (boost - 1) / 2); return good('My boss matched part of the offer!'); } j.perf = Math.max(0, j.perf - 10); return bad('My boss called my bluff.'); } },
+      { label: 'Stay loyal', run: function () { j.perf = Math.min(100, j.perf + 4); return 'I turned it down.'; } }
+    ] };
+  } });
+  def('identity_theft', { min: 18, max: 100, w: 2, build: function () {
+    var loss = Math.min(Math.max(0, S().money), E.$(U.rand(500, 8000)));
+    return { icon: '🕵️', title: 'Identity theft', text: 'Someone opened credit cards in my name!', choices: [
+      { label: 'Freeze my credit and report it', run: function () { E.addMoney(-Math.round(loss * 0.2)); return 'I caught it quickly and lost only ' + E.fmt(Math.round(loss * 0.2)) + '.'; } },
+      { label: 'Track down the thief online', run: function () { if (U.chance(me().smarts / 150)) return good('I found the thief and the police arrested them!'); E.addMoney(-loss); return bad('I got nowhere and lost ' + E.fmt(loss) + '.'); } }
+    ] };
+  } });
+  def('deployment', { min: 18, max: 60, w: 10, cond: function () { return hasJob(['military']); }, build: function () {
+    return { icon: '🎖️', title: 'Deployment', text: 'My unit is being deployed overseas.', choices: [
+      { label: 'Volunteer for the front line', run: function () {
+        var r = U.rand(1, 100), j = S().job;
+        if (r <= 15) { E.stat('health', -U.rand(20, 40)); E.addCondition(U.pick(['Broken Leg', 'Concussion'])); return bad('I was wounded in combat.'); }
+        if (r <= 55) { j.perf = Math.min(100, j.perf + 20); E.fame(3); return good('I was awarded a medal for bravery! 🎖️'); }
+        return 'I served with distinction and came home safe.';
+      } },
+      { label: 'Request a support role', run: function () { S().job.perf = Math.min(100, S().job.perf + 5); return 'I handled logistics for the deployment.'; } },
+      { label: 'Go AWOL', run: function () { E.karma(-5); E.fire('I deserted my unit.'); if (U.chance(0.5)) E.jail(U.rand(1, 3), 'Desertion'); return bad('I deserted.'); } }
+    ] };
+  } });
+  def('pet_sick', { min: 6, max: 100, w: 4, cond: function () { return S().pets.length; }, build: function () {
+    var pet = U.pick(S().pets), cost = E.$(U.pick([400, 1500, 4000]));
+    return { icon: '🐾', title: 'Sick pet', text: 'My ' + pet.species.toLowerCase() + ' ' + pet.name + ' is very sick. Surgery costs ' + E.fmt(cost) + '.', choices: [
+      { label: 'Pay for surgery', run: function () { E.addMoney(-cost); pet.rel = Math.min(100, pet.rel + 20); if (U.chance(0.8)) return good(pet.name + ' made a full recovery!'); pet.dead = true; S().pets = S().pets.filter(function (p) { return !p.dead; }); E.stat('happy', -10); return bad(pet.name + ' didn\'t make it.'); } },
+      { label: 'Home remedies', run: function () { if (U.chance(0.4)) return pet.name + ' pulled through!'; S().pets = S().pets.filter(function (p) { return p !== pet; }); E.stat('happy', -12); return bad(pet.name + ' passed away.'); } }
+    ] };
+  } });
+  def('blind_date', { min: 20, max: 60, w: 4, cond: function () { return !E.partner() && E.people(['friend', 'best friend']).length; }, build: function () {
+    var f = U.pick(E.people(['friend', 'best friend']));
+    var c = E.makePerson({ age: U.clamp(me().age + U.rand(-5, 5), 18, 90), gender: me().interest === 'A' ? undefined : me().interest, role: 'partner' });
+    return { icon: '🌹', title: 'Blind date', text: f.first + ' wants to set me up on a blind date with their friend ' + c.first + '.', choices: [
+      { label: 'Go on the date', run: function () { E.rel(f, 5); if (U.chance(0.5)) { c.rel = 60; S().people.push(c); S().counts.dates++; return good(c.first + ' and I hit it off. We\'re dating!'); } return c.first + ' spent the whole dinner talking about their ex.'; } },
+      { label: 'No thanks', run: function () { return 'I\'m happy being single.'; } }
+    ] };
+  } });
+  def('market_crash', { min: 18, max: 100, w: 4, cond: function () { return Object.keys(S().stocks).length; }, build: function () {
+    return { icon: '📉', title: 'Market crash', text: 'The stock market is in free fall!', choices: [
+      { label: 'Panic sell everything', run: function () { var s = S(), got = 0; Object.keys(s.stocks).forEach(function (k) { got += Math.round(s.stocks[k] * s.prices[k] * 0.75); s.prices[k] = Math.round(s.prices[k] * 0.75 * 100) / 100; }); s.stocks = {}; E.addMoney(got); return bad('I sold everything at a loss for ' + E.fmt(got) + '.'); } },
+      { label: 'Hold', run: function () { var s = S(); Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.round(s.prices[k] * 0.72 * 100) / 100; }); return 'I held my shares and watched them fall. Hopefully they recover.'; } },
+      { label: 'Buy the dip', run: function () { var s = S(); Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.round(s.prices[k] * 0.72 * 100) / 100; }); var spend = Math.round(Math.max(0, s.money) * 0.3), sym = Object.keys(s.stocks)[0], sh = Math.floor(spend / s.prices[sym]); if (sh > 0 && isFinite(sh)) { s.stocks[sym] += sh; E.addMoney(-Math.round(sh * s.prices[sym])); return 'I bought ' + sh + ' more shares of ' + sym + ' at bargain prices.'; } return 'I wanted to buy, but I didn\'t have the cash.'; } }
+    ] };
+  } });
+  def('ufo', { min: 10, max: 100, w: 2, build: function () {
+    return { icon: '🛸', title: 'Strange lights', text: 'I saw strange lights hovering over the field behind my home.', choices: [
+      { label: 'Film it', run: function () { if (S().social.platform) { var f = U.rand(100, 20000); S().followers += f; return good('My UFO video got me ' + f.toLocaleString() + ' new followers.'); } return 'The footage is blurry. Nobody believes me.'; } },
+      { label: 'Walk toward the lights', run: function () { if (U.chance(0.1)) { E.stat('smarts', 10); return good('I woke up the next morning with no memory... but I feel smarter?'); } return 'It was just a drone.'; } },
+      { label: 'Go back to bed', run: function () { return 'Not my problem.'; } }
+    ] };
+  } });
+  def('drowning', { min: 12, max: 75, w: 2, build: function () {
+    return { icon: '🌊', title: 'Emergency', text: 'Someone is drowning in the lake!', choices: [
+      { label: 'Dive in to save them', run: function () { if (U.chance(me().athl / 100 + 0.2)) { E.karma(10); E.fame(5); E.stat('happy', 10); return good('I saved their life! The local news called me a hero.'); } E.stat('health', -15); return bad('I nearly drowned too. Lifeguards pulled us both out.'); } },
+      { label: 'Call for help', run: function () { E.karma(2); return 'Paramedics arrived in time.'; } },
+      { label: 'Walk away', run: function () { E.karma(-10); return bad('I walked away. I\'ll never forget it.'); } }
+    ] };
+  } });
+  def('babysit_grandkids', { min: 45, max: 100, w: 5, cond: function () { return E.people('grandchild').filter(function (g) { return g.age < 12; }).length; }, build: function () {
+    var g = U.pick(E.people('grandchild').filter(function (g) { return g.age < 12; }));
+    return { icon: '🧸', title: 'Grandparent duty', text: 'My grandchild ' + g.first + ' is staying with me for the weekend.', choices: [
+      { label: 'Spoil them rotten', run: function () { E.addMoney(-E.$(200)); E.rel(g, 15); E.stat('happy', 8); return good('We ate ice cream for dinner. ' + g.first + ' adores me.'); } },
+      { label: 'Teach them something', run: function () { g.smarts = Math.min(100, g.smarts + 5); E.rel(g, 8); return 'I taught ' + g.first + ' how to ' + U.pick(['fish', 'bake bread', 'play chess', 'ride a bike', 'whistle']) + '.'; } },
+      { label: 'Nap the whole time', run: function () { E.rel(g, -5); return g.first + ' watched TV all weekend.'; } }
+    ] };
+  } });
+  def('lemon_car', { min: 17, max: 100, w: 2, cond: function () { return S().assets.some(function (a) { return a.kind === 'car' && a.cond < 50; }); }, build: function () {
+    var car = S().assets.filter(function (a) { return a.kind === 'car' && a.cond < 50; })[0], cost = Math.round(car.price * 0.15);
+    return { icon: '🔧', title: 'Car trouble', text: 'My ' + car.name + ' broke down on the highway.', choices: [
+      { label: 'Fix it (' + E.fmt(cost) + ')', run: function () { E.addMoney(-cost); car.cond = 80; return 'The mechanic got it running again.'; } },
+      { label: 'Sell it for scrap', run: function () { var v = Math.round(car.value * 0.3); E.addMoney(v); S().assets = S().assets.filter(function (a) { return a !== car; }); return 'I sold it for scrap for ' + E.fmt(v) + '.'; } }
+    ] };
+  } });
+
   // ---------- rolling ----------
   function eligible(def) {
     var s = S(), a = me().age;
@@ -555,6 +698,8 @@ TL.events = (function () {
     var d = defs[p.id];
     if (!d) return null;
     if (p.data && p.data.pid && !E.person(p.data.pid)) return null;
+    // Circumstances may have changed since the event was queued (fired, jailed, sold the house...).
+    if (d.cond && !d.cond()) return null;
     return d.build(p.data || {});
   }
   // Resolve the pending event at the front of the queue with choice index i.

@@ -445,6 +445,7 @@ TL.engine = (function () {
     j.years++; j.levelYears++;
     var earned = jobSalary(j);
     if (j.partTime) return earned;
+    if (j.politics) return politicsYear(j, earned);
     var c = D.career(j.career);
     j.perf = U.clamp(Math.round(j.perf + U.rand(-10, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0)), 0, 100);
     j.workHard = 0;
@@ -460,6 +461,74 @@ TL.engine = (function () {
       log('My boss warned me that my performance at work is slipping.', 'bad');
     } else if (U.chance(0.25)) j.mult = (j.mult || 1) * U.randf(1.01, 1.05);
     return earned;
+  }
+
+  // ---------- politics ----------
+  // j.perf is the approval rating; j.term counts down to the next election.
+  function politicsYear(j, earned) {
+    var m = me();
+    j.perf = U.clamp(Math.round(j.perf + U.rand(-9, 6) + (j.workHard || 0) * 4 + (S().karma - 50) / 20 + (m.smarts - 50) / 25), 0, 100);
+    j.workHard = 0;
+    j.term--;
+    fame(j.level + U.rand(0, 2));
+    if (j.perf < 12 && U.chance(0.35)) {
+      log('🗳️ Voters recalled me from office. My approval rating was ' + j.perf + '%.', 'bad');
+      quitJob(true); stat('happy', -20);
+      return earned;
+    }
+    if (j.term <= 0) queue('reelection');
+    else if (j.perf < 30) log('📉 My approval rating has fallen to ' + j.perf + '%.', 'bad');
+    return earned;
+  }
+  var CAMPAIGNS = [['Grassroots campaign', 0, 0], ['Modest campaign', 20000, 0.08], ['Big campaign', 250000, 0.17], ['Massive media blitz', 2000000, 0.28]];
+  function campaignCost(tier, level) { return $(CAMPAIGNS[tier][1] * (level + 1)); }
+  function electionChance(level, tier, incumbent) {
+    var s = S(), m = me();
+    var p = 0.24 + (m.looks - 50) / 220 + (m.smarts - 50) / 260 + (s.karma - 50) / 220 + s.fame / 350 + CAMPAIGNS[tier][2];
+    p -= level * 0.14 + (s.record.length ? 0.3 : 0);
+    if (level >= 3) p += s.fame / 300 - 0.18; // national office needs name recognition
+    if (incumbent) p = 0.15 + incumbent.perf / 110 + CAMPAIGNS[tier][2] / 2;
+    return U.clamp(p, 0.03, 0.93);
+  }
+  function runForOffice(level, tier) {
+    var s = S(), c = D.POLITICS, j = s.job, m = me();
+    var office = c.levels[level][0];
+    if (m.age < c.minAge + level * 3) return { ok: false, msg: 'I must be at least ' + (c.minAge + level * 3) + ' to run for ' + office + '.' };
+    if (level > 0 && !(j && j.politics && j.level === level - 1)) return { ok: false, msg: 'I need to hold the office of ' + c.levels[level - 1][0] + ' first.' };
+    if (s.flags.nextRun && s.year < s.flags.nextRun) return { ok: false, msg: 'I just lost an election. My party wants me to wait until ' + s.flags.nextRun + ' before running again.' };
+    var cost = campaignCost(tier, level);
+    if (s.money < cost) return { ok: false, msg: 'I can\'t afford that campaign (' + fmt(cost) + ').' };
+    addMoney(-cost);
+    var opp = makePerson({ age: m.age + U.rand(-10, 15) });
+    if (!U.chance(electionChance(level, tier))) {
+      fame(2);
+      s.flags.nextRun = s.year + (level >= 3 ? 4 : 2);
+      if (j && j.politics) j.perf = Math.max(0, j.perf - 8);
+      return { ok: false, msg: '🗳️ I lost the election for ' + office + ' to ' + fullName(opp) + '.' };
+    }
+    if (j && !j.politics) quitJob(true);
+    else if (j && j.politics) s.jobHistory.push({ career: 'politician', title: jobTitle(j), years: j.years });
+    s.job = { career: 'politician', politics: true, level: level, perf: U.rand(50, 65), years: 0, levelYears: 0, term: 4, terms: 1, mult: 1,
+      company: level === 4 ? 'the nation' : level === 3 ? 'the Senate' : level === 2 ? 'the state' : level === 1 ? U.pick(SCHOOL_WORDS) + ' City Hall' : 'the ' + U.pick(SCHOOL_WORDS) + ' City Council' };
+    fame(5 + level * 6);
+    stat('happy', 15);
+    if (level === c.levels.length - 1) achieve('ceo');
+    return { ok: true, msg: '🗳️ I won the election! I\'m now ' + (level === 4 ? 'the President' : 'a ' + office) + ', defeating ' + fullName(opp) + '.' };
+  }
+  function reelect(tier) {
+    var s = S(), j = s.job;
+    var cost = campaignCost(tier, j.level);
+    if (s.money < cost) tier = 0, cost = 0;
+    addMoney(-cost);
+    if (U.chance(electionChance(j.level, tier, j))) {
+      j.term = 4; j.terms++;
+      j.perf = U.clamp(j.perf + 8, 0, 100);
+      stat('happy', 10);
+      return { text: '🗳️ I won re-election as ' + jobTitle(j) + '! (term ' + j.terms + ')', cls: 'good' };
+    }
+    var t = jobTitle(j);
+    quitJob(true); stat('happy', -15);
+    return { text: '🗳️ I lost my re-election bid. I\'m no longer ' + t + '.', cls: 'bad' };
   }
 
   // ---------- fame careers ----------
@@ -669,7 +738,7 @@ TL.engine = (function () {
       if (U.chance(Math.min(0.8, hazard))) {
         p.alive = false; p.died = s.year;
         var cause = p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia']) : U.pick(['a car accident', 'cancer', 'an overdose', 'a heart attack', 'a boating accident']);
-        var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance'].indexOf(p.role) >= 0;
+        var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
         log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
         if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
         if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
@@ -687,6 +756,22 @@ TL.engine = (function () {
       log('💔 My parents got divorced.', 'bad');
       stat('happy', -10);
     }
+    // Adult children marry and have kids of their own (grandchildren).
+    people('child').forEach(function (c) {
+      if (c.age >= 22 && c.age <= 45 && !c.married && U.chance(0.09)) {
+        var sp = addPerson({ role: 'in-law', age: U.clamp(c.age + U.rand(-4, 4), 20, 60), gender: c.gender === 'M' ? 'F' : 'M', rel: U.rand(35, 70) });
+        sp.spouseOf = c.id; c.married = true;
+        log('💒 My ' + (c.gender === 'M' ? 'son' : 'daughter') + ' ' + c.first + ' married ' + fullName(sp) + '.', 'good');
+        stat('happy', 5);
+      }
+      var gkids = people('grandchild').filter(function (g) { return g.parentId === c.id; }).length;
+      if (c.married && c.age <= 42 && gkids < 4 && U.chance(0.16)) {
+        var g = addPerson({ role: 'grandchild', age: 0, last: c.gender === 'M' ? c.last : U.pick([c.last, randomName('M').last]), rel: U.rand(60, 85), money: 0, job: 'Toddler' });
+        g.parentId = c.id;
+        log('👶 My ' + (c.gender === 'M' ? 'son' : 'daughter') + ' ' + c.first + ' had a baby ' + (g.gender === 'M' ? 'boy' : 'girl') + ', ' + g.first + '! I\'m a grandparent' + (gkids ? ' again' : '') + '!', 'good');
+        stat('happy', 8);
+      }
+    });
     // Pregnancy resolution
     if (s.flags.pregnant) {
       var other = person(s.flags.pregnant.with);
@@ -835,30 +920,44 @@ TL.engine = (function () {
 
   // ---------- legacy / continue as child ----------
   function heirs() {
-    return people('child').filter(function (c) { return c.alive; });
+    var kids = people('child');
+    if (kids.length) return kids;
+    // No living children: the family line can continue through a grandchild.
+    return people('grandchild');
   }
   function continueAs(childId) {
     var s = S(), c = person(childId);
     var worth = Math.max(0, netWorth());
     var kids = heirs();
+    var viaGrandchild = c.role === 'grandchild';
     var estateTax = worth > $(5000000) ? 0.35 : 0.05;
     var inheritance = Math.round(worth * (1 - estateTax) * (kids.length ? 1 / kids.length : 1) * (c.rel > 30 ? 1 : 0.5));
     var dead = me();
-    var otherParent = c.otherParent ? person(c.otherParent) : null;
     var newPeople = [];
-    // the dead player becomes a (dead) parent
+    // the dead player becomes a (dead) parent or grandparent
     var parentRec = {
       id: U.uid(), first: dead.first, last: dead.last, gender: dead.gender, age: dead.age, alive: false, died: s.year,
-      role: dead.gender === 'M' ? 'father' : 'mother', rel: c.rel, happy: dead.happy, health: 0, smarts: dead.smarts,
+      role: viaGrandchild ? 'grandparent' : dead.gender === 'M' ? 'father' : 'mother', rel: c.rel, happy: dead.happy, health: 0, smarts: dead.smarts,
       looks: dead.looks, money: 0, job: jobTitle(s.job), traits: []
     };
     newPeople.push(parentRec);
-    if (otherParent) { otherParent.role = otherParent.gender === 'M' ? 'father' : 'mother'; newPeople.push(otherParent); }
-    kids.forEach(function (k) { if (k.id !== c.id) { k.role = 'sibling'; newPeople.push(k); } });
-    // carry forward the heir's own family if we tracked it
-    s.people.forEach(function (p) {
-      if (p.heirOf === c.id) newPeople.push(p);
-    });
+    if (viaGrandchild) {
+      var par = person(c.parentId);
+      if (par) { par.role = par.gender === 'M' ? 'father' : 'mother'; newPeople.push(par); }
+      s.people.forEach(function (p) {
+        if (p.role === 'in-law' && p.spouseOf === c.parentId) { p.role = p.gender === 'M' ? 'father' : 'mother'; newPeople.push(p); }
+      });
+      kids.forEach(function (k) { if (k.id !== c.id && k.parentId === c.parentId) { k.role = 'sibling'; newPeople.push(k); } });
+    } else {
+      var otherParent = c.otherParent ? person(c.otherParent) : null;
+      if (otherParent) { otherParent.role = otherParent.gender === 'M' ? 'father' : 'mother'; newPeople.push(otherParent); }
+      kids.forEach(function (k) { if (k.id !== c.id) { k.role = 'sibling'; newPeople.push(k); } });
+      // carry forward the heir's own spouse and children
+      s.people.forEach(function (p) {
+        if (p.role === 'in-law' && p.spouseOf === c.id) { p.role = 'spouse'; newPeople.push(p); }
+        if (p.role === 'grandchild' && p.parentId === c.id) { p.role = 'child'; p.otherParent = null; newPeople.push(p); }
+      });
+    }
     var gen = s.gen + 1;
     var st = newLife({
       country: s.country, gen: gen, year: s.year - c.age,
@@ -871,7 +970,7 @@ TL.engine = (function () {
     st.year = s.year;
     st.log[0] = { age: c.age, year: s.year, entries: [] };
     log('👑 Generation ' + gen + ': I am ' + c.first + ' ' + c.last + ', age ' + c.age + '.');
-    log('My ' + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');
+    log('My ' + (viaGrandchild ? 'grand' : '') + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');
     if (inheritance > 0) log('📜 I inherited ' + fmt(inheritance) + ' from ' + his(dead) + ' estate.', 'good');
     if (c.age >= 6 && c.age < 18) { st.edu = null; enroll(c.age < 11 ? 'elementary' : c.age < 14 ? 'middle' : 'high'); st.edu.year = c.age - (c.age < 11 ? 5 : c.age < 14 ? 10 : 13); }
     if (c.age >= 18) st.degrees.push({ type: 'hs' });
@@ -947,7 +1046,31 @@ TL.engine = (function () {
     store.setItem('thelife.index', JSON.stringify(listSaves().filter(function (x) { return x.id !== id; })));
   }
 
+  // Full backup of every saved life plus global progress, as a portable text code.
+  function exportAll() {
+    var data = { app: 'thelife', v: SAVE_VERSION, global: loadGlobal(), saves: [] };
+    listSaves().forEach(function (x) { var raw = store.getItem('thelife.save.' + x.id); if (raw) data.saves.push(JSON.parse(raw)); });
+    return 'TL1:' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  }
+  function importAll(code) {
+    var data;
+    try { data = JSON.parse(decodeURIComponent(escape(atob(String(code).trim().replace(/^TL1:/, ''))))); }
+    catch (e) { return { ok: false, msg: 'That backup code is invalid or incomplete.' }; }
+    if (!data || data.app !== 'thelife' || !Array.isArray(data.saves)) return { ok: false, msg: 'That isn\'t a TheLife backup code.' };
+    var prev = TL.S, n = 0;
+    data.saves.forEach(function (sv) {
+      if (sv && sv.id && sv.me && Array.isArray(sv.log)) { TL.S = sv; save(); n++; }
+    });
+    TL.S = prev;
+    var g = loadGlobal(), dg = data.global || {};
+    (dg.ach || []).forEach(function (a) { if (g.ach.indexOf(a) < 0) g.ach.push(a); });
+    g.history = (dg.history || []).concat(g.history).slice(0, 50);
+    saveGlobal(g);
+    return { ok: true, msg: 'Restored ' + n + ' saved ' + (n === 1 ? 'life' : 'lives') + '.' };
+  }
+
   return {
+    exportAll: exportAll, importAll: importAll,
     S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
@@ -957,6 +1080,7 @@ TL.engine = (function () {
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
     statLabel: statLabel, statValue: statValue, haveBaby: haveBaby, jail: jail, queue: queue, die: die,
+    runForOffice: runForOffice, reelect: reelect, campaigns: CAMPAIGNS, campaignCost: campaignCost, electionChance: electionChance,
     ageUp: ageUp, heirs: heirs, continueAs: continueAs, ribbon: ribbon, checkAchievements: checkAchievements,
     save: save, load: load, listSaves: listSaves, deleteSave: deleteSave, loadGlobal: loadGlobal, saveGlobal: saveGlobal,
     schoolName: schoolName

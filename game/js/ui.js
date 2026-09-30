@@ -30,6 +30,7 @@ TL.ui = (function () {
     addBtn(el, '🎲 Random Life', '', function () { E.newLife({}); E.save(); startGame(); });
     if (saves.length) addBtn(el, '📂 Saved Lives', '', savesScreen);
     addBtn(el, '🪦 Graveyard', '', graveyard);
+    addBtn(el, '💾 Backup & Restore', '', backupMenu);
     addBtn(el, '🏆 Achievements', '', function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = E.loadGlobal().ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc }; })); });
     show('home');
   }
@@ -69,6 +70,28 @@ TL.ui = (function () {
     }));
   }
 
+  function backupMenu() {
+    choose('Backup & Restore', 'Copy a backup code to keep your lives safe, or paste one to restore them on this or another device.', [
+      { label: 'Create backup code', fn: function () {
+        var code = E.exportAll();
+        showDialog({ title: 'Backup code', text: 'Copy this code and keep it somewhere safe.', area: code, buttons: [
+          { label: 'Copy', cls: 'primary', fn: function (v) { copyText(code); alert('', 'Backup code copied to clipboard.', 'good'); } },
+          { label: 'Close', cls: 'ghost' }
+        ] });
+      } },
+      { label: 'Restore from code', fn: function () {
+        showDialog({ title: 'Restore', text: 'Paste your backup code below.', area: '', buttons: [
+          { label: 'Restore', cls: 'primary', fn: function (v) { var r = E.importAll(v || ''); alert('', r.msg, r.ok ? 'good' : 'bad', home); } },
+          { label: 'Cancel', cls: 'ghost' }
+        ] });
+      } }
+    ]);
+  }
+  function copyText(t) {
+    try { if (navigator.clipboard) { navigator.clipboard.writeText(t); return; } } catch (e) { }
+    var a = $('#d-area'); a.style.display = ''; a.value = t; a.select();
+    try { document.execCommand('copy'); } catch (e) { }
+  }
   function createScreen() {
     var sel = $('#c-country');
     if (!sel.options.length) {
@@ -234,6 +257,9 @@ TL.ui = (function () {
     var t = $('#d-text');
     t.textContent = cfg.text || '';
     t.className = 'd-text ' + (cfg.cls || '');
+    var area = $('#d-area');
+    area.style.display = cfg.area != null ? '' : 'none';
+    if (cfg.area != null) { area.value = cfg.area; area.readOnly = !!cfg.area; }
     var inp = $('#d-input');
     inp.style.display = cfg.input != null ? '' : 'none';
     if (cfg.input != null) inp.value = cfg.input;
@@ -244,7 +270,7 @@ TL.ui = (function () {
       btn.className = 'btn ' + (b.cls || '');
       btn.textContent = b.label;
       btn.onclick = function () {
-        var val = inp.value;
+        var val = cfg.area != null ? area.value : inp.value;
         dialogOpen = false;
         ov.classList.remove('open');
         if (b.fn) b.fn(val);

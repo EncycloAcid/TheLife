@@ -9,14 +9,16 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Education**: elementary → middle → high school, a GED, university (26 majors; pay with parents, a scholarship, loans or savings), and graduate school (Law, Medicine, MBA, PhD). You can study, join clubs and sports teams, skip class or drop out.
 - **Careers**: 37 career ladders with promotions, performance reviews, raises and firing, plus part-time jobs, odd jobs, retirement and pensions.
 - **Fame careers**: acting, music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
-- **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy and adoption.
+- **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
+- **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy and adoption. Your adult children marry and give you grandchildren.
 - **Assets**: real estate with mortgages, renovation and rental income; cars, jets and yachts with financing; jewelry; a stock market; and businesses you can start and grow.
 - **Health**: 29 illnesses, injuries and addictions. Doctors, herbalists, therapy, rehab and plastic surgery.
 - **Activities**: gym, library, meditation, martial arts, instruments, social media, casino (blackjack, slots, roulette, horse racing), lottery, vacations, pets (8 species) and volunteering.
 - **Crime & prison**: from shoplifting to jewelry heists, then trials with lawyers, prison gangs, appeals, escape attempts and good behavior.
-- **~60 random life events** with choices, gated by age and circumstances.
-- **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children (with an inheritance).
+- **~75 random life events** with choices, gated by age and circumstances.
+- **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
 - **30 achievements**, tracked per life and across all lives.
+- **Backup & restore**: export all your lives as a code and restore them on any device.
 - Works offline, autosaves, supports light and dark themes, and handles the Android back gesture.
 
 ## Install on Android

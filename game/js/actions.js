@@ -34,13 +34,15 @@ TL.actions = (function () {
   // ======================================================================
   // RELATIONSHIPS
   // ======================================================================
-  var ROLE_ORDER = ['spouse', 'fiance', 'partner', 'mother', 'father', 'stepmother', 'stepfather', 'grandparent', 'sibling', 'child', 'friend', 'best friend', 'classmate', 'coworker', 'ex', 'former classmate', 'former coworker'];
-  var ROLE_ICON = { spouse: '💍', fiance: '💎', partner: '❤️', mother: '👩', father: '👨', grandparent: '👴', sibling: '🧒', child: '👶', friend: '🙂', 'best friend': '🤝', classmate: '🎒', coworker: '💼', ex: '💔', 'former classmate': '🎒', 'former coworker': '💼' };
+  var ROLE_ORDER = ['spouse', 'fiance', 'partner', 'mother', 'father', 'stepmother', 'stepfather', 'grandparent', 'sibling', 'child', 'in-law', 'grandchild', 'friend', 'best friend', 'classmate', 'coworker', 'ex', 'former classmate', 'former coworker'];
+  var ROLE_ICON = { spouse: '💍', fiance: '💎', partner: '❤️', mother: '👩', father: '👨', grandparent: '👴', sibling: '🧒', child: '👶', grandchild: '👶', 'in-law': '🧑', friend: '🙂', 'best friend': '🤝', classmate: '🎒', coworker: '💼', ex: '💔', 'former classmate': '🎒', 'former coworker': '💼' };
   function roleLabel(p) {
     var r = p.role;
     if (r === 'sibling') return p.gender === 'M' ? 'Brother' : 'Sister';
     if (r === 'child') return p.gender === 'M' ? 'Son' : 'Daughter';
     if (r === 'grandparent') return p.gender === 'M' ? 'Grandfather' : 'Grandmother';
+    if (r === 'grandchild') return p.gender === 'M' ? 'Grandson' : 'Granddaughter';
+    if (r === 'in-law') return p.gender === 'M' ? 'Son-in-law' : 'Daughter-in-law';
     if (r === 'spouse') return p.gender === 'M' ? 'Husband' : 'Wife';
     if (r === 'fiance') return p.gender === 'M' ? 'Fiancé' : 'Fiancée';
     if (r === 'partner') return p.gender === 'M' ? 'Boyfriend' : 'Girlfriend';
@@ -56,7 +58,7 @@ TL.actions = (function () {
   function relationshipsMenu() {
     ui().menu('Relationships', function () {
       var items = [];
-      var ps = S().people.filter(function (p) { return p.alive || ['mother', 'father', 'spouse', 'child', 'sibling', 'grandparent'].indexOf(p.role) >= 0; });
+      var ps = S().people.filter(function (p) { return p.alive || ['mother', 'father', 'spouse', 'child', 'sibling', 'grandparent', 'grandchild'].indexOf(p.role) >= 0; });
       ps.sort(function (a, b) { return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role); });
       var lastGroup = null;
       ps.forEach(function (p) {
@@ -82,7 +84,7 @@ TL.actions = (function () {
   function groupOf(role) {
     if (['spouse', 'fiance', 'partner'].indexOf(role) >= 0) return 'Love';
     if (['mother', 'father', 'grandparent', 'sibling', 'stepmother', 'stepfather'].indexOf(role) >= 0) return 'Family';
-    if (role === 'child') return 'Children';
+    if (role === 'child' || role === 'grandchild' || role === 'in-law') return 'Children';
     if (['friend', 'best friend'].indexOf(role) >= 0) return 'Friends';
     if (['classmate', 'coworker'].indexOf(role) >= 0) return 'School & Work';
     return 'Others';
@@ -107,7 +109,7 @@ TL.actions = (function () {
       if (me().age >= 6 && S().money > 0) items.push({ icon: '🎁', label: 'Give a gift', onClick: function () { giftMenu(p); } });
       if (me().age >= 5 && ['mother', 'father', 'grandparent', 'spouse', 'sibling', 'child', 'friend', 'best friend'].indexOf(r) >= 0 && p.age >= 18)
         items.push({ icon: '💸', label: 'Ask for money', onClick: function () { askMoney(p); } });
-      if (me().age >= 18 && p.age >= 3 && S().money > 0 && ['mother', 'father', 'sibling', 'child', 'friend', 'grandparent', 'best friend'].indexOf(r) >= 0)
+      if (me().age >= 18 && p.age >= 3 && S().money > 0 && ['mother', 'father', 'sibling', 'child', 'friend', 'grandparent', 'best friend', 'grandchild'].indexOf(r) >= 0)
         items.push({ icon: '💵', label: 'Give money', onClick: function () { giveMoney(p); } });
       if (me().age >= 5) items.push({ icon: '😜', label: 'Prank', onClick: function () { prank(p); } });
       if (me().age >= 4) items.push({ icon: '😠', label: 'Argue', onClick: function () { argue(p); } });
@@ -465,17 +467,19 @@ TL.actions = (function () {
       items.push({ section: 'Career' });
       if (s.job) {
         var j = s.job;
-        items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + '<div class="minibar"><span>Performance</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
+        items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
         items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
-        if (!j.partTime && !j.fame) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
+        if (j.politics) politicsItems(j).forEach(function (it) { items.push(it); });
+        if (!j.partTime && !j.fame && !j.politics) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
         if (j.fame) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
-        if (!j.partTime && !j.fame) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
+        if (!j.partTime && !j.fame && !j.politics) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
         if (me().age >= 55 && !j.partTime) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { done(E.retire()); }); } });
         items.push({ icon: '🚪', label: 'Quit job', danger: true, onClick: function () { ui().confirm('Quit?', 'Quit your job as ' + E.jobTitle(j) + '?', function () { E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.</p>' });
       if (m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
       items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Pro Sports', onClick: fameMenu });
+      if (m.age >= D.POLITICS.minAge && !(s.job && s.job.politics)) items.push({ icon: '🗳️', label: 'Run for office', sub: 'Start a political career', onClick: function () { campaignMenu(0); } });
       if (m.age >= 8 && m.age < 18) items.push({ icon: '🧃', label: 'Odd jobs', sub: 'Lemonade stands, mowing lawns', onClick: oddJobs });
       if (m.age >= 18) items.push({ icon: '📈', label: 'Start a business', onClick: businessMenu });
       if (s.jobHistory.length) items.push({ icon: '🗂️', label: 'Job history', onClick: function () { ui().menu('Job history', function () { return s.jobHistory.slice().reverse().map(function (h) { return { icon: h.fired ? '🔥' : '💼', label: h.title, sub: (h.company || '') + ' · ' + U.plural(h.years, 'year') + (h.fired ? ' · fired' : '') }; }); }); } });
@@ -597,6 +601,44 @@ TL.actions = (function () {
           done(r.ok ? good(r.msg) : bad(r.msg));
         } };
       });
+    });
+  }
+  function politicsItems(j) {
+    var items = [];
+    items.push({ icon: '🎙️', label: 'Give a speech', onClick: function () {
+      var f = diminish('speech');
+      if (U.chance(0.35 + me().smarts / 250)) { j.perf = U.clamp(Math.round(j.perf + 7 * f), 0, 100); E.fame(1); return done(good('My speech on ' + U.pick(['the economy', 'healthcare', 'education', 'crime', 'the environment', 'taxes']) + ' was a hit.')); }
+      j.perf = Math.max(0, j.perf - 4); done(bad('I stumbled over my words. The clip is going around online.'));
+    } });
+    items.push({ icon: '🤝', label: 'Meet voters', onClick: function () { var f = diminish('voters'); j.perf = U.clamp(Math.round(j.perf + U.rand(1, 5) * f), 0, 100); done('I shook hands and kissed babies at a ' + U.pick(['county fair', 'diner', 'town hall', 'farmers market']) + '.'); } });
+    items.push({ icon: '📜', label: 'Propose a policy', onClick: function () {
+      if (used('bill')) return done('I already pushed a big policy this year.');
+      use('bill');
+      var pol = U.pick(['a tax cut', 'free school lunches', 'a new public park', 'stricter pollution rules', 'a minimum wage increase', 'road repairs', 'a housing program']);
+      if (U.chance(0.3 + j.perf / 200)) { j.perf = Math.min(100, j.perf + U.rand(8, 15)); E.karma(2); return done(good('My proposal for ' + pol + ' passed! Voters love it.')); }
+      j.perf = Math.max(0, j.perf - 5); done(bad('My proposal for ' + pol + ' was voted down.'));
+    } });
+    items.push({ icon: '💼', label: 'Take a bribe', danger: true, onClick: function () {
+      var amt = E.$(U.rand(10000, 80000) * (j.level + 1));
+      E.addMoney(amt); E.karma(-8);
+      if (U.chance(0.2)) { E.jail(U.rand(2, 8), 'Bribery'); return done(bad('The FBI was running a sting. I was arrested for taking ' + E.fmt(amt) + '.')); }
+      done('I quietly accepted ' + E.fmt(amt) + ' from a lobbyist.');
+    } });
+    if (j.level < D.POLITICS.levels.length - 1) items.push({ icon: '🗳️', label: 'Run for ' + D.POLITICS.levels[j.level + 1][0], sub: j.levelYears < 2 ? 'Serve 2 years first' : 'Win to move up', disabled: j.levelYears < 2 || used('campaign') > 0, onClick: function () { campaignMenu(j.level + 1); } });
+    return items;
+  }
+  function campaignMenu(level) {
+    var office = D.POLITICS.levels[level][0];
+    ui().menu('Campaign for ' + office, function () {
+      return [{ info: true, html: '<p class="muted">Looks, smarts, karma and fame all sway voters. A bigger war chest helps. A criminal record hurts.</p>' }].concat(E.campaigns.map(function (c, i) {
+        var cost = E.campaignCost(i, level);
+        return { icon: ['🚪', '📣', '📺', '🚀'][i], label: c[0], sub: 'Win chance ~' + Math.round(E.electionChance(level, i) * 100) + '%', right: cost ? E.fmt(cost) : 'Free', disabled: used('campaign') > 0 || cost > S().money, onClick: function () {
+          use('campaign');
+          var r = E.runForOffice(level, i);
+          if (r.ok) ui().closeAll();
+          done(r.ok ? good(r.msg) : bad(r.msg));
+        } };
+      }));
     });
   }
   function fameGig() {

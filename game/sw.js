@@ -1,5 +1,5 @@
 /* Offline cache for the web/PWA build. */
-var CACHE = 'thelife-v1';
+var CACHE = 'thelife-v2';
 var FILES = ['./', './index.html', './css/style.css', './js/util.js', './js/data.js', './js/engine.js', './js/events.js', './js/actions.js', './js/ui.js', './manifest.json', './icon.svg'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); })); self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })); })); });
