@@ -295,7 +295,8 @@ TL.ui = (function () {
   }
   var freshYear = false;
   function entryHtml(e) {
-    var m = e.t.match(LEAD_EMOJI), ico = m ? m[1] : null, txt = m ? e.t.slice(m[0].length) : e.t;
+    var t = e.t == null ? '' : String(e.t);
+    var m = t.match(LEAD_EMOJI), ico = m ? m[1] : null, txt = m ? t.slice(m[0].length) : t;
     return '<div class="entry ' + (e.c || '') + '"><span class="e-ico">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
   }
   function renderLog() {
@@ -597,7 +598,7 @@ TL.ui = (function () {
   function init() {
     $('#btn-ageup').onclick = ageUp;
     [['nav-occ', 'occupationMenu'], ['nav-assets', 'assetsMenu'], ['nav-rel', 'relationshipsMenu'], ['nav-act', 'activitiesMenu']].forEach(function (n) {
-      $('#' + n[0]).onclick = function () { closeAll(); if (!S().dead) { TL.actions[n[1]](); setActiveNav(n[0]); } };
+      $('#' + n[0]).onclick = function () { closeAll(); if (!S().dead) { TL.actions[n[1]](); if (sheets.length) setActiveNav(n[0]); } };
     });
     $('#sheet-back').onclick = back;
     $('#sheet-scrim').onclick = closeAll;
