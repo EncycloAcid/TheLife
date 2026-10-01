@@ -166,7 +166,7 @@ TL.engine = (function () {
 
     var st = {
       v: SAVE_VERSION, id: U.uid(), created: Date.now(), updated: Date.now(),
-      gen: opts.gen || 1, country: ctry.name, birthCountry: ctry.name, year: startYear,
+      gen: opts.gen || 1, country: ctry.name, birthCountry: ctry.name, year: startYear, city: TL.real ? TL.real.city(ctry.name) : null,
       me: {
         first: opts.first || nm.first, last: nm.last, gender: gender, age: 0, month: month, day: day, zodiac: zodiac,
         happy: U.rand(60, 100), health: U.rand(70, 100), smarts: U.rand(5, 100), looks: U.rand(5, 100),
@@ -221,7 +221,7 @@ TL.engine = (function () {
 
     if (opts.royal && TL.features) TL.features.makeRoyal(st);
     var m = st.me;
-    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
+    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + (st.city ? st.city + ', ' : '') + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
     log('My mother is ' + fullName(mom) + ', ' + jobPhrase(mom.job) + ' (age ' + mom.age + ').');
     log('My father is ' + fullName(dad) + ', ' + jobPhrase(dad.job) + ' (age ' + dad.age + ').');
@@ -240,7 +240,7 @@ TL.engine = (function () {
   var UNI_WORDS = ['State University', 'Institute of Technology', 'University', 'College', 'Polytechnic'];
   function schoolName(kind) {
     var w = U.pick(SCHOOL_WORDS);
-    if (kind === 'uni') return w + ' ' + U.pick(UNI_WORDS);
+    if (kind === 'uni') return TL.real && S() ? U.pick(TL.real.universities(S().country)).name : w + ' ' + U.pick(UNI_WORDS);
     if (kind === 'trade') return w + ' ' + U.pick(['Technical Institute', 'Trade School', 'Vocational College']);
     return w + ' ' + { elementary: 'Elementary', middle: 'Middle School', high: 'High School' }[kind];
   }
@@ -304,7 +304,7 @@ TL.engine = (function () {
       queue('after_hs');
     } else if (e.stage === 'uni') {
       if (e.grade < 30) { e.year = total; log('I failed too many classes and must take another year of university.', 'bad'); stat('happy', -10); return; }
-      s.degrees.push({ type: 'bachelor', major: e.major });
+      s.degrees.push({ type: 'bachelor', major: e.major, school: e.school, tier: e.tier || 0 });
       log('🎓 I graduated from ' + e.school + ' with a Bachelor\'s degree in ' + e.major + '! (' + gradeLetter(e.grade) + ')', 'good');
       stat('happy', 15); stat('smarts', 5);
       s.lastGrade = e.grade;
@@ -330,14 +330,15 @@ TL.engine = (function () {
     }
   }
   // Costs & funding for university; returns {ok, msg}
-  function enrollUni(major, funding) {
-    var s = S(), tuition = $(28000) * 4;
+  function enrollUni(major, funding, uni) {
+    var s = S(), tuition = uni && TL.real ? $(TL.real.tuition(s.country, uni.tier)) * 4 : $(28000) * 4;
+    var at = uni ? { school: uni.name, tier: uni.tier } : {};
     if (funding === 'parents') {
       var ps = people(['mother', 'father']).filter(function (p) { return p.money > tuition * 0.5; });
       var rich = ps.sort(function (a, b) { return b.money - a.money; })[0];
       if (!rich || rich.rel < 40 || !U.chance(rich.rel / 100 + (rich.money > tuition * 3 ? 0.3 : 0))) return { ok: false, msg: 'My parents said they can\'t pay for my education.' };
       rich.money -= tuition;
-      enroll('uni', { major: major, funding: 'parents' });
+      enroll('uni', Object.assign({ major: major, funding: 'parents' }, at));
       return { ok: true, msg: 'My ' + rich.role + ' agreed to pay my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '.' };
     }
     if (funding === 'scholarship') {
@@ -346,17 +347,17 @@ TL.engine = (function () {
       if (s.sat) p += (s.sat - 1100) / 1500;
       if (s.flags.athleteScholar) p += 0.3;
       if (!U.chance(p)) return { ok: false, msg: 'My scholarship application was rejected.' };
-      enroll('uni', { major: major, funding: 'scholarship' });
+      enroll('uni', Object.assign({ major: major, funding: 'scholarship' }, at));
       return { ok: true, msg: 'I won a full scholarship! I enrolled at ' + s.edu.school + ' to study ' + major + '. 🏆' };
     }
     if (funding === 'savings') {
       if (s.money < tuition) return { ok: false, msg: 'I don\'t have enough money (' + fmt(tuition) + ' needed).' };
       addMoney(-tuition);
-      enroll('uni', { major: major, funding: 'savings' });
+      enroll('uni', Object.assign({ major: major, funding: 'savings' }, at));
       return { ok: true, msg: 'I paid ' + fmt(tuition) + ' and enrolled at ' + s.edu.school + ' to study ' + major + '.' };
     }
     s.studentDebt += tuition;
-    enroll('uni', { major: major, funding: 'loans' });
+    enroll('uni', Object.assign({ major: major, funding: 'loans' }, at));
     return { ok: true, msg: 'I took out ' + fmt(tuition) + ' in student loans and enrolled at ' + s.edu.school + ' to study ' + major + '.' };
   }
   function enrollGrad(id, funding) {
@@ -439,6 +440,8 @@ TL.engine = (function () {
     if (TL.features) p += TL.features.skillBonus(careerId);
     p += Math.min(0.2, (s.internships || 0) * 0.08);
     p += bonus || 0; // how the interview went
+    var prestige = s.degrees.reduce(function (t, d) { return Math.max(t, d.tier || 0); }, 0);
+    p += prestige === 3 ? 0.12 : prestige === 2 ? 0.05 : 0; // a big-name degree opens doors
     p -= c.hard || 0;
     if (!U.chance(U.clamp(p, 0.05, 0.95))) return { ok: false, msg: 'After the interview, they decided not to hire me.' };
     if (s.job) quitJob(true);
@@ -459,6 +462,8 @@ TL.engine = (function () {
   var CO_A = ['Apex', 'Blue', 'Summit', 'Vertex', 'Pioneer', 'Nova', 'Liberty', 'Crescent', 'Evergreen', 'Atlas', 'Iron', 'Golden', 'Northstar', 'Harbor'];
   var CO_B = { electrician: 'Electric', plumber: 'Plumbing', hvac: 'Heating & Air', welder: 'Fabrication', vet: 'Animal Hospital', dentist: 'Dental', gamedev: 'Games', zookeeper: 'Zoo', pharmacist: 'Pharmacy', fashion: 'Fashion House', trainer: 'Fitness', software: 'Labs', accountant: 'Accounting', teacher: 'Academy', nurse: 'Medical Center', doctor: 'Hospital', surgeon: 'Hospital', lawyer: 'Law Group', finance: 'Capital', executive: 'Holdings', military: 'Army', police: 'Police Dept.', firefighter: 'Fire Dept.' };
   function companyName(c) {
+    var real = TL.real && TL.real.company(c.id, S().country);
+    if (real) return real;
     if (c.id === 'military') return 'the Army';
     if (c.id === 'astronaut') return 'the ' + U.pick(['National', 'International', 'United']) + ' Space Agency';
     if (c.id === 'police') return 'the ' + U.pick(SCHOOL_WORDS) + ' Police Department';
@@ -603,6 +608,10 @@ TL.engine = (function () {
     }
     if (s.fame >= 80) achieve('famous');
   }
+  function proTeam() {
+    var sport = U.pick(D.SPORTS), real = TL.real && TL.real.team(sport, S().country, me().gender);
+    return real || 'the ' + U.pick(['Tigers', 'Sharks', 'Wolves', 'Titans', 'Falcons', 'Kings', 'Rangers']) + ' (' + sport + ')';
+  }
   function fameAudition(id) {
     var s = S(), c = D.career(id), m = me();
     if (m.age < c.minAge) return { ok: false, msg: 'I\'m too young.' };
@@ -614,9 +623,9 @@ TL.engine = (function () {
     }
     if (s.job && !(s.job.partTime && m.age < 18)) quitJob(true);
     if (s.job && s.job.partTime) quitJob(true);
-    s.job = { career: id, level: 0, perf: 60, years: 0, levelYears: 0, fame: true, mult: 1, company: id === 'athlete' ? 'the ' + U.pick(['Tigers', 'Sharks', 'Wolves', 'Titans', 'Falcons', 'Kings', 'Rangers']) + ' (' + U.pick(D.SPORTS) + ')' : id === 'musician' ? U.pick(D.GENRES) + ' scene' : 'Hollywood' };
+    s.job = { career: id, level: 0, perf: 60, years: 0, levelYears: 0, fame: true, mult: 1, company: id === 'athlete' ? proTeam() : id === 'musician' ? U.pick(D.GENRES) + ' scene' : 'Hollywood' };
     fame(5);
-    return { ok: true, msg: { actor: 'I landed a role as an Extra! My acting career begins. 🎬', musician: 'I started performing ' + s.job.company.replace(' scene', '') + ' music! 🎤', athlete: 'I made the team: ' + s.job.company + '! 🏅' }[id] };
+    return { ok: true, msg: { actor: 'I landed a role as an Extra! My acting career begins. 🎬', musician: 'I started performing ' + s.job.company.replace(' scene', '') + ' music! 🎤', athlete: /Tour$/.test(s.job.company) ? 'I turned pro and joined ' + s.job.company + '! 🎾' : 'I signed with ' + s.job.company + '! 🏅' }[id] };
   }
 
   // ---------- money ----------
@@ -991,6 +1000,7 @@ TL.engine = (function () {
   function checkAchievements() {
     var s = S(), nw = netWorth(), m = me();
     if (TL.features && !s.dead) TL.features.checkBucket();
+    if (TL.world && !s.dead) TL.world.checkChallenges();
     if (nw >= 1e6) achieve('millionaire');
     if (nw >= 1e9) achieve('billionaire');
     if (s.assets.some(function (a) { return a.kind === 'house'; })) achieve('homeowner');
@@ -1104,6 +1114,7 @@ TL.engine = (function () {
       }
     });
     st.year = s.year;
+    if (s.city) st.city = s.city; // the family stays in the same city
     st.log[0] = { age: c.age, year: s.year, entries: [] };
     log('👑 Generation ' + gen + ': I am ' + c.first + ' ' + c.last + ', age ' + c.age + '.');
     log('My ' + (viaGrandchild ? 'grand' : '') + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');

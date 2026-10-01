@@ -288,7 +288,8 @@ TL.data = (function () {
   var SPORTS_TEAMS = ['Basketball Team', 'Soccer Team', 'Track Team', 'Swim Team', 'Football Team', 'Volleyball Team', 'Cheerleading', 'Wrestling Team', 'Baseball Team', 'Tennis Team'];
 
   var VACATIONS = [
-    { name: 'Road Trip', cost: 1200 }, { name: 'Camping in the Mountains', cost: 600 }, { name: 'Beach Resort in Cancún', cost: 4000 },
+    { name: 'Road Trip', cost: 1200 }, { name: 'New York City Weekend', cost: 3000 }, { name: 'London Sightseeing', cost: 4500 }, { name: 'Rome & the Vatican', cost: 5000 },
+    { name: 'Dubai Luxury Stay', cost: 9000 }, { name: 'Carnival in Rio de Janeiro', cost: 5500 }, { name: 'Sydney Harbour', cost: 7500 }, { name: 'Machu Picchu Trek', cost: 6000 }, { name: 'Santorini Sunsets', cost: 6500 }, { name: 'Seoul Food Tour', cost: 5000 }, { name: 'Camping in the Mountains', cost: 600 }, { name: 'Beach Resort in Cancún', cost: 4000 },
     { name: 'Paris Getaway', cost: 6000 }, { name: 'Tokyo Adventure', cost: 7000 }, { name: 'Safari in Kenya', cost: 9000 },
     { name: 'Bali Retreat', cost: 5000 }, { name: 'Northern Lights in Iceland', cost: 5500, aurora: true }, { name: 'Maldives Overwater Villa', cost: 18000 }, { name: 'Antarctica Expedition', cost: 30000 },
     { name: 'Private Island Charter', cost: 250000 }
@@ -348,6 +349,9 @@ TL.data = (function () {
     { id: 'resolute', name: 'Resolute', desc: 'Keep a New Year\'s resolution', icon: '🎆' },
     { id: 'trickortreat', name: 'Trick or Treat', desc: 'Go trick-or-treating 3 times', icon: '🎃' },
     { id: 'roots', name: 'Roots', desc: 'Look at your family tree', icon: '🌳' },
+    { id: 'challenger', name: 'Challenger', desc: 'Complete a challenge', icon: '⭐' },
+    { id: 'challenge_master', name: 'Challenge Master', desc: 'Earn 5 challenge stars', icon: '🌟' },
+    { id: 'dna', name: 'Who Am I?', desc: 'Take a DNA test', icon: '🧬' },
     { id: 'astronaut', name: 'To Infinity', desc: 'Go to space', icon: '🚀' },
     { id: 'twins', name: 'Double Trouble', desc: 'Have twins', icon: '👯' },
     { id: 'tradesman', name: 'Skilled Trade', desc: 'Earn a trade certificate', icon: '🔧' }

@@ -31,13 +31,17 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Holidays**: Halloween costumes, holiday presents, family dinners and office Secret Santa.
 - **New Year's resolutions**: pick one each year and find out next year whether you kept it.
 - **Tattoos**: eight designs (or your partner's name, if you dare), occasional botched jobs, and laser removal.
+- **Real-world names**: apply to real universities in every country (Harvard, Oxford, University of Tokyo, IIT Bombay…) with admission odds based on your grades, SAT and sports, and tuition by country; a big-name degree helps you get hired. Work for real employers (Google, Goldman Sachs, Mayo Clinic, the NYPD, NASA…), sign with real teams in your country's league (Premier League, NBA, NFL, MLB, NHL, La Liga, Liga MX, J1 League…), drive real cars (Honda Civic to Bugatti Chiron), and live in a real city.
+- **Challenges**: three goals at a time that carry across all your lives, like becoming a millionaire before 30 or living to 95. Finish one to earn a star.
+- **World events**: floods, tornadoes, wildfires, hurricanes and earthquakes; stock market crashes and booms; a pandemic.
+- **More to do**: spa days, fishing, gardening, shopping, a DNA ancestry test (which might reveal a secret sibling), and suing people.
 - **Coming out**: characters attracted to the same gender (or any gender) can come out to family, friends or online.
 - **Bucket list**: every life gets five personal goals, from skydiving and running a marathon to seeing the Northern Lights.
 - **Obituary & life chart**: when you die, read your obituary and see your net worth and happiness charted across your whole life.
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **48 achievements**, tracked per life and across all lives.
+- **51 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
 - **Animation**: real spring physics (like iPhone), iOS-style push and pop transitions where both screens move together, the game shrinking back behind an open menu, money and stats that count up with floating +/− bubbles, new log lines that arrive one after another, confetti for achievements, graduations, weddings, births and promotions, an Age button ripple, bouncy tab icons, springy button presses, menus you can flick away, and smooth scrolling to each new year. Turned off automatically if your phone is set to reduce motion. Light and dark themes; the phone's status and navigation bars follow the theme.
@@ -76,6 +80,8 @@ game/                  The game (packaged into the APK as assets)
   js/actions.js        Everything you can do from the four menus
   js/features.js       Royalty, organized crime, skills & books, wills
   js/extras.js         Family tree, holidays, resolutions, tattoos, coming out
+  js/world.js          Challenges, world events, new activities, DNA tests, lawsuits
+  js/realdata.js       Real universities, employers, sports teams, cities and car models
   js/icons.js          Line icons (SVG) for the dock and menus
   js/motion.js         Screen transitions, count-ups, floating stat changes, confetti
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes

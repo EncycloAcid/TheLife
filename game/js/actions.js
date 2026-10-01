@@ -120,6 +120,7 @@ TL.actions = (function () {
       if (me().age >= 5) items.push({ icon: '😜', label: 'Prank', onClick: function () { prank(p); } });
       if (me().age >= 4) items.push({ icon: '😠', label: 'Argue', onClick: function () { argue(p); } });
       if (me().age >= 6) items.push({ icon: '🤬', label: 'Insult', onClick: function () { insult(p); } });
+      if (me().age >= 18 && p.age >= 18) items.push({ icon: '⚖️', label: 'Sue', sub: 'Lawyer fee ' + E.fmt(E.$(5000)), onClick: function () { TL.world.sue(p); } });
 
       if (['partner', 'fiance', 'spouse'].indexOf(r) >= 0) {
         items.push({ section: 'Romance' });
@@ -246,9 +247,10 @@ TL.actions = (function () {
     if (U.chance(p.rel / 140)) {
       var t = U.pick(D.CARS.slice(0, 5)); var price = E.$(U.rand(t.min, t.max));
       p.money -= price;
-      S().assets.push({ id: U.uid(), kind: 'car', type: t.type, name: U.pick(D.CAR_COLORS) + ' ' + t.type, value: price, price: price, cond: U.rand(60, 100), loan: 0 });
+      var model = TL.real ? TL.real.carModel(t.type) : t.type;
+      S().assets.push({ id: U.uid(), kind: 'car', type: t.type, name: U.pick(D.CAR_COLORS) + ' ' + model, value: price, price: price, cond: U.rand(60, 100), loan: 0 });
       E.rel(p, 5);
-      done(good(p.first + ' bought me a ' + t.type + '! 🚗'));
+      done(good(p.first + ' bought me a ' + model + '! 🚗'));
     } else done(p.first + ' said I need to earn my own car.');
   }
   function canDate(p) {
@@ -555,9 +557,36 @@ TL.actions = (function () {
     ui().menu('Choose a major', function () {
       return D.MAJORS.map(function (mj) {
         var had = E.hasDegree('bachelor', [mj]);
-        return { icon: '📘', label: mj, right: had ? '✔' : '', disabled: had, onClick: function () { fundingMenu(mj); } };
+        return { icon: '📘', label: mj, right: had ? '✔' : '', disabled: had, onClick: function () { collegeMenu(mj); } };
       });
     });
+  }
+  // Real universities in my country: admission odds depend on grades, SAT and sports.
+  function collegeMenu(major) {
+    ui().menu('Universities', function () {
+      var s = S(), items = [{ info: true, html: '<p>Studying <b>' + U.esc(major) + '</b>. My grades: <b>' + E.gradeLetter(s.lastGrade || 60) + '</b>' + (s.sat ? ' · SAT ' + s.sat : '') + '. A big-name degree helps when job hunting.</p>' }];
+      [3, 2, 1].forEach(function (tier) {
+        items.push({ section: TL.real.TIER_LABEL[tier] });
+        TL.real.universities(s.country).filter(function (u) { return u.tier === tier; }).forEach(function (u) {
+          var pct = Math.round(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar) * 100);
+          var tried = s.flags['applied_' + u.name] === s.year;
+          items.push({ icon: tier === 3 ? '🏛️' : tier === 2 ? '🎓' : '🏫', label: u.name, sub: (tried ? 'Already applied this year' : pct + '% chance') + ' · ' + E.fmt(E.$(TL.real.tuition(s.country, u.tier))) + '/yr', disabled: tried, onClick: function () { applyCollege(major, u); } });
+        });
+      });
+      return items;
+    });
+  }
+  function applyCollege(major, u) {
+    var s = S();
+    s.flags['applied_' + u.name] = s.year;
+    if (!U.chance(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar))) return done(bad(u.name + ' rejected my application. 📭'));
+    var cost = E.$(TL.real.tuition(s.country, u.tier)) * 4;
+    ui().choose('Accepted! 🎉', u.name + ' accepted me to study ' + major + '! Four years of tuition is ' + E.fmt(cost) + '. How will I pay?', [
+      { label: 'Ask my parents', fn: function () { finishEnroll(E.enrollUni(major, 'parents', u)); } },
+      { label: 'Apply for a scholarship', fn: function () { finishEnroll(E.enrollUni(major, 'scholarship', u)); } },
+      { label: 'Student loans', fn: function () { finishEnroll(E.enrollUni(major, 'loans', u)); } },
+      { label: 'Pay with savings', fn: function () { finishEnroll(E.enrollUni(major, 'savings', u)); } }
+    ]);
   }
   function fundingMenu(major) {
     var cost = E.$(28000) * 4;
@@ -849,7 +878,7 @@ TL.actions = (function () {
       return D.HOUSES.map(function (h) {
         var price = E.$(Math.round(U.randf(h.min, h.max) / 1000) * 1000);
         var num = U.rand(10, 9999);
-        return { id: U.uid(), type: h.type, upkeep: h.upkeep, price: price, beds: h.beds, cond: U.rand(35, 100), year: S().year - U.rand(0, 120), addr: num + ' ' + U.pick(D.STREETS) + ' ' + U.pick(D.STREET_TYPES) };
+        return { id: U.uid(), type: h.type, upkeep: h.upkeep, price: price, beds: h.beds, cond: U.rand(35, 100), year: S().year - U.rand(0, 120), addr: num + ' ' + U.pick(D.STREETS) + ' ' + U.pick(D.STREET_TYPES) + (S().city ? ', ' + S().city : '') };
       });
     });
     ui().menu('Real estate', function () {
@@ -926,12 +955,12 @@ TL.actions = (function () {
       return D.CARS.map(function (c) {
         var price = E.$(Math.round(U.randf(c.min, c.max) / 100) * 100);
         var used = c.type === 'Used Hatchback' || U.chance(0.3);
-        return { id: U.uid(), type: c.type, price: used ? Math.round(price * 0.7) : price, cond: used ? U.rand(40, 85) : 100, color: U.pick(D.CAR_COLORS), used: used, year: S().year - (used ? U.rand(2, 15) : 0) };
+        return { id: U.uid(), type: c.type, model: TL.real ? TL.real.carModel(c.type) : c.type, price: used ? Math.round(price * 0.7) : price, cond: used ? U.rand(40, 85) : 100, color: U.pick(D.CAR_COLORS), used: used, year: S().year - (used ? U.rand(2, 15) : 0) };
       });
     });
     ui().menu('Vehicles', function () {
       return ls.map(function (c) {
-        return { icon: assetIcon({ kind: 'car', type: c.type }), label: c.year + ' ' + c.type, sub: c.color + ' · ' + (c.used ? 'Used, condition ' + c.cond + '%' : 'Brand new'), right: E.fmt(c.price), disabled: c.sold, onClick: function () {
+        return { icon: assetIcon({ kind: 'car', type: c.type }), label: c.year + ' ' + (c.model || c.type), sub: c.type + ' · ' + c.color + ' · ' + (c.used ? 'Used, condition ' + c.cond + '%' : 'Brand new'), right: E.fmt(c.price), disabled: c.sold, onClick: function () {
           var s = S(), down = Math.round(c.price * 0.15);
           var opts = [{ label: 'Pay cash (' + E.fmt(c.price) + ')', fn: function () { if (!afford(c.price)) return done(noMoney(c.price)); E.addMoney(-c.price); addCar(c, 0); } }];
           if (c.price < E.$(500000)) opts.push({ label: 'Finance (' + E.fmt(down) + ' down)', fn: function () {
@@ -946,9 +975,9 @@ TL.actions = (function () {
   }
   function addCar(c, loan) {
     c.sold = true;
-    S().assets.push({ id: U.uid(), kind: 'car', type: c.type, name: c.color + ' ' + c.type, value: c.price, price: c.price, cond: c.cond, loan: loan, payment: loan ? Math.round(loan / 5 * 1.15) : 0 });
+    S().assets.push({ id: U.uid(), kind: 'car', type: c.type, name: c.color + ' ' + (c.model || c.type), value: c.price, price: c.price, cond: c.cond, loan: loan, payment: loan ? Math.round(loan / 5 * 1.15) : 0 });
     E.stat('happy', 6);
-    done(good('I bought a ' + c.color.toLowerCase() + ' ' + c.type.toLowerCase() + '! 🚗'));
+    done(good('I bought a ' + c.color.toLowerCase() + ' ' + (c.model || c.type) + '! 🚗'));
   }
   function jewelryStore() {
     ui().menu('Jewelry & luxury', function () {
@@ -1034,6 +1063,10 @@ TL.actions = (function () {
       items.push({ section: 'Fun & Social' });
       if (a >= 13) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
       if (a >= 18) items.push({ icon: '🪩', label: 'Nightclub', onClick: nightclub });
+      if (a >= 18) items.push({ icon: '🧖', label: 'Spa day', right: E.fmt(E.$(250)), onClick: TL.world.spa });
+      if (a >= 6) items.push({ icon: '🎣', label: 'Go fishing', onClick: TL.world.fishing });
+      if (a >= 8) items.push({ icon: '🌻', label: 'Gardening', onClick: TL.world.gardening });
+      if (a >= 13) items.push({ icon: '🛍️', label: 'Shopping', sub: 'Clothes and sneakers', onClick: TL.world.shoppingMenu });
       if (a >= 18) items.push({ icon: '🖋️', label: 'Tattoo parlor', sub: S().tattoos && S().tattoos.length ? U.plural(S().tattoos.length, 'tattoo') : 'Get inked', onClick: TL.extras.tattooMenu });
       if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
       if (a >= 14) items.push({ icon: '🏃', label: 'Run a marathon', sub: 'Athleticism helps', disabled: used('marathon') > 0, onClick: marathon });
@@ -1049,6 +1082,8 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
       if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { S().flags.volunteered = (S().flags.volunteered || 0) + 1; var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
+      if (a >= 18) items.push({ icon: '🧬', label: 'DNA test', sub: S().flags.dna ? 'Results in' : 'Discover your ancestry', right: S().flags.dna ? '' : E.fmt(E.$(99)), onClick: TL.world.dnaTest });
+      items.push({ icon: '⭐', label: 'Challenges', sub: U.plural(TL.world.starCount(), 'star') + ' earned', onClick: TL.world.challengesMenu });
       items.push({ icon: '📝', label: 'Bucket list', sub: TL.features.bucketCount() + ' done', onClick: TL.features.bucketMenu });
       items.push({ icon: '⏳', label: 'Time Machine', sub: E.tmAges().length ? 'Go back up to ' + U.plural(E.tmAges().length, 'year') : 'Age up to charge it', disabled: !E.tmAges().length, onClick: function () { ui().timeMachine(); } });
       items.push({ icon: '🏆', label: 'Achievements', onClick: achievementsMenu });
@@ -1327,10 +1362,11 @@ TL.actions = (function () {
             Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.max(0.01, Math.round(s.prices[k] * ratio * 100) / 100); });
             s.people.forEach(function (p) { p.money = Math.round(p.money * ratio); });
             s.country = c.name;
+            s.city = TL.real ? TL.real.city(c.name) : null;
             if (s.job) E.quitJob(true);
             E.achieve('emigrant');
             ui().closeAll();
-            done(good('I emigrated to ' + c.name + ' ' + c.flag + '!'));
+            done(good('I emigrated to ' + (s.city ? s.city + ', ' : '') + c.name + ' ' + c.flag + '!'));
           });
         } };
       });

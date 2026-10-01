@@ -48,6 +48,7 @@ TL.ui = (function () {
     [['📂', 'Saved lives', U.plural(saves.length, 'life').replace('lifes', 'lives'), savesScreen, !saves.length],
      ['🪦', 'Graveyard', U.plural(g.history.length, 'grave'), graveyard],
      ['🏆', 'Trophies', g.ach.length + ' of ' + D.ACHIEVEMENTS.length, function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = g.ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc, check: got }; })); }],
+     ['⭐', 'Challenges', U.plural(TL.world.starCount(), 'star'), function () { TL.world.challengesMenu(); }],
      ['💾', 'Backup', '', backupMenu], ['⚙️', 'Settings', '', settingsMenu]].forEach(function (t) {
       if (t[4]) return;
       var b = document.createElement('button');
@@ -319,7 +320,7 @@ TL.ui = (function () {
     return '<div class="entry ' + (e.c || '') + '"><span class="e-ico">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
   }
   // Confetti for life's big moments, once each, as they appear in the log.
-  var CELEBRATE = /Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
+  var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
   function celebrate(y) {
     if (!y) return;
     var key = y.age + ':' + y.year, from = logSeen && logSeen.key === key ? logSeen.n : logSeen ? 0 : y.entries.length;
@@ -363,7 +364,7 @@ TL.ui = (function () {
       ['🏃 Athleticism', m.athl + '%'], ['🙏 Karma', karmaWord(s.karma)], ['⭐ Fame', s.fame + '%'],
       ['📱 Followers', s.followers.toLocaleString()], ['💰 Net worth', E.fmt(E.netWorth())],
       ['🎓 Education', E.degreeName(deg)], ['🎂 Birthday', D.MONTHS[m.month - 1] + ' ' + m.day + ' (' + m.zodiac + ')'],
-      ['🌍 Country', E.country().flag + ' ' + s.country], ['🏡 Home', E.homeLabel()], ['📝 Bucket list', TL.features.bucketCount()], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
+      ['🌍 Country', E.country().flag + ' ' + s.country], ['🏙️ City', s.city || '—'], ['🏡 Home', E.homeLabel()], ['📝 Bucket list', TL.features.bucketCount()], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
       ['🩺 Conditions', s.conditions.length ? s.conditions.join(', ') : 'None'], ['🏅 Achievements', s.ach.length]
     ];
     if (s.royal) rows.splice(3, 0, ['👑 Royalty', TL.features.royalTitle() + ' · ' + s.royal.house + ' · popularity ' + s.royal.popularity + '%']);
@@ -689,8 +690,8 @@ TL.ui = (function () {
         if (y0 == null) return;
         var y = e.touches[0].clientY, now = Date.now();
         dy = y - y0;
-        if (now > lastT) vel = vel * .4 + ((y - lastY) / (now - lastT)) * .6; // px per ms, smoothed
-        lastY = y; lastT = now;
+        // Finger speed in px/ms, smoothed; ignore samples too close together to measure.
+        if (now - lastT >= 8) { vel = vel * .4 + ((y - lastY) / (now - lastT)) * .6; lastY = y; lastT = now; }
         if (dy < -6 && !panel.classList.contains('dragging')) { y0 = null; return; }
         // Follow the finger; pulling up past the top resists like rubber.
         var shown = dy > 0 ? dy : -Math.sqrt(-dy) * 2;
