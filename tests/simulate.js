@@ -5,7 +5,7 @@ var fs = require('fs'), path = require('path'), vm = require('vm');
 var ctx = { console: console, Math: Math, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'realdata', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military'].forEach(function (f) {
+['util', 'data', 'realdata', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'recap'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;
@@ -75,6 +75,9 @@ for (var n = 0; n < N; n++) {
     }
     var S = TL.S;
     if (!S.dead) throw new Error('never died (age ' + S.me.age + ')');
+    // The death screen's life recap must render for every kind of life.
+    var rc = TL.recap.html();
+    if (!rc || /undefined|NaN/.test(rc)) throw new Error('bad life recap: ' + rc.slice(0, 300));
     ages.push(S.me.age);
     if (TL.engine.netWorth() > TL.engine.$(1e6)) rich++;
     if (S.record.length) jailed++;

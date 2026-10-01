@@ -35,6 +35,8 @@ TL.world = (function () {
     ['pure_joy', '😊', 'Pure joy', 'Have 100 happiness as an adult', function (s) { return s.me.age >= 18 && s.me.happy >= 100; }],
     ['prolific', '📚', 'Prolific', 'Publish 3 books', function (s) { return (s.books || []).length >= 3; }],
     ['married_young', '💍', 'Young love', 'Get married before 25', function (s) { return s.me.age < 25 && !!E.people('spouse').length; }],
+    ['go_viral', '🎬', 'Gone viral', 'Reach 100K subscribers on a channel', function (s) { return !!(s.channel && s.channel.subs >= 1e5); }],
+    ['side_hustler', '💼', 'Side hustler', 'Earn 50,000 from side hustles in one life', function (s) { return !!(s.hustle && s.hustle.base >= 50000); }],
     ['debt_free', '🧾', 'Self-made', 'Reach a net worth of 100k without inheriting', function (s) { return s.gen === 1 && E.netWorth() >= 1e5 && s.me.age < 40; }]
   ];
   function chal(id) { for (var i = 0; i < CHALLENGES.length; i++) if (CHALLENGES[i][0] === id) return CHALLENGES[i]; return null; }

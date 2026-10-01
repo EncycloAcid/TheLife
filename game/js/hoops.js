@@ -41,9 +41,10 @@ TL.hoops = (function () {
     var m = me(), g = m.gender;
     var cm = Math.round(U.gauss ? U.gauss(g === 'F' ? 178 : 196, 8) : U.rand(g === 'F' ? 168 : 185, g === 'F' ? 193 : 213));
     cm = U.clamp(cm, g === 'F' ? 160 : 172, g === 'F' ? 203 : 224);
-    var ovr = U.clamp(Math.round(25 + m.athl * 0.35 + (cm - (g === 'F' ? 178 : 196)) * 0.5 + U.rand(-6, 6)), 20, 70);
+    var sp = S().sports, ms = sp && sp.sport === 'Basketball Team' ? (sp.skill - 40) / 8 : 0; // middle school hoops count
+    var ovr = U.clamp(Math.round(23 + m.athl * 0.32 + (cm - (g === 'F' ? 178 : 196)) * 0.5 + ms + U.rand(-6, 6)), 20, 70);
     S().hoops = { stage: stage, cm: cm, pos: posFor(cm, g), num: U.pick([0, 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 15, 21, 23, 24, 30, 32, 33, 34, 35]), ovr: ovr,
-      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(13, 9)) + (m.athl - 75) / 6), ovr + 2, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
+      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(5, 8)) + (m.athl - 75) / 7 + (U.chance(0.06) ? U.rand(8, 20) : 0)), ovr + 2, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
     return S().hoops;
   }
   function stars(o) { return o >= 66 ? 5 : o >= 60 ? 4 : o >= 53 ? 3 : o >= 45 ? 2 : 1; }
@@ -145,7 +146,7 @@ TL.hoops = (function () {
     x.contract.years--;
     j.title = role(x.ovr)[0];
     if (me().age >= 40 || x.ovr < 56 || (me().age >= 35 && x.ovr < 68)) { S().pending.push({ id: 'hoops_retire', data: {} }); }
-    else if (x.league === 'G League' && x.ovr >= 68 && U.chance(0.45)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the G League! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
+    else if (x.league === 'G League' && x.ovr >= 72 && U.chance(0.35)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the G League! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
     else if (x.contract.years <= 0) S().pending.push({ id: 'hoops_fa', data: {} });
     else if (!x.shoe && S().fame >= 45 && U.chance(0.5)) S().pending.push({ id: 'hoops_shoe', data: {} });
     return earned;
@@ -156,7 +157,7 @@ TL.hoops = (function () {
     var s = S(), x = h(), m = me();
     if (!x) {
       // Making the high school basketball team starts the journey.
-      if (s.edu && s.edu.team === 'Basketball Team') { start('hs'); E.log('🏀 I\'m on the varsity basketball team. I wear #' + h().num + '.'); }
+      if (s.edu && s.edu.stage === 'high' && s.edu.team === 'Basketball Team') { start('hs'); E.log('🏀 I\'m on the varsity basketball team. I wear #' + h().num + '.'); }
       return;
     }
     if (x.stage === 'hs') {
@@ -202,7 +203,9 @@ TL.hoops = (function () {
   function projection(o) { return o >= 80 ? 'a lottery pick' : o >= 74 ? 'a first-round pick' : o >= 68 ? 'a second-round pick' : 'undrafted'; }
   function draft() {
     var x = h(), o = x.ovr + U.rand(-4, 4), pick;
-    if (o >= 80) pick = U.rand(1, 8); else if (o >= 75) pick = U.rand(6, 30); else if (o >= 69) pick = U.rand(31, me().gender === 'F' ? 36 : 60); else pick = 0;
+    // The WNBA has only 36 picks, so its bar is higher.
+    var f = me().gender === 'F' ? 2 : 0;
+    if (o >= 82 + f) pick = U.rand(1, 8); else if (o >= 77 + f) pick = U.rand(6, f ? 12 : 30); else if (o >= 72 + f) pick = U.rand(f ? 13 : 31, f ? 36 : 60); else pick = 0;
     if (me().gender === 'F' && pick > 36) pick = 0;
     var yr = S().year;
     if (!pick) {
@@ -222,7 +225,7 @@ TL.hoops = (function () {
   def('hoops_fa', { build: function () {
     var x = h(), o = x.ovr, ch = [], lg = x.league;
     // Teams only want players good enough for the league.
-    var interest = o >= 74 ? U.rand(2, 3) : o >= 68 ? U.rand(1, 2) : o >= 64 && U.chance(0.5) ? 1 : 0;
+    var interest = o >= 76 ? U.rand(2, 3) : o >= 71 ? U.rand(1, 2) : o >= 67 && U.chance(0.4) ? 1 : 0;
     var pool = U.shuffle(teams().filter(function (t) { return t !== x.team; })).slice(0, interest);
     if (o >= 66 && (lg === 'NBA' || lg === 'WNBA')) ch.push({ label: '✍️ Re-sign with the ' + x.team + ' (' + E.fmt(E.$(salaryFor(o))) + '/yr)', run: function () { var t = x.team; sign(t, lg, U.rand(2, 4), salaryFor(o)); E.stat('happy', 5); return 'I re-signed with the ' + t + '.'; } });
     pool.forEach(function (t) {

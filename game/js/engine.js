@@ -120,6 +120,7 @@ TL.engine = (function () {
     var s = S(), w = s.money - s.studentDebt;
     s.assets.forEach(function (a) { w += a.value - (a.loan || 0); });
     Object.keys(s.stocks).forEach(function (sym) { w += s.stocks[sym] * s.prices[sym]; });
+    if (TL.creator) w += TL.creator.cryptoValue();
     return Math.round(w);
   }
 
@@ -252,6 +253,8 @@ TL.engine = (function () {
       grade: prev ? U.clamp(prev.grade + U.rand(-5, 5), 20, 95) : U.clamp(me().smarts + U.rand(-15, 15), 20, 95),
       study: 0, clubs: [], popularity: prev ? prev.popularity : U.rand(20, 70)
     }, extra || {});
+    // Your middle school team carries on into high school.
+    if (prev && prev.team && prev.stage === 'middle' && stage === 'high' && !s.edu.team) s.edu.team = prev.team;
     // New classmates
     if (stage !== 'grad') {
       people('classmate').forEach(function (p) { p.role = 'former classmate'; });
@@ -288,7 +291,7 @@ TL.engine = (function () {
 
     // finished this stage
     if (e.stage === 'elementary') { log('I graduated from elementary school.'); enroll('middle'); log('I started middle school at ' + s.edu.school + '.'); }
-    else if (e.stage === 'middle') { log('I finished middle school.'); enroll('high'); log('I started high school at ' + s.edu.school + '. 🏫'); }
+    else if (e.stage === 'middle') { log('I finished middle school.'); enroll('high'); log('I started high school at ' + s.edu.school + '. 🏫'); if (s.edu.team) log('🏅 I\'m playing on the high school ' + s.edu.team.replace(' Team', '').toLowerCase() + (/Team$/.test(s.edu.team) ? ' team' : '') + ' now.'); }
     else if (e.stage === 'high') {
       if (e.grade < 25 && !s.flags.heldBack) {
         s.flags.heldBack = true; e.year = total;
@@ -296,7 +299,7 @@ TL.engine = (function () {
         return;
       }
       s.degrees.push({ type: 'hs' });
-      log('🎓 I graduated from ' + e.school + ' with a ' + gradeLetter(e.grade) + ' average!', 'good');
+      log('🎓 I graduated from ' + e.school + ' with ' + (/^[AEF]/.test(gradeLetter(e.grade)) ? 'an ' : 'a ') + gradeLetter(e.grade) + ' average!', 'good');
       if (e.grade >= 95) { log('🥇 I was named valedictorian of my class!', 'good'); achieve('valedictorian'); }
       stat('happy', 10);
       s.lastGrade = e.grade;
@@ -621,8 +624,8 @@ TL.engine = (function () {
     if (s.fame >= 80) achieve('famous');
   }
   function proTeam() {
-    // Basketball has its own career mode (js/hoops.js).
-    var sport = U.pick(D.SPORTS.filter(function (x) { return !TL.hoops || x !== 'Basketball'; })), real = TL.real && TL.real.team(sport, S().country, me().gender);
+    // Basketball has its own career mode (js/hoops.js); otherwise play the sport I grew up playing.
+    var sport = (TL.sports && TL.sports.proSport()) || U.pick(D.SPORTS.filter(function (x) { return !TL.hoops || x !== 'Basketball'; })), real = TL.real && TL.real.team(sport, S().country, me().gender);
     return real || 'the ' + U.pick(['Tigers', 'Sharks', 'Wolves', 'Titans', 'Falcons', 'Kings', 'Rangers']) + ' (' + sport + ')';
   }
   function fameAudition(id) {
@@ -630,7 +633,7 @@ TL.engine = (function () {
     if (m.age < c.minAge) return { ok: false, msg: 'I\'m too young.' };
     if (c.maxAge && m.age > c.maxAge) return { ok: false, msg: 'I\'m too old to go pro.' };
     var sv = statValue(c.stat);
-    var p = (sv - 40) / 120 + s.fame / 200 + (id === 'athlete' ? (m.athl - 70) / 60 : 0.05) + (TL.features ? TL.features.skillBonus(id) : 0);
+    var p = (sv - 40) / 120 + s.fame / 200 + (id === 'athlete' ? (m.athl - 70) / 60 + (TL.sports ? TL.sports.auditionBonus() : 0) : 0.05) + (TL.features ? TL.features.skillBonus(id) : 0);
     if (!U.chance(U.clamp(p, 0.03, 0.85))) {
       return { ok: false, msg: { actor: 'The casting director said I wasn\'t right for the role.', musician: 'No labels responded to my demo.', athlete: 'I didn\'t make the team.' }[id] };
     }
@@ -1019,6 +1022,7 @@ TL.engine = (function () {
     if (s.assets.some(function (a) { return a.kind === 'house'; })) achieve('homeowner');
     if (s.assets.filter(function (a) { return a.kind === 'house'; }).length >= 5) achieve('mogul');
     if (s.followers >= 1e6) achieve('influencer');
+    if (s.channel && s.channel.subs >= 1e6) achieve('creator_gold');
     if (s.pets.length >= 3) achieve('petlover');
     if (s.counts.vacations >= 5) achieve('globetrotter');
     if (s.karma >= 95) achieve('saint');

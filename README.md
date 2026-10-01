@@ -12,6 +12,10 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Astronaut**: a tough-to-land career for fit STEM graduates, with real space missions (and real risk).
 - **Military career**: talk to a recruiter, take the ASVAB, and enlist in a real branch (U.S. Army, Marines, Navy, Air Force, Coast Guard or Space Force, or your country's forces) in a job like Infantry, Combat Medic, Military Police or Cyber Operations, on a 4- or 6-year contract with a signing bonus. Survive basic training, then rise through real ranks (Private to Sergeant Major, Second Lieutenant to General, or the Navy's ranks) with realistic pay, housing allowance and promotion boards. Deploy overseas, earn real medals (Bronze Star, Purple Heart, Silver Star, Medal of Honor) or come home with PTSD, try out for the Rangers, Green Berets, Navy SEALs, Marine Raiders or Pararescue, and re-enlist, leave as a veteran, or retire after 20 years with a pension. Officers come from OCS, ROTC or West Point, Annapolis and the Air Force Academy. Veterans get the GI Bill and hiring preference; crimes mean a court-martial, and South Korean men face conscription.
 - **Basketball career**: make your high school varsity team, earn star ratings and college scholarship offers from real programs (Duke, Kentucky, UConn…), declare for the NBA Draft (or the WNBA for women), and play pro seasons with real teams. Every season has a stat line, a team record and a playoff run; win championships, MVP, Finals MVP, Rookie of the Year and All-Star selections. Train to raise your rating toward your potential, sign contracts and free-agent deals, request trades, land a signature shoe deal, survive injuries, get called up from the G League or play in the EuroLeague, retire your jersey and make the Hall of Fame.
+- **School sports**: try out for basketball, soccer, football, baseball, track, swimming, volleyball, wrestling, tennis or cheer from middle school on. Practice, play the big rivalry game, and play a real season every year with stats for your sport (goals, touchdowns, batting average, race times…). Win state titles, make All-State, become team captain, earn an athletic scholarship to a real university, and get drafted by a real pro team. Your team carries over from middle school to high school.
+- **Content creator**: start a YouTube, TikTok or Twitch channel in one of nine niches, film videos, go viral, collab, upgrade your gear, land sponsors, launch merch, earn Play Buttons (100K, 1M, 10M) and go full-time. Watch out for burnout, creator drama and copyright strikes.
+- **Side hustles**: drive for Uber, deliver for DoorDash, freelance on Fiverr, flip sneakers on StockX, walk dogs on Rover, tutor, host on Airbnb or hold a garage sale.
+- **Crypto**: buy Bitcoin, Ethereum, Solana, Dogecoin and short-lived meme coins through four-year boom and bust cycles (rug pulls and exchange hacks included).
 - **Fame careers**: acting, music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
 - **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
 - **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy, twins, IVF, surrogacy and adoption. Your adult children marry and give you grandchildren.
@@ -39,11 +43,11 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **More to do**: spa days, fishing, gardening, shopping, a DNA ancestry test (which might reveal a secret sibling), and suing people.
 - **Coming out**: characters attracted to the same gender (or any gender) can come out to family, friends or online.
 - **Bucket list**: every life gets five personal goals, from skydiving and running a marathon to seeing the Northern Lights.
-- **Obituary & life chart**: when you die, read your obituary and see your net worth and happiness charted across your whole life.
+- **Life recap**: when you die, get a life grade, your obituary, a chart of net worth and happiness, your life in numbers (peak wealth, average happiness, jobs, family, countries…), highlights from your careers, the big moments of your life grouped from childhood to the golden years, and who you leave behind.
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **61 achievements**, tracked per life and across all lives.
+- **69 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
 - **Clean, calm screens**: the life story reads in plain text, with good and bad news marked only by a soft tint behind its icon; yearly income and expenses sit in a quiet footer under each year; menu icons sit on neutral tiles instead of a rainbow of colours.
@@ -87,6 +91,9 @@ game/                  The game (packaged into the APK as assets)
   js/realdata.js       Real universities, employers, sports teams, cities and car models
   js/hoops.js          Basketball career: school, college, draft, pro seasons, awards
   js/military.js       Military career: enlisting, ranks, deployments, medals, officers, veterans
+  js/sports.js         School sports: teams, seasons, titles, recruiting, the pro draft
+  js/creator.js        Content creator channels, side hustles and crypto
+  js/recap.js          The life recap on the death screen
   js/icons.js          Line icons (SVG) for the dock and menus
   js/motion.js         Screen transitions, count-ups, floating stat changes, confetti
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes

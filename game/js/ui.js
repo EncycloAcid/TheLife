@@ -241,6 +241,8 @@ TL.ui = (function () {
     if (sp) surv.push(their + ' ' + (sp.gender === 'M' ? 'husband' : 'wife') + ' ' + sp.first);
     if (kids.length) surv.push(U.plural(kids.length, 'child').replace('childs', 'children'));
     if (gk.length) surv.push(U.plural(gk.length, 'grandchild').replace('grandchilds', 'grandchildren'));
+    var sib = E.people('sibling');
+    if (!surv.length && sib.length) surv.push(their + ' ' + U.plural(sib.length, 'sibling'));
     parts.push(surv.length ? they + ' is survived by ' + surv.join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : they + ' left no surviving family.');
     return parts.join(' ');
   }
@@ -260,6 +262,7 @@ TL.ui = (function () {
     var rt = TL.features.royalTitle();
     if (rt) parts.push('👑 ' + rt);
     if (s.job) parts.push(E.jobTitle(s.job));
+    else if (TL.creator && TL.creator.title()) parts.push(TL.creator.title());
     if (s.edu) parts.push(s.edu.stage === 'uni' ? s.edu.major + ' student' : s.edu.stage === 'grad' ? 'Grad student' : s.edu.school);
     if (parts.length === (rt ? 1 : 0)) parts.push(s.me.age < 5 ? 'Baby' : s.retired ? 'Retired' : s.me.age < 18 ? 'Kid' : 'Unemployed');
     return parts.join(' · ');
@@ -399,6 +402,8 @@ TL.ui = (function () {
     if (s.mob) rows.push(['🕴️ Crime family', TL.features.mobTitle()]);
     rows = rows.concat(TL.extras.aboutRows());
     var mr = TL.military && TL.military.aboutRow(); if (mr) rows.push(mr);
+    if (TL.creator) rows = rows.concat(TL.creator.aboutRows());
+    var sr = TL.sports && TL.sports.aboutRow(); if (sr) rows.push(sr);
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);
@@ -670,7 +675,7 @@ TL.ui = (function () {
   function deathScreen() {
     var s = S(), m = s.me, rb = E.ribbon(), deg = E.highestDegree();
     $('#death-name').textContent = m.first + ' ' + m.last;
-    $('#death-sub').textContent = 'Died at age ' + m.age + ' from ' + s.cause + ' (' + s.year + ')';
+    $('#death-sub').textContent = (s.year - m.age) + ' – ' + s.year + ' · Died at ' + m.age + ' from ' + s.cause;
     $('#death-ribbon').innerHTML = '<div class="ribbon-ico">' + rb[0] + '</div><div><b>' + rb[1] + '</b><br><span class="muted">' + rb[2] + '</span></div>';
     var spouse = E.people('spouse')[0];
     var kids = E.people('child', true);
@@ -682,7 +687,10 @@ TL.ui = (function () {
     ];
     $('#death-obit').textContent = obituary();
     $('#death-chart').innerHTML = lifeChart(s.hist);
-    $('#death-stats').innerHTML = rows.map(function (r) { return '<div class="dstat"><small>' + r[0] + '</small><b>' + U.esc(String(r[1])) + '</b></div>'; }).join('');
+    // The full life recap: grade, numbers, highlights, big moments, survivors.
+    var recap = '';
+    try { recap = TL.recap ? TL.recap.html() : ''; } catch (err) { if (window.console) console.error(err); }
+    $('#death-stats').innerHTML = recap || '<div class="dstats">' + rows.map(function (r) { return '<div class="dstat"><small>' + r[0] + '</small><b>' + U.esc(String(r[1])) + '</b></div>'; }).join('') + '</div>';
     var box = $('#death-actions');
     box.innerHTML = '';
     var heirs = E.heirs();

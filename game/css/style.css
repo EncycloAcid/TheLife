@@ -428,3 +428,40 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* content creator channel card */
+.cr-top { display: flex; align-items: center; gap: 12px; }
+.cr-ico { width: 46px; height: 46px; border-radius: 12px; background: var(--fill); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.cr-handle { font-weight: 600; font-size: 1.0625rem; }
+.cr-sub { font-size: .8125rem; color: var(--muted); }
+.cr-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0 10px; text-align: center; }
+.cr-stats b { display: block; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cr-stats small { font-size: .75rem; color: var(--muted); }
+.cr-foot { font-size: .8125rem; color: var(--muted); padding-top: 9px; border-top: .5px solid var(--sep); }
+/* school sports card */
+.sp-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.sp-ico { width: 46px; height: 46px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.sp-name { font-weight: 600; font-size: 1.0625rem; }
+.sp-sub, .sp-last { font-size: .8125rem; color: var(--muted); }
+.sp-last { margin-top: 6px; }
+/* life recap on the death screen */
+.recap { margin-bottom: 18px; }
+.rc-h { font-size: .8125rem; font-weight: 400; text-transform: uppercase; color: var(--muted); margin: 22px 16px 8px; }
+.rc-grade { display: flex; align-items: center; gap: 14px; background: var(--cell); border-radius: 12px; padding: 12px 16px; }
+.rc-letter { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; color: #fff; flex: none; background: var(--muted); }
+.rc-letter.g-A { background: var(--green); }
+.rc-letter.g-B { background: var(--tint); }
+.rc-letter.g-C { background: var(--orange); }
+.rc-letter.g-D, .rc-letter.g-F { background: var(--red); }
+.rc-list { background: var(--cell); border-radius: 12px; overflow: hidden; }
+.rc-row { display: flex; gap: 12px; align-items: center; padding: 10px 16px; position: relative; }
+.rc-row + .rc-row::before { content: ''; position: absolute; top: 0; right: 0; left: 57px; height: 1px; transform: scaleY(.5); background: var(--sep); }
+.rc-ico { width: 29px; height: 29px; border-radius: 7px; background: var(--fill); display: grid; place-items: center; flex: none; }
+.rc-time { background: var(--cell); border-radius: 12px; padding: 4px 0 8px; }
+.rc-stage-h { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--tint); padding: 12px 16px 4px; }
+.rc-ev { display: grid; grid-template-columns: 30px 26px 1fr; gap: 6px; align-items: start; padding: 5px 16px; font-size: .9375rem; line-height: 1.35; }
+.rc-age { color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; text-align: right; padding-top: 2px; }
+.rc-dot { text-align: center; }
+.rc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rc-chip { background: var(--cell); border-radius: 999px; padding: 7px 12px; font-size: .9375rem; }
+.rc-chip small { color: var(--muted); }
+.recap .dstats { margin-bottom: 0; }

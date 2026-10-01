@@ -485,6 +485,7 @@ TL.actions = (function () {
         items.push({ info: true, html: '<div class="kv"><b>' + U.esc(e.school) + '</b><br>' + (e.major ? 'Major: ' + e.major + '<br>' : '') + 'Year ' + Math.min(e.year, E.eduYears(e.stage, e.grad)) + ' of ' + E.eduYears(e.stage, e.grad) + ' · Grades: <b>' + E.gradeLetter(e.grade) + '</b> (' + e.grade + '%)' + (e.popularity != null && e.stage !== 'grad' ? ' · Popularity ' + Math.round(e.popularity) + '%' : '') + (e.team ? '<br>Team: ' + e.team : '') + (e.greek ? '<br>Greek life: ' + e.greek : '') + (e.president ? '<br>🗳️ Class president' : '') + (e.stage === 'high' && S().sat ? '<br>SAT: ' + S().sat : '') + (e.clubs.length ? '<br>Clubs: ' + e.clubs.join(', ') : '') + '</div>' });
         items.push({ icon: '📚', label: 'Study harder', onClick: studyHarder });
         items.push({ icon: '🍎', label: 'Talk to a teacher', onClick: function () { var f = diminish('teacher'); e.grade = U.clamp(e.grade + Math.round(3 * f), 0, 100); done('My teacher gave me some great advice.'); } });
+        if (e.stage === 'middle' || e.stage === 'high' || e.stage === 'uni') items.push({ icon: '🏅', label: 'Sports', sub: TL.sports.summary(), onClick: TL.sports.menu });
         if (e.stage !== 'elementary' && e.stage !== 'grad' && e.stage !== 'trade') items.push({ icon: '🎭', label: 'Join a club', onClick: clubMenu });
         TL.features.schoolItems(e).forEach(function (it) { items.push(it); });
         if (e.stage === 'high' || e.stage === 'middle') items.push({ icon: '😎', label: 'Hang out with the popular kids', onClick: function () { var f = diminish('popular'); if (U.chance(me().looks / 120 + 0.1)) { e.popularity = U.clamp(e.popularity + 10 * f, 0, 100); done(good('They let me sit at their table!')); } else { e.popularity = U.clamp(e.popularity - 5, 0, 100); done(bad('They laughed me away.')); } } });
@@ -536,7 +537,8 @@ TL.actions = (function () {
   function clubMenu() {
     var e = S().edu;
     ui().menu('Clubs & teams', function () {
-      var list = D.CLUBS.map(function (c) { return { name: c, sport: false }; }).concat(D.SPORTS_TEAMS.map(function (c) { return { name: c, sport: true }; }));
+      // Sports teams have their own menu (TL.sports).
+      var list = D.CLUBS.map(function (c) { return { name: c, sport: false }; });
       return list.map(function (c) {
         var inIt = e.clubs.indexOf(c.name) >= 0 || e.team === c.name;
         return { icon: c.sport ? '🏅' : '🎭', label: c.name, right: inIt ? '✔' : '', onClick: function () {
@@ -706,7 +708,7 @@ TL.actions = (function () {
   function fameMenu() {
     ui().menu('Special careers', function () {
       var hb = S().hoops, pro = hb && hb.stage === 'pro';
-      return [{ icon: '🏀', label: 'Basketball', sub: pro ? 'Already a pro' : 'Open tryouts · age 18–30', disabled: pro || me().age < 18 || me().age > 30, onClick: TL.hoops.tryout }].concat(D.FAME_CAREERS.map(function (c) {
+      return [{ icon: '🏀', label: 'Basketball', sub: pro ? 'Already a pro' : me().age < 18 ? 'Make your high school team to get recruited' : 'Open tryouts · age 18–30', disabled: pro || me().age < 18 || me().age > 30, onClick: TL.hoops.tryout }].concat(D.FAME_CAREERS.map(function (c) {
         var bonus = c.id === 'actor' ? (S().flags.acting || 0) : c.id === 'musician' ? (S().flags.music || 0) : 0;
         var tip = c.id === 'athlete' ? 'Needs high athleticism' : 'Talent & practice matter';
         return { icon: { actor: '🎬', musician: '🎤', athlete: '🏆' }[c.id], label: c.name, sub: c.verb + ' · age ' + c.minAge + (c.maxAge ? '–' + c.maxAge : '+') + ' · ' + tip, disabled: used('fame' + c.id) > 0 || (S().job && S().job.career === c.id), onClick: function () {
@@ -832,6 +834,7 @@ TL.actions = (function () {
         items.push({ icon: '🚗', label: 'Vehicles', sub: 'Cars, bikes, jets & yachts', onClick: dealership });
         items.push({ icon: '💎', label: 'Jewelry & luxury', onClick: jewelryStore });
         items.push({ icon: '📈', label: 'Stock market', onClick: stockMenu });
+        items.push({ icon: '🪙', label: 'Crypto', sub: TL.creator.cryptoValue() ? 'Wallet ' + E.fmt(TL.creator.cryptoValue()) : 'Bitcoin, Ethereum, Solana, Dogecoin', onClick: TL.creator.cryptoMenu });
         items.push({ icon: '🏢', label: 'Start a business', onClick: businessMenu });
       } else items.push({ info: true, html: '<p class="muted">I need to be 18 to buy property, vehicles, or stocks.</p>' });
       return items;
@@ -1068,6 +1071,7 @@ TL.actions = (function () {
 
       items.push({ section: 'Fun & Social' });
       if (a >= 13) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
+      if (a >= 13) items.push({ icon: '🎬', label: 'Content creator', sub: TL.creator.summary(), onClick: TL.creator.menu });
       if (a >= 18) items.push({ icon: '🪩', label: 'Nightclub', onClick: nightclub });
       if (a >= 18) items.push({ icon: '🧖', label: 'Spa day', right: E.fmt(E.$(250)), onClick: TL.world.spa });
       if (a >= 6) items.push({ icon: '🎣', label: 'Go fishing', onClick: TL.world.fishing });
@@ -1086,6 +1090,7 @@ TL.actions = (function () {
       items.push({ section: 'Life' });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
       if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
+      if (a >= 14) items.push({ icon: '💼', label: 'Side hustles', sub: 'Uber, DoorDash, Fiverr, StockX…', onClick: TL.creator.hustleMenu });
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
       if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { S().flags.volunteered = (S().flags.volunteered || 0) + 1; var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
       if (a >= 18) items.push({ icon: '🧬', label: 'DNA test', sub: S().flags.dna ? 'Results in' : 'Discover your ancestry', right: S().flags.dna ? '' : E.fmt(E.$(99)), onClick: TL.world.dnaTest });

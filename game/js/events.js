@@ -216,10 +216,11 @@ TL.events = (function () {
       { label: 'Just watch', run: function () { return 'I watched from the audience.'; } }
     ] };
   } });
-  def('sports_tryout', { min: 10, max: 17, w: 5, cond: function () { return S().edu && !S().edu.team; }, build: function () {
+  def('sports_tryout', { min: 11, max: 17, w: 5, cond: function () { return S().edu && !S().edu.team && (S().edu.stage === 'middle' || S().edu.stage === 'high'); }, build: function () {
     var t = U.pick(D.SPORTS_TEAMS);
     return { icon: '🏅', title: 'Tryouts', text: 'Tryouts for the ' + t + ' are happening today.', choices: [
       { label: 'Try out', run: function () {
+        if (TL.sports) return TL.sports.eventTryout(t);
         if (U.chance(me().athl / 100 + 0.1)) { S().edu.team = t; me().athl = U.clamp(me().athl + 5, 0, 100); E.stat('happy', 6); if (me().athl > 80 && me().age >= 15) S().flags.athleteScholar = true; return good('I made the ' + t + '!'); }
         return 'I didn\'t make the cut.';
       } },
