@@ -404,6 +404,7 @@ TL.ui = (function () {
     var mr = TL.military && TL.military.aboutRow(); if (mr) rows.push(mr);
     if (TL.creator) rows = rows.concat(TL.creator.aboutRows());
     var sr = TL.sports && TL.sports.aboutRow(); if (sr) rows.push(sr);
+    var ar = TL.acting && TL.acting.aboutRow(); if (ar) rows.push(ar);
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);

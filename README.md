@@ -16,7 +16,8 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Content creator**: start a YouTube, TikTok or Twitch channel in one of nine niches, film videos, go viral, collab, upgrade your gear, land sponsors, launch merch, earn Play Buttons (100K, 1M, 10M) and go full-time. Watch out for burnout, creator drama and copyright strikes.
 - **Side hustles**: drive for Uber, deliver for DoorDash, freelance on Fiverr, flip sneakers on StockX, walk dogs on Rover, tutor, host on Airbnb or hold a garage sale.
 - **Crypto**: buy Bitcoin, Ethereum, Solana, Dogecoin and short-lived meme coins through four-year boom and bust cycles (rug pulls and exchange hacks included).
-- **Fame careers**: acting, music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
+- **Acting**: start as a child actor or later in life. Pick from real casting calls (commercials, student films, theater, TV guest spots, indie films on A24 or Neon, TV series on HBO or Netflix, Broadway, studio films and blockbusters), choose how to prepare for each audition, train at The Groundlings or the Lee Strasberg Institute, get headshots, sign with an agency (up to CAA or WME), network at industry parties and do press tours. Each project releases with a Rotten Tomatoes score and box office, TV shows get renewed or canceled, and great work earns Golden Globe, Emmy, Tony and Academy Award nominations. Franchise offers, passion projects and tabloid scandals along the way; your filmography keeps every credit.
+- **Fame careers**: music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
 - **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
 - **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy, twins, IVF, surrogacy and adoption. Your adult children marry and give you grandchildren.
 - **Where you live**: stay with your parents (they may start charging rent), rent anything from a shared room to a luxury loft, move into a house you own, or end up evicted and homeless.
@@ -47,7 +48,7 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **69 achievements**, tracked per life and across all lives.
+- **73 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
 - **Clean, calm screens**: the life story reads in plain text, with good and bad news marked only by a soft tint behind its icon; yearly income and expenses sit in a quiet footer under each year; menu icons sit on neutral tiles instead of a rainbow of colours.
@@ -93,6 +94,7 @@ game/                  The game (packaged into the APK as assets)
   js/military.js       Military career: enlisting, ranks, deployments, medals, officers, veterans
   js/sports.js         School sports: teams, seasons, titles, recruiting, the pro draft
   js/creator.js        Content creator channels, side hustles and crypto
+  js/acting.js         Acting career: casting calls, agents, releases, reviews, awards
   js/recap.js          The life recap on the death screen
   js/icons.js          Line icons (SVG) for the dock and menus
   js/motion.js         Screen transitions, count-ups, floating stat changes, confetti

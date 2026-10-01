@@ -503,16 +503,17 @@ TL.actions = (function () {
       items.push({ section: 'Career' });
       if (s.hoops) items.push({ icon: '🏀', label: 'Basketball', sub: TL.hoops.summary(), onClick: TL.hoops.menu });
       if (s.mil) items.push({ icon: '🎖️', label: 'Military', sub: TL.military.summary(), onClick: TL.military.menu });
+      if ((s.acting || (s.job && s.job.career === 'actor')) && m.age >= 8) items.push({ icon: '🎬', label: 'Acting', sub: TL.acting.summary(), onClick: TL.acting.menu });
       var serving = s.mil && s.mil.active;
       if (s.job) {
         var j = s.job;
         items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
-        if (!j.hoops && !j.mil) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
+        if (!j.hoops && !j.mil && !j.acting) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
         if (j.politics) politicsItems(j).forEach(function (it) { items.push(it); });
         if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
-        if (j.fame && !j.hoops) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
+        if (j.fame && !j.hoops && !j.acting) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
         if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
-        if (me().age >= 55 && !j.partTime && !j.mil) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
+        if (me().age >= 55 && !j.partTime && !j.mil && !j.acting) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
         if (!j.mil) items.push({ icon: '🚪', label: j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.hoops ? 'Retire?' : 'Quit?', j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.</p>' });
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
@@ -708,7 +709,7 @@ TL.actions = (function () {
   function fameMenu() {
     ui().menu('Special careers', function () {
       var hb = S().hoops, pro = hb && hb.stage === 'pro';
-      return [{ icon: '🏀', label: 'Basketball', sub: pro ? 'Already a pro' : me().age < 18 ? 'Make your high school team to get recruited' : 'Open tryouts · age 18–30', disabled: pro || me().age < 18 || me().age > 30, onClick: TL.hoops.tryout }].concat(D.FAME_CAREERS.map(function (c) {
+      return [{ icon: '🎬', label: 'Acting', sub: S().acting ? TL.acting.summary() : 'Casting calls, agents, classes · age 8+', disabled: me().age < 8, onClick: TL.acting.menu }, { icon: '🏀', label: 'Basketball', sub: pro ? 'Already a pro' : me().age < 18 ? 'Make your high school team to get recruited' : 'Open tryouts · age 18–30', disabled: pro || me().age < 18 || me().age > 30, onClick: TL.hoops.tryout }].concat(D.FAME_CAREERS.filter(function (c) { return c.id !== 'actor'; }).map(function (c) {
         var bonus = c.id === 'actor' ? (S().flags.acting || 0) : c.id === 'musician' ? (S().flags.music || 0) : 0;
         var tip = c.id === 'athlete' ? 'Needs high athleticism' : 'Talent & practice matter';
         return { icon: { actor: '🎬', musician: '🎤', athlete: '🏆' }[c.id], label: c.name, sub: c.verb + ' · age ' + c.minAge + (c.maxAge ? '–' + c.maxAge : '+') + ' · ' + tip, disabled: used('fame' + c.id) > 0 || (S().job && S().job.career === c.id), onClick: function () {
@@ -1058,7 +1059,7 @@ TL.actions = (function () {
       if (a >= 6) items.push({ icon: '🥋', label: 'Martial arts', right: E.fmt(E.$(150)), onClick: function () { if (!afford(E.$(150))) return done(noMoney(E.$(150))); E.addMoney(-E.$(150)); var f = diminish('karate'); m.athl = U.clamp(m.athl + Math.round(4 * f), 0, 100); E.stat('health', 2 * f); done('I trained ' + U.pick(['karate', 'jiu-jitsu', 'taekwondo', 'boxing', 'kung fu']) + '. 🥋'); } });
       if (a >= 12) items.push({ icon: '🥗', label: 'Go on a diet', onClick: function () { var f = diminish('diet'); E.stat('health', 3 * f); E.stat('looks', 2 * f); E.stat('happy', -1); done('I started ' + U.pick(['a keto diet', 'a vegan diet', 'intermittent fasting', 'a Mediterranean diet', 'the "cabbage soup" diet']) + '.'); } });
       if (a >= 5) items.push({ icon: '🎹', label: 'Learn an instrument', onClick: function () { var f = diminish('instr'); E.stat('smarts', 2 * f); S().flags.music = (S().flags.music || 0) + f; done('I practiced the ' + U.pick(['piano', 'guitar', 'violin', 'drums', 'saxophone', 'ukulele']) + '. 🎶'); } });
-      if (a >= 5) items.push({ icon: '🎨', label: 'Acting lessons', right: E.fmt(E.$(100)), onClick: function () { if (!afford(E.$(100))) return done(noMoney(E.$(100))); E.addMoney(-E.$(100)); var f = diminish('actl'); S().flags.acting = (S().flags.acting || 0) + f; E.stat('looks', f); done('I took an acting class. 🎭'); } });
+      if (a >= 5) items.push({ icon: '🎨', label: 'Acting lessons', right: E.fmt(E.$(100)), onClick: function () { if (!afford(E.$(100))) return done(noMoney(E.$(100))); E.addMoney(-E.$(100)); var f = diminish('actl'); S().flags.acting = (S().flags.acting || 0) + f; if (S().acting) S().acting.skill = Math.min(100, S().acting.skill + 1.5 * f); E.stat('looks', f); done('I took an acting class. 🎭'); } });
 
       if (a >= 5) items.push({ icon: '🎯', label: 'Hobbies & skills', sub: 'Coding, writing, singing, painting…', onClick: TL.features.skillsMenu });
       if (S().royal && a >= 6) items.push({ icon: '👑', label: 'Royal duties', sub: TL.features.royalTitle() + ' · popularity ' + S().royal.popularity + '%', onClick: TL.features.royalMenu });

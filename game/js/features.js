@@ -421,7 +421,7 @@ TL.features = (function () {
   function nominate() {
     var s = S(), j = s.job, nom = null;
     if (s.prison) return;
-    if (j && j.fame && j.level >= (j.career === 'athlete' ? 2 : 3)) {
+    if (j && j.fame && !j.acting && j.level >= (j.career === 'athlete' ? 2 : 3)) {
       var p = 0.01 + s.fame / 900 + j.perf / 2500;
       var aw = { actor: ['Academy Award', me().gender === 'F' ? 'Best Actress' : 'Best Actor'], musician: ['Grammy Award', 'Album of the Year'], athlete: ['MVP Award', 'Most Valuable Player'] }[j.career];
       if (aw && U.chance(p)) nom = { award: aw[0], cat: aw[1], win: 0.08 + s.fame / 700 + j.perf / 1200 };
@@ -445,6 +445,7 @@ TL.features = (function () {
       if (d.nobel) { E.addMoney(E.$(1000000)); E.achieve('nobel'); }
       if (s.job && s.job.fame) s.job.mult = (s.job.mult || 1) * 1.2;
       E.achieve('award');
+      if (TL.acting) TL.acting.onAward(d.award);
       return good('🏆 I won the ' + d.award + ' for ' + d.cat + '!' + (absent ? ' Someone accepted it on my behalf.' : '') + (d.nobel ? ' The prize includes ' + E.fmt(E.$(1000000)) + '.' : ''));
     }
     return { icon: '🏆', title: d.award, text: 'I\'ve been nominated for the ' + d.award + ' for ' + d.cat + '!', choices: [
@@ -623,6 +624,7 @@ TL.features = (function () {
     if (TL.hoops) TL.hoops.yearly();
     if (TL.military) TL.military.yearly();
     if (TL.creator) TL.creator.yearly();
+    if (TL.acting) TL.acting.yearly();
   }
   // Called by continueAs after the heir's new life exists.
   function inherit(prev, c, st, heirs) {
