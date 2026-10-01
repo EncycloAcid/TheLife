@@ -532,7 +532,7 @@ TL.events = (function () {
 
   // ---------- v1.1 events ----------
   // Generic workplace events skip careers with their own systems (military, basketball).
-  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids ? !j.mil && !j.hoops && !j.acting : ids.indexOf(j.career) >= 0); }
+  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids ? !j.mil && !j.hoops && !j.acting && !j.music : ids.indexOf(j.career) >= 0); }
   function houses() { return S().assets.filter(function (a) { return a.kind === 'house'; }); }
   def('reelection', {
     scripted: true,

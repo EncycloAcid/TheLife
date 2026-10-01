@@ -472,3 +472,12 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .ac-sub, .ac-line { font-size: .8125rem; color: var(--muted); }
 .ac-line { margin-top: 6px; }
 .wk-line { font-size: .8125rem; color: var(--muted); margin-top: 4px; }
+/* music card */
+.mu-top { display: flex; align-items: center; gap: 12px; }
+.mu-ico { width: 46px; height: 46px; border-radius: 12px; background: var(--fill); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.mu-name { font-weight: 600; font-size: 1.0625rem; }
+.mu-sub, .mu-line { font-size: .8125rem; color: var(--muted); }
+.mu-line { margin-top: 6px; }
+.mu-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 12px 0 8px; text-align: center; }
+.mu-stats b { display: block; font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mu-stats small { font-size: .6875rem; color: var(--muted); }
