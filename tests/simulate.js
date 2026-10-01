@@ -5,7 +5,7 @@ var fs = require('fs'), path = require('path'), vm = require('vm');
 var ctx = { console: console, Math: Math, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'realdata', 'engine', 'events', 'actions', 'features', 'extras', 'world'].forEach(function (f) {
+['util', 'data', 'realdata', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;

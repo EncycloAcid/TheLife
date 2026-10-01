@@ -400,12 +400,14 @@ TL.engine = (function () {
 
   // ---------- jobs ----------
   function jobSalary(job) {
+    if (job.hoops && job.salary) return job.salary;
     if (job.partTime) return $(D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].salary);
     var c = D.career(job.career);
     return Math.round($(c.levels[job.level][1]) * (job.mult || 1));
   }
   function jobTitle(job) {
     if (!job) return 'Unemployed';
+    if (job.hoops) return (job.title || 'Basketball Player') + (TL.hoops && S().hoops ? ' (' + ({ PG: 'PG', SG: 'SG', SF: 'SF', PF: 'PF', C: 'C' }[S().hoops.pos]) + ')' : '');
     if (job.partTime) return D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].name + ' (part-time)';
     return D.career(job.career).levels[job.level][0];
   }
@@ -500,6 +502,7 @@ TL.engine = (function () {
     var s = S(), j = s.job;
     if (!j || s.prison) return 0;
     j.years++; j.levelYears++;
+    if (j.hoops && TL.hoops) return TL.hoops.season();
     var earned = jobSalary(j);
     if (j.partTime) return earned;
     if (j.politics) return politicsYear(j, earned);
@@ -592,6 +595,7 @@ TL.engine = (function () {
   // ---------- fame careers ----------
   function fameProgress() {
     var s = S(), j = s.job;
+    if (j && j.hoops) return; // the basketball season handles fame
     if (!j || !j.fame || s.prison) { if (s.fame > 0 && U.chance(0.6)) fame(-U.rand(1, 4)); return; }
     var c = D.career(j.career);
     var drive = (statValue(c.stat) - 50) / 10 + (j.workHard || 0) * 3 + U.rand(-6, 9);
@@ -609,7 +613,8 @@ TL.engine = (function () {
     if (s.fame >= 80) achieve('famous');
   }
   function proTeam() {
-    var sport = U.pick(D.SPORTS), real = TL.real && TL.real.team(sport, S().country, me().gender);
+    // Basketball has its own career mode (js/hoops.js).
+    var sport = U.pick(D.SPORTS.filter(function (x) { return !TL.hoops || x !== 'Basketball'; })), real = TL.real && TL.real.team(sport, S().country, me().gender);
     return real || 'the ' + U.pick(['Tigers', 'Sharks', 'Wolves', 'Titans', 'Falcons', 'Kings', 'Rangers']) + ' (' + sport + ')';
   }
   function fameAudition(id) {

@@ -10,6 +10,7 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Careers**: 50 career ladders with promotions, performance reviews, raises and firing, plus part-time jobs, odd jobs, retirement and pensions. **Job interviews** ask you a question, and your answer (or your smarts, fitness or looks) sways the hiring manager.
 - **Trade school, vet school and dental school**: become an electrician, plumber, welder or HVAC tech after two years of training, or a veterinarian or dentist after grad school.
 - **Astronaut**: a tough-to-land career for fit STEM graduates, with real space missions (and real risk).
+- **Basketball career**: make your high school varsity team, earn star ratings and college scholarship offers from real programs (Duke, Kentucky, UConn…), declare for the NBA Draft (or the WNBA for women), and play pro seasons with real teams. Every season has a stat line, a team record and a playoff run; win championships, MVP, Finals MVP, Rookie of the Year and All-Star selections. Train to raise your rating toward your potential, sign contracts and free-agent deals, request trades, land a signature shoe deal, survive injuries, get called up from the G League or play in the EuroLeague, retire your jersey and make the Hall of Fame.
 - **Fame careers**: acting, music and pro sports, with auditions, big gigs, endorsement deals and paparazzi.
 - **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
 - **Relationships**: parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy, twins, IVF, surrogacy and adoption. Your adult children marry and give you grandchildren.
@@ -41,7 +42,7 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **51 achievements**, tracked per life and across all lives.
+- **55 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
 - **Animation**: real spring physics (like iPhone), iOS-style push and pop transitions where both screens move together, the game shrinking back behind an open menu, money and stats that count up with floating +/− bubbles, new log lines that arrive one after another, confetti for achievements, graduations, weddings, births and promotions, an Age button ripple, bouncy tab icons, springy button presses, menus you can flick away, and smooth scrolling to each new year. Turned off automatically if your phone is set to reduce motion. Light and dark themes; the phone's status and navigation bars follow the theme.
@@ -82,6 +83,7 @@ game/                  The game (packaged into the APK as assets)
   js/extras.js         Family tree, holidays, resolutions, tattoos, coming out
   js/world.js          Challenges, world events, new activities, DNA tests, lawsuits
   js/realdata.js       Real universities, employers, sports teams, cities and car models
+  js/hoops.js          Basketball career: school, college, draft, pro seasons, awards
   js/icons.js          Line icons (SVG) for the dock and menus
   js/motion.js         Screen transitions, count-ups, floating stat changes, confetti
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes

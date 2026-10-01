@@ -352,6 +352,10 @@ TL.data = (function () {
     { id: 'challenger', name: 'Challenger', desc: 'Complete a challenge', icon: '⭐' },
     { id: 'challenge_master', name: 'Challenge Master', desc: 'Earn 5 challenge stars', icon: '🌟' },
     { id: 'dna', name: 'Who Am I?', desc: 'Take a DNA test', icon: '🧬' },
+    { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
+    { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
+    { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
+    { id: 'hoops_hof', name: 'Hall of Famer', desc: 'Make the Basketball Hall of Fame', icon: '🏛️' },
     { id: 'astronaut', name: 'To Infinity', desc: 'Go to space', icon: '🚀' },
     { id: 'twins', name: 'Double Trouble', desc: 'Have twins', icon: '👯' },
     { id: 'tradesman', name: 'Skilled Trade', desc: 'Earn a trade certificate', icon: '🔧' }

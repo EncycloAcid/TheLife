@@ -619,6 +619,7 @@ TL.features = (function () {
     yearlyTenants();
     nominate();
     if (TL.extras) TL.extras.yearly();
+    if (TL.hoops) TL.hoops.yearly();
   }
   // Called by continueAs after the heir's new life exists.
   function inherit(prev, c, st, heirs) {
