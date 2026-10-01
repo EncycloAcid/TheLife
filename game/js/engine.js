@@ -1111,6 +1111,7 @@ TL.engine = (function () {
     if (c.age >= 6 && c.age < 18) { st.edu = null; enroll(c.age < 11 ? 'elementary' : c.age < 14 ? 'middle' : 'high'); st.edu.year = c.age - (c.age < 11 ? 5 : c.age < 14 ? 10 : 13); }
     if (c.age >= 18) st.degrees.push({ type: 'hs' });
     st.flags.wealth = inheritance > $(1000000) ? 'rich' : 'middle';
+    if (TL.extras) TL.extras.recordAncestor(s, st);
     if (gen >= 3) achieve('dynasty');
     if (TL.features) TL.features.inherit(s, c, st, kids);
     return st;

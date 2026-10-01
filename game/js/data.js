@@ -343,6 +343,11 @@ TL.data = (function () {
     { id: 'landlord', name: 'Landlord', desc: 'Rent out 3 properties at once', icon: '🔑' },
     { id: 'timetraveler', name: 'Do-Over', desc: 'Use the Time Machine', icon: '⏳' },
     { id: 'bucketlist', name: 'No Regrets', desc: 'Complete your whole bucket list', icon: '📝' },
+    { id: 'inked', name: 'Inked', desc: 'Get a tattoo', icon: '🖋️' },
+    { id: 'proud', name: 'Proud', desc: 'Come out', icon: '🏳️‍🌈' },
+    { id: 'resolute', name: 'Resolute', desc: 'Keep a New Year\'s resolution', icon: '🎆' },
+    { id: 'trickortreat', name: 'Trick or Treat', desc: 'Go trick-or-treating 3 times', icon: '🎃' },
+    { id: 'roots', name: 'Roots', desc: 'Look at your family tree', icon: '🌳' },
     { id: 'astronaut', name: 'To Infinity', desc: 'Go to space', icon: '🚀' },
     { id: 'twins', name: 'Double Trouble', desc: 'Have twins', icon: '👯' },
     { id: 'tradesman', name: 'Skilled Trade', desc: 'Earn a trade certificate', icon: '🔧' }

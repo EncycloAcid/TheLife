@@ -333,6 +333,7 @@ TL.ui = (function () {
     ];
     if (s.royal) rows.splice(3, 0, ['👑 Royalty', TL.features.royalTitle() + ' · ' + s.royal.house + ' · popularity ' + s.royal.popularity + '%']);
     if (s.mob) rows.push(['🕴️ Crime family', TL.features.mobTitle()]);
+    rows = rows.concat(TL.extras.aboutRows());
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);

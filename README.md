@@ -27,12 +27,17 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Landlord life**: tenants who pay late, wreck the place, throw parties, or offer to buy your house.
 - **Custom lives**: set your starting happiness, health, smarts and looks, and your family's wealth.
 - **Time Machine**: go back up to five years, even after you die.
+- **Family tree**: see your whole family at a glance, from ancestors in earlier generations down to your grandchildren.
+- **Holidays**: Halloween costumes, holiday presents, family dinners and office Secret Santa.
+- **New Year's resolutions**: pick one each year and find out next year whether you kept it.
+- **Tattoos**: eight designs (or your partner's name, if you dare), occasional botched jobs, and laser removal.
+- **Coming out**: characters attracted to the same gender (or any gender) can come out to family, friends or online.
 - **Bucket list**: every life gets five personal goals, from skydiving and running a marathon to seeing the Northern Lights.
 - **Obituary & life chart**: when you die, read your obituary and see your net worth and happiness charted across your whole life.
 - **Driving**: speeding tickets, drunk-driving choices and road rage.
 - **~95 random life events** with choices, gated by age and circumstances.
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
-- **43 achievements**, tracked per life and across all lives.
+- **48 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **Modern design**: dark-first, with a light theme; ring gauges for your stats; a feed-style life log; colour-coded menus; and a floating dock with a big Age button. The phone's status and navigation bars follow the theme.
 - **Settings**: theme (match your phone, dark or light), text size, and deleting all data.
@@ -69,6 +74,7 @@ game/                  The game (packaged into the APK as assets)
   js/events.js         Random and scripted life events with choices
   js/actions.js        Everything you can do from the four menus
   js/features.js       Royalty, organized crime, skills & books, wills
+  js/extras.js         Family tree, holidays, resolutions, tattoos, coming out
   js/icons.js          Line icons (SVG) for the dock and menus
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes
   css/style.css        The design system: light and dark tokens, components, motion

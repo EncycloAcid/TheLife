@@ -66,6 +66,7 @@ TL.actions = (function () {
       var ps = S().people.filter(function (p) { return p.alive || ['mother', 'father', 'spouse', 'child', 'sibling', 'grandparent', 'grandchild'].indexOf(p.role) >= 0; });
       ps.sort(function (a, b) { return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role); });
       var lastGroup = null;
+      items.push({ icon: '🌳', label: 'Family tree', sub: S().gen > 1 ? 'Generation ' + S().gen : 'See your whole family', onClick: TL.extras.treeMenu });
       ps.forEach(function (p) {
         var g = groupOf(p.role);
         if (g !== lastGroup) { items.push({ section: g }); lastGroup = g; }
@@ -1033,6 +1034,7 @@ TL.actions = (function () {
       items.push({ section: 'Fun & Social' });
       if (a >= 13) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
       if (a >= 18) items.push({ icon: '🪩', label: 'Nightclub', onClick: nightclub });
+      if (a >= 18) items.push({ icon: '🖋️', label: 'Tattoo parlor', sub: S().tattoos && S().tattoos.length ? U.plural(S().tattoos.length, 'tattoo') : 'Get inked', onClick: TL.extras.tattooMenu });
       if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
       if (a >= 14) items.push({ icon: '🏃', label: 'Run a marathon', sub: 'Athleticism helps', disabled: used('marathon') > 0, onClick: marathon });
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });
