@@ -67,23 +67,32 @@ TL.actions = (function () {
       ps.sort(function (a, b) { return ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role); });
       var lastGroup = null;
       items.push({ icon: '🌳', label: 'Family tree', sub: S().gen > 1 ? 'Generation ' + S().gen : 'See your whole family', onClick: TL.extras.treeMenu });
+      var row = function (p) { return { icon: personIcon(p), label: E.fullName(p), sub: roleLabel(p) + (p.alive ? ' · ' + p.age + ' · ' + p.job : ' · died ' + (p.died || '')), bar: p.alive ? p.rel : null, onClick: function () { personMenu(p); } }; };
+      var others = ps.filter(function (p) { return groupOf(p.role) === 'Others'; });
       ps.forEach(function (p) {
         var g = groupOf(p.role);
+        if (g === 'Others' && others.length > 3) return;
         if (g !== lastGroup) { items.push({ section: g }); lastGroup = g; }
-        items.push({
-          icon: personIcon(p), label: E.fullName(p), sub: roleLabel(p) + (p.alive ? ' · ' + p.age + ' · ' + p.job : ' · died ' + (p.died || '')),
-          bar: p.alive ? p.rel : null, onClick: function () { personMenu(p); }
-        });
+        items.push(row(p));
       });
+      // Old classmates, coworkers and exes fold into one row once there are a few.
+      if (others.length > 3) {
+        items.push({ section: 'Others' });
+        items.push({ icon: '🗂️', label: 'Old classmates, coworkers & exes', sub: U.plural(others.length, 'person').replace('persons', 'people'), onClick: function () { ui().menu('Others', function () { return others.filter(function (p) { return S().people.indexOf(p) >= 0; }).map(row); }); } });
+      }
       if (S().pets.length) {
         items.push({ section: 'Pets' });
         S().pets.forEach(function (pet) {
           items.push({ icon: petIcon(pet.species), label: pet.name, sub: pet.breed + ' ' + pet.species + ' · ' + pet.age + ' yrs', bar: pet.rel, onClick: function () { petMenu(pet); } });
         });
       }
-      items.push({ section: 'Meet people' });
-      if (me().age >= 5) items.push({ icon: '🤝', label: 'Make a new friend', sub: 'Put yourself out there', onClick: makeFriend });
-      if (me().age >= 16 && !S().prison) items.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
+      // Meeting people comes before school, work and old contacts.
+      var meet = [{ section: 'Meet people' }];
+      if (me().age >= 5) meet.push({ icon: '🤝', label: 'Make a new friend', sub: 'Put yourself out there', onClick: makeFriend });
+      if (me().age >= 16 && !S().prison) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
+      var at = -1;
+      items.forEach(function (it, k) { if (at < 0 && it.section && ['School & Work', 'Others', 'Pets'].indexOf(it.section) >= 0) at = k; });
+      if (meet.length > 1) Array.prototype.splice.apply(items, [at < 0 ? items.length : at, 0].concat(meet));
       return items;
     });
   }
@@ -570,6 +579,7 @@ TL.actions = (function () {
         if (me().age >= 55 && !j.partTime && !j.mil && !j.acting && !j.music && !j.pro) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
         if (!j.mil && !j.pro) items.push({ icon: '🚪', label: j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.hoops ? 'Retire?' : 'Quit?', j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.</p>' });
+      if (s.job || s.retired || s.hoops || s.mil || s.acting || s.music || s.pro) items.push({ section: 'Other paths' });
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
       if (!serving && m.age >= 17 && m.age <= 39) items.push({ icon: '🎖️', label: 'Join the military', sub: 'Talk to a recruiter', onClick: TL.military.recruiter });
@@ -868,7 +878,11 @@ TL.actions = (function () {
   function assetsMenu() {
     ui().menu('Assets', function () {
       var s = S(), items = [];
-      items.push({ info: true, html: '<div class="kv">Bank balance: <b>' + E.fmt(s.money) + '</b><br>Net worth: <b>' + E.fmt(E.netWorth()) + '</b>' + (s.studentDebt ? '<br>Student debt: <span class="neg">' + E.fmt(s.studentDebt) + '</span>' : '') + '</div>' });
+      var prop = 0, owed = s.studentDebt || 0, inv = TL.creator ? TL.creator.cryptoValue() : 0;
+      s.assets.forEach(function (a) { prop += a.value; owed += a.loan || 0; });
+      Object.keys(s.stocks).forEach(function (k) { inv += s.stocks[k] * s.prices[k]; });
+      var cell = function (l, v, neg) { return '<div><small>' + l + '</small><b' + (neg ? ' class="neg"' : '') + '>' + (neg ? '−' : '') + E.fmt(Math.abs(v)) + '</b></div>'; };
+      items.push({ info: true, html: '<div class="nw"><small>Net worth</small><div class="nw-big' + (E.netWorth() < 0 ? ' neg' : '') + '">' + E.fmt(E.netWorth()) + '</div><div class="nw-grid">' + cell('Cash', s.money, s.money < 0) + cell('Property', prop) + cell('Investments', Math.round(inv)) + cell('Debt', owed, owed > 0) + '</div></div>' });
       var rc = E.rentCost();
       items.push({ icon: E.home().type === 'homeless' ? '⛺' : E.home().type === 'palace' ? '🏰' : '🏡', label: E.homeLabel(), sub: me().age < 18 ? 'Where I live' : (rc ? E.fmt(rc) + '/yr rent · ' : '') + 'Tap to move', onClick: livingMenu });
       if (s.assets.length) {
@@ -1149,6 +1163,7 @@ TL.actions = (function () {
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
       if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { S().flags.volunteered = (S().flags.volunteered || 0) + 1; var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
       if (a >= 18) items.push({ icon: '🧬', label: 'DNA test', sub: S().flags.dna ? 'Results in' : 'Discover your ancestry', right: S().flags.dna ? '' : E.fmt(E.$(99)), onClick: TL.world.dnaTest });
+      items.push({ section: 'Progress' });
       items.push({ icon: '⭐', label: 'Challenges', sub: U.plural(TL.world.starCount(), 'star') + ' earned', onClick: TL.world.challengesMenu });
       items.push({ icon: '📝', label: 'Bucket list', sub: TL.features.bucketCount() + ' done', onClick: TL.features.bucketMenu });
       items.push({ icon: '⏳', label: 'Time Machine', sub: E.tmAges().length ? 'Go back up to ' + U.plural(E.tmAges().length, 'year') : 'Age up to charge it', disabled: !E.tmAges().length, onClick: function () { ui().timeMachine(); } });

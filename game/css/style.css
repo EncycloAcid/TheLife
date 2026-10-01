@@ -510,3 +510,17 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .lg-pic:not(.lg-team) > img { top: 8%; left: 8%; width: 84%; height: 84%; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-pic.lg-team { background: rgba(255, 255, 255, .92); } }
 :root[data-theme="dark"] .lg-pic.lg-team { background: rgba(255, 255, 255, .92); }
+/* v1.19: section jump chips, quiet years, money summary */
+.jump { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 8px 16px 10px; background: var(--bg); scrollbar-width: none; }
+.jump::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 0; border-radius: 999px; padding: 7px 14px; background: var(--fill); color: var(--text); font-size: .875rem; font-weight: 500; text-transform: none; }
+.chip:active { background: var(--fill-2); }
+.year.quiet { margin-bottom: 10px; }
+.quiet-row { display: flex; align-items: center; gap: 8px; padding: 0 16px; font-size: .8125rem; color: var(--muted); }
+.quiet-row b { font-weight: 600; text-transform: uppercase; font-size: .75rem; letter-spacing: .01em; }
+.q-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); flex: none; }
+.nw small { display: block; color: var(--muted); font-size: .8125rem; }
+.nw-big { font-size: 2rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 2px 0 12px; }
+.nw-big.neg, .nw .neg { color: var(--red); }
+.nw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; padding-top: 10px; border-top: .5px solid var(--sep); }
+.nw-grid b { display: block; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }

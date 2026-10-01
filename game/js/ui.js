@@ -344,19 +344,31 @@ TL.ui = (function () {
     if (cash.length) html += '<div class="y-foot">' + cash.map(function (e) { return U.esc(String(e.t).replace(LEAD_EMOJI, '')); }).join(' · ') + '</div>';
     return html + '</div>';
   }
+  function quietHtml(u) {
+    var a = u.from.age, b = u.to.age;
+    return '<div class="quiet-row"><span class="q-dot"></span><b>' + (a === b ? 'Age ' + a : 'Ages ' + a + '–' + b) + '</b><span>' + (a === b ? 'A quiet year' : 'Quiet years') + '</span></div>';
+  }
   function renderLog() {
     var s = S(), el = $('#log');
     var years = s.log.slice(-60);
     var keep = {}, want = {};
-    years.forEach(function (y) { want[y.age + ':' + y.year] = 1; });
+    years.forEach(function (y) { want[y.age + ':' + y.year] = 1; want['q' + y.age + ':' + y.year] = 1; });
     // Drop years that left the window first, so the rest never get moved
     // (moving a node throws away its layout).
     Array.prototype.slice.call(el.children).forEach(function (c) { if (c._key && want[c._key]) keep[c._key] = c; else c.remove(); });
     var prev = null;
+    // A run of quiet years (nothing but bills) folds into one short line.
+    var units = [];
     years.forEach(function (y, i) {
-      var last = i === years.length - 1, key = y.age + ':' + y.year;
-      var cls = 'year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '');
-      var html = yearHtml(y, last), node = keep[key];
+      var last = i === years.length - 1, quiet = !last && !y.entries.some(function (e) { return e.c !== 'money'; });
+      var u = units[units.length - 1];
+      if (quiet && u && u.quiet) { u.to = y; return; }
+      units.push(quiet ? { quiet: true, from: y, to: y } : { y: y, last: last });
+    });
+    units.forEach(function (u) {
+      var last = !!u.last, y = u.y || u.from, key = (u.quiet ? 'q' : '') + y.age + ':' + y.year;
+      var cls = u.quiet ? 'year quiet' : 'year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '');
+      var html = u.quiet ? quietHtml(u) : yearHtml(y, last), node = keep[key];
       delete keep[key];
       if (!node) { node = document.createElement('div'); node._key = key; }
       var changed = node._html !== html;
@@ -626,10 +638,25 @@ TL.ui = (function () {
     // Resetting an empty list is free; only a restored offset needs layout.
     if (sheetScroll) { body.scrollTop = 0; sheetScroll = 0; }
     var items = top.build(), group = null;
+    // Long menus get a row of chips that jump to each section.
+    var secs = items.filter(function (it) { return it.section; });
+    var jump = null;
+    if (secs.length >= 3 && items.length >= 16) {
+      jump = document.createElement('div'); jump.className = 'jump';
+      body.appendChild(jump);
+    }
     // Consecutive tappable rows share one rounded card, like native settings lists.
     items.forEach(function (it) {
       var el = menuItem(it);
-      if (it.section || it.info) { group = null; body.appendChild(el); return; }
+      if (it.section || it.info) {
+        group = null; body.appendChild(el);
+        if (it.section && jump) {
+          var chip = document.createElement('button'); chip.className = 'chip'; chip.textContent = it.section;
+          chip.onclick = function () { haptic(); var y = el.offsetTop - jump.offsetHeight - 4; if (body.scrollTo) body.scrollTo({ top: y, behavior: TL.motion && TL.motion.reduced() ? 'auto' : 'smooth' }); else body.scrollTop = y; };
+          jump.appendChild(chip);
+        }
+        return;
+      }
       if (!group) { group = document.createElement('div'); group.className = 'group'; body.appendChild(group); }
       group.appendChild(el);
     });
