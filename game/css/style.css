@@ -471,3 +471,4 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .ac-name { font-weight: 600; font-size: 1.0625rem; }
 .ac-sub, .ac-line { font-size: .8125rem; color: var(--muted); }
 .ac-line { margin-top: 6px; }
+.wk-line { font-size: .8125rem; color: var(--muted); margin-top: 4px; }

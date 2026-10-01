@@ -160,18 +160,69 @@ TL.actions = (function () {
   }
   function barClass(v) { return v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo'; }
 
-  function spendTime(p) {
-    var f = diminish('time' + p.id);
-    var acts = p.age < 10 ? ['played games', 'built a pillow fort', 'watched cartoons', 'went to the playground'] : p.age > 65 ? ['played cards', 'looked at old photos', 'went for a walk in the park', 'did a crossword'] : ['went to the movies', 'grabbed dinner', 'went bowling', 'watched a game', 'went hiking', 'played video games', 'went shopping'];
-    E.rel(p, U.rand(4, 12) * f); E.stat('happy', 3 * f);
-    done('I ' + U.pick(acts) + ' with ' + p.first + '.');
+  // Shared time and conversations play to (or against) the other person's
+  // traits, shown on their card.
+  function likeScore(p, likes, dislikes) {
+    var t = p.traits || [], sc = 0;
+    (likes || []).forEach(function (x) { if (t.indexOf(x) >= 0) sc++; });
+    (dislikes || []).forEach(function (x) { if (t.indexOf(x) >= 0) sc--; });
+    return sc;
   }
+  var ACTS = [
+    ['🎬', 'See a movie', 15, ['Romantic', 'Artsy', 'Shy'], [], 'saw a movie with', 8],
+    ['🍝', 'Go out to dinner', 60, ['Romantic', 'Outgoing', 'Greedy'], ['Shy'], 'went out to dinner with', 16],
+    ['🥾', 'Go for a hike', 0, ['Athletic', 'Cheerful'], ['Lazy'], 'went on a hike with', 10],
+    ['🎮', 'Play video games', 0, ['Nerdy', 'Funny', 'Lazy'], ['Athletic'], 'played video games with', 8],
+    ['🎲', 'Play a board game', 0, ['Nerdy', 'Funny'], ['Moody', 'Stubborn'], 'played a board game with', 6],
+    ['🏀', 'Shoot some hoops', 0, ['Athletic', 'Outgoing'], ['Lazy', 'Nerdy'], 'shot hoops with', 8],
+    ['🖼️', 'Visit a museum', 20, ['Artsy', 'Nerdy'], ['Athletic', 'Lazy'], 'went to a museum with', 12],
+    ['🍳', 'Cook together', 20, ['Kind', 'Generous', 'Cheerful'], [], 'cooked dinner with', 14],
+    ['🎉', 'Go to a party', 0, ['Outgoing', 'Funny'], ['Shy', 'Moody'], 'went to a party with', 15],
+    ['☕', 'Grab coffee and talk', 8, ['Kind', 'Loyal', 'Shy'], [], 'grabbed coffee with', 14],
+    ['🛍️', 'Go shopping', 50, ['Greedy', 'Artsy'], ['Stubborn'], 'went shopping with', 13],
+    ['🏖️', 'Spend a day at the beach', 30, ['Cheerful', 'Athletic', 'Romantic'], ['Moody'], 'spent a day at the beach with', 6]
+  ];
+  var KID_ACTS = [['🧸', 'Play pretend', 0, [], [], 'played pretend with'], ['🛝', 'Go to the playground', 0, ['Athletic'], [], 'went to the playground with'], ['🍦', 'Get ice cream', 5, [], [], 'got ice cream with'], ['📺', 'Watch cartoons', 0, ['Lazy'], [], 'watched cartoons with'], ['🏰', 'Build a pillow fort', 0, ['Artsy'], [], 'built a pillow fort with']];
+  var OLD_ACTS = [['🃏', 'Play cards', 0, ['Stubborn', 'Funny'], [], 'played cards with'], ['📷', 'Look at old photos', 0, ['Loyal', 'Kind'], [], 'looked at old photos with'], ['🌳', 'Walk in the park', 0, ['Cheerful'], [], 'walked in the park with'], ['🧩', 'Do a crossword', 0, ['Nerdy'], [], 'did a crossword with'], ['🍰', 'Bake together', 10, ['Kind', 'Generous'], [], 'baked a cake with']];
+  function spendTime(p) {
+    var a = me().age, pool = p.age < 10 || a < 10 ? KID_ACTS : p.age >= 70 ? OLD_ACTS : ACTS.filter(function (x) { return a >= (x[6] || 6) && p.age >= (x[6] || 6); });
+    var picks = U.shuffle(pool.slice()).slice(0, 4);
+    ui().choose('⏳ Time with ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What should we do?', picks.map(function (x) {
+      var cost = E.$(x[2]);
+      return { label: x[0] + ' ' + x[1] + (x[2] ? ' (' + E.fmt(cost) + ')' : ''), fn: function () {
+        if (cost && !afford(cost)) return done(noMoney(cost));
+        if (cost) E.addMoney(-cost);
+        var f = diminish('time' + p.id), sc = likeScore(p, x[3], x[4]);
+        var gain = Math.round((U.rand(4, 9) + sc * 6) * f);
+        E.rel(p, Math.max(sc < 0 ? -2 : 1, gain)); E.stat('happy', Math.max(1, 3 + sc) * f);
+        if (sc > 0) return done(good('I ' + x[5] + ' ' + p.first + '. ' + U.pick(['They loved it!', 'It was exactly their kind of thing.', 'We had the best time.'])));
+        if (sc < 0) return done(p.first + ' wasn\'t into it when we ' + x[5].replace(/ with$/, '') + '. ' + U.pick(['They checked their phone the whole time.', 'They were clearly bored.', 'Not their thing at all.']));
+        return done('I ' + x[5] + ' ' + p.first + '.');
+      } };
+    }));
+  }
+  var TOPICS = [
+    ['sports', ['Athletic', 'Outgoing']], ['video games', ['Nerdy', 'Lazy']], ['science and space', ['Nerdy']], ['art and music', ['Artsy']],
+    ['money and investing', ['Greedy', 'Ambitious']], ['their dreams and goals', ['Ambitious', 'Romantic']], ['love and dating', ['Romantic', 'Jealous']],
+    ['funny videos', ['Funny', 'Cheerful']], ['volunteering and causes', ['Kind', 'Generous']], ['old memories', ['Loyal', 'Kind']],
+    ['other people\'s drama', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics', [], true], ['religion', [], true], ['the weather', []]
+  ];
+  var KID_TOPICS = [['dinosaurs', []], ['cartoons', ['Lazy']], ['animals', ['Kind']], ['school', ['Nerdy']], ['superheroes', ['Athletic']], ['their drawings', ['Artsy']]];
   function conversation(p) {
-    var f = diminish('talk' + p.id);
-    var topics = ['the weather', 'politics', 'sports', 'movies', 'music', 'religion', 'food', 'work', 'aliens', 'the meaning of life', 'a TV show', 'our childhood'];
-    var t = U.pick(topics);
-    if (U.chance(0.75)) { E.rel(p, U.rand(3, 8) * f); done('I had a nice conversation with ' + p.first + ' about ' + t + '.'); }
-    else { E.rel(p, -U.rand(2, 6)); done(bad('I got into a heated debate with ' + p.first + ' about ' + t + '.')); }
+    var kid = p.age < 10 || me().age < 10, picks = U.shuffle((kid ? KID_TOPICS : TOPICS).slice()).slice(0, 4);
+    ui().choose('💬 Talk to ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What do we talk about?', picks.map(function (t) {
+      return { label: U.cap(t[0]), fn: function () {
+        var f = diminish('talk' + p.id), sc = likeScore(p, t[1]), risky = !!t[2], stub = (p.traits || []).indexOf('Stubborn') >= 0;
+        var chance = risky ? (stub ? 0.25 : 0.45) : sc > 0 ? 0.92 : t[0] === 'the weather' ? 0.95 : 0.7;
+        if (U.chance(chance)) {
+          var gain = Math.round((sc > 0 ? U.rand(7, 12) : risky ? U.rand(6, 10) : t[0] === 'the weather' ? U.rand(1, 3) : U.rand(3, 6)) * f);
+          E.rel(p, gain);
+          return done(sc > 0 ? good(p.first + ' lit up talking about ' + t[0] + '. We talked for hours.') : risky ? good('We talked about ' + t[0] + ' and actually agreed on most of it.') : 'I chatted with ' + p.first + ' about ' + t[0] + '.');
+        }
+        E.rel(p, -U.rand(risky ? 4 : 2, risky ? 9 : 5));
+        return done(bad(risky ? 'Talking about ' + t[0] + ' with ' + p.first + ' turned into a shouting match.' : p.first + ' seemed bored when I brought up ' + t[0] + '.'));
+      } };
+    }));
   }
   function compliment(p) {
     var f = diminish('comp' + p.id);
@@ -507,10 +558,11 @@ TL.actions = (function () {
       var serving = s.mil && s.mil.active;
       if (s.job) {
         var j = s.job;
-        items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
+        items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (TL.work ? TL.work.card(j) : '') + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
         if (!j.hoops && !j.mil && !j.acting) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
         if (j.politics) politicsItems(j).forEach(function (it) { items.push(it); });
-        if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
+        if (TL.work && TL.work.regular(j)) TL.work.items(j).forEach(function (it) { items.push(it); });
+        else if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
         if (j.fame && !j.hoops && !j.acting) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
         if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
         if (me().age >= 55 && !j.partTime && !j.mil && !j.acting) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });

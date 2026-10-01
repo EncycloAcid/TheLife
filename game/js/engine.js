@@ -525,16 +525,21 @@ TL.engine = (function () {
     j.perf = U.clamp(Math.round(j.perf + U.rand(-10, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0) + (TL.features ? TL.features.skillBonus(j.career) * 12 : 0)), 0, 100);
     j.workHard = 0;
     if (j.fame) return earned;
-    if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= 2 && U.chance(0.35 + (j.perf - 70) / 60)) {
-      j.level++; j.levelYears = 0; j.perf = Math.max(45, j.perf - 20);
+    var promoted = false;
+    // My boss and a big project win (js/work.js) sway promotions.
+    if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= 2 && U.chance(0.35 + (j.perf - 70) / 60 + (TL.work ? TL.work.promoBonus(j) : 0))) {
+      j.level++; j.levelYears = 0; j.perf = Math.max(45, j.perf - 20); promoted = true;
       log('📈 I was promoted to ' + jobTitle(j) + '! New salary: ' + fmt(jobSalary(j)) + '.', 'good');
       stat('happy', 10);
       if (j.level === c.levels.length - 1) achieve('ceo');
     } else if (j.perf < 15 && U.chance(0.5)) {
       fire('My performance was terrible.');
-    } else if (j.perf < 30) {
-      log('My boss warned me that my performance at work is slipping.', 'bad');
-    } else if (U.chance(0.25)) j.mult = (j.mult || 1) * U.randf(1.01, 1.05);
+      return earned;
+    } else if (!TL.work) {
+      if (j.perf < 30) log('My boss warned me that my performance at work is slipping.', 'bad');
+      else if (U.chance(0.25)) j.mult = (j.mult || 1) * U.randf(1.01, 1.05);
+    }
+    if (TL.work) TL.work.review(j, promoted);
     return earned;
   }
 
@@ -1328,7 +1333,7 @@ TL.engine = (function () {
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
     achieve: achieve, netWorth: netWorth, makePerson: makePerson, addPerson: addPerson, randomName: randomName,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
-    eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, eligible: eligible, applyJob: applyJob,
+    eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
     statLabel: statLabel, statValue: statValue, haveBaby: haveBaby, jail: jail, queue: queue, die: die,
     runForOffice: runForOffice, reelect: reelect, campaigns: CAMPAIGNS, campaignCost: campaignCost, electionChance: electionChance,
