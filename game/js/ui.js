@@ -285,12 +285,13 @@ TL.ui = (function () {
   var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--tint)'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
     var m = S().me, box = $('#stats');
-    if (!box.querySelector('.ring')) {
+    var built = !box.querySelector('.ring');
+    if (built) {
       box.innerHTML = STAT_DEFS.map(function (d) {
         return '<div class="stat" data-k="' + d[0] + '" style="--c:' + d[3] + '"><div class="ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="' + RING_R + '"/><circle class="rf" cx="25" cy="25" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(1) + '" stroke-dashoffset="' + RING_C.toFixed(1) + '"/></svg><span class="ring-ico">' + d[1] + '</span></div><div class="stat-lbl">' + d[2] + ' <b></b></div></div>';
       }).join('');
     }
-    void box.offsetWidth; // let freshly built rings sweep in from empty
+    if (built) void box.offsetWidth; // let freshly built rings sweep in from empty
     STAT_DEFS.forEach(function (d) {
       var v = m[d[0]], el = box.querySelector('[data-k="' + d[0] + '"]'), was = prevStats ? prevStats[d[0]] : null;
       el.querySelector('.rf').setAttribute('stroke-dashoffset', (RING_C * (1 - v / 100)).toFixed(1));
@@ -328,22 +329,45 @@ TL.ui = (function () {
     logSeen = { key: key, n: y.entries.length };
     if (fresh.some(function (e) { return e.c !== 'bad' && CELEBRATE.test(String(e.t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
   }
+  // Only years whose content changed are rebuilt, so tapping around (or a
+  // new birthday) doesn't re-layout sixty cards and drop animation frames.
+  function yearHtml(y, last) {
+    var html = '<div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div><div class="ycard">';
+    // Money lines are bookkeeping, not story: they sit in a quiet footer.
+    var story = y.entries.filter(function (e) { return e.c !== 'money'; });
+    var cash = y.entries.filter(function (e) { return e.c === 'money'; });
+    if (!story.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
+    story.forEach(function (e) { html += entryHtml(e); });
+    if (cash.length) html += '<div class="y-foot">' + cash.map(function (e) { return U.esc(String(e.t).replace(LEAD_EMOJI, '')); }).join(' · ') + '</div>';
+    return html + '</div>';
+  }
   function renderLog() {
     var s = S(), el = $('#log');
     var years = s.log.slice(-60);
-    var html = '';
+    var keep = {}, want = {};
+    years.forEach(function (y) { want[y.age + ':' + y.year] = 1; });
+    // Drop years that left the window first, so the rest never get moved
+    // (moving a node throws away its layout).
+    Array.prototype.slice.call(el.children).forEach(function (c) { if (c._key && want[c._key]) keep[c._key] = c; else c.remove(); });
+    var prev = null;
     years.forEach(function (y, i) {
-      var last = i === years.length - 1;
-      html += '<div class="year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div><div class="ycard">';
-      // Money lines are bookkeeping, not story: they sit in a quiet footer.
-      var story = y.entries.filter(function (e) { return e.c !== 'money'; });
-      var cash = y.entries.filter(function (e) { return e.c === 'money'; });
-      if (!story.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
-      story.forEach(function (e) { html += entryHtml(e); });
-      if (cash.length) html += '<div class="y-foot">' + cash.map(function (e) { return U.esc(String(e.t).replace(LEAD_EMOJI, '')); }).join(' · ') + '</div>';
-      html += '</div></div>';
+      var last = i === years.length - 1, key = y.age + ':' + y.year;
+      var cls = 'year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '');
+      var html = yearHtml(y, last), node = keep[key];
+      delete keep[key];
+      if (!node) { node = document.createElement('div'); node._key = key; }
+      var changed = node._html !== html;
+      if (changed) { node.innerHTML = html; node._html = html; }
+      // An untouched year keeps its running entrance animation instead of
+      // having it cut short; a rebuilt one settles without replaying it.
+      if (node.className !== cls && !(last && !changed && !freshYear && node.classList.contains('fresh'))) node.className = cls;
+      if (!last) node.classList.remove('fresh', 'latest');
+      var at = prev ? prev.nextSibling : el.firstChild;
+      if (at !== node) el.insertBefore(node, at);
+      prev = node;
     });
-    el.innerHTML = html;
+    while (prev && prev.nextSibling) prev.nextSibling.remove();
+    if (!years.length) el.innerHTML = '';
     freshYear = false;
     celebrate(years[years.length - 1]);
   }
@@ -399,24 +423,30 @@ TL.ui = (function () {
       } };
     }));
   }
+  // Replay a CSS animation class without forcing a synchronous layout
+  // (the old remove / read offsetWidth / add trick stalls the frame).
+  function restart(el, cls) {
+    el.classList.remove(cls);
+    var token = el._restart = (el._restart || 0) + 1;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { if (el._restart === token) el.classList.add(cls); }); });
+  }
   function moneyDelta(d) {
     var el = $('#h-delta');
     if (!el || !d) return;
     el.textContent = (d > 0 ? '+' : '−') + E.fmt(Math.abs(d));
     el.className = 'delta ' + (d > 0 ? 'up' : 'down');
-    void el.offsetWidth;
-    el.classList.add('show');
+    restart(el, 'show');
   }
   var toastTimer = null;
   // Brief, non-blocking result message (used for everyday actions).
   function toast(text, c) {
     var el = $('#toast');
     el.textContent = text;
-    el.className = 'toast ' + (c || '');
-    void el.offsetWidth;
-    el.classList.add('show');
+    var wasShown = el.classList.contains('show');
+    el.className = 'toast ' + (c || '') + (wasShown ? ' show' : '');
+    if (!wasShown) restart(el, 'show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove('show'); }, Math.min(5000, 1800 + text.length * 35));
+    toastTimer = setTimeout(function () { el._restart = (el._restart || 0) + 1; el.classList.remove('show'); }, Math.min(5000, 1800 + text.length * 35));
   }
   function karmaWord(k) { return k >= 85 ? 'Saintly' : k >= 65 ? 'Good' : k >= 40 ? 'Neutral' : k >= 20 ? 'Shady' : 'Wicked'; }
 
@@ -434,9 +464,11 @@ TL.ui = (function () {
     moneyDelta(s.money - before);
     scrollLog();
     var btn = $('#btn-ageup');
-    btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
+    restart(btn, 'pop');
     if (s.dead) { s.pending = []; setTimeout(deathScreen, 350); return; }
-    runPending();
+    // Let the new year settle in before an event pops up over it.
+    if (s.pending.length && TL.motion && !TL.motion.reduced()) setTimeout(function () { if (S() === s && !s.dead) runPending(); }, 280);
+    else runPending();
   }
 
   // ---------------------------------------------------------------- events
@@ -546,21 +578,33 @@ TL.ui = (function () {
   }
 
   // ---------------------------------------------------------------- sheets (menus)
+  // The sheet's scroll position, tracked from scroll events so rendering
+  // never has to read it back from a dirty layout.
+  var sheetScroll = 0;
   function menu(title, build) {
+    var already = $('#sheet').classList.contains('open') && sheets.length > 0;
+    if (already) sheets[sheets.length - 1].st = sheetScroll;
     sheets.push({ title: title, build: build });
-    renderSheet();
+    renderSheet(0);
     $('#sheet').classList.add('open');
-    var body = $('#sheet-body');
-    body.scrollTop = 0;
-    body.classList.remove('enter'); void body.offsetWidth; body.classList.add('enter');
+    // The sheet's own slide is the motion when it opens; inside an open
+    // sheet, a new page slides in from the right like iOS navigation.
+    if (already) slidePage(1);
     document.body.classList.add('sheet-open');
-    clearTimeout(menu.t);
-    menu.t = setTimeout(function () { body.classList.remove('enter'); }, 450);
+  }
+  function slidePage(dir) {
+    var body = $('#sheet-body'), title = $('#sheet-title');
+    if (!body.animate || (TL.motion && TL.motion.reduced())) return;
+    var o = { duration: TL.motion.springMs, easing: TL.motion.SPRING };
+    if (body._slide) body._slide.cancel();
+    body._slide = body.animate([{ transform: 'translateX(' + (dir * 36) + '%)', opacity: 0 }, { transform: 'none', opacity: 1 }], o);
+    title.animate([{ transform: 'translateX(' + (dir * 40) + 'px)', opacity: 0 }, { transform: 'none', opacity: 1 }], o);
   }
   function setActiveNav(id) {
     ['nav-occ', 'nav-assets', 'nav-rel', 'nav-act'].forEach(function (n) { var b = $('#' + n); if (b) b.classList.toggle('active', n === id); });
   }
-  function renderSheet() {
+  function renderSheet(st) {
+    if (st == null) st = sheetScroll;
     var top = sheets[sheets.length - 1];
     if (!top) return;
     $('#sheet-title').textContent = top.title;
@@ -569,8 +613,10 @@ TL.ui = (function () {
     sb.classList.toggle('done', sheets.length <= 1);
     sb.parentNode.classList.toggle('root', sheets.length <= 1);
     sb.setAttribute('aria-label', sheets.length > 1 ? 'Back' : 'Done');
-    var body = $('#sheet-body'), st = body.scrollTop;
+    var body = $('#sheet-body');
     body.innerHTML = '';
+    // Resetting an empty list is free; only a restored offset needs layout.
+    if (sheetScroll) { body.scrollTop = 0; sheetScroll = 0; }
     var items = top.build(), group = null;
     // Consecutive tappable rows share one rounded card, like native settings lists.
     items.forEach(function (it) {
@@ -579,7 +625,7 @@ TL.ui = (function () {
       if (!group) { group = document.createElement('div'); group.className = 'group'; body.appendChild(group); }
       group.appendChild(el);
     });
-    body.scrollTop = st;
+    if (st > 0) { body.scrollTop = st; sheetScroll = body.scrollTop; }
   }
   function menuItem(it) {
     var el;
@@ -609,7 +655,8 @@ TL.ui = (function () {
   function back() {
     sheets.pop();
     if (!sheets.length) { $('#sheet').classList.remove('open'); document.body.classList.remove('sheet-open'); setActiveNav(null); return; }
-    renderSheet();
+    renderSheet(sheets[sheets.length - 1].st || 0);
+    slidePage(-1);
   }
   function closeAll() {
     sheets = [];
@@ -680,10 +727,22 @@ TL.ui = (function () {
     applySettings();
     // Swipe a sheet down to dismiss it, like an iOS page sheet.
     (function () {
-      var panel = document.querySelector('.sheet-panel'), body = $('#sheet-body'), y0 = null, dy = 0, lastY = 0, lastT = 0, vel = 0;
+      var panel = document.querySelector('.sheet-panel'), body = $('#sheet-body'), scrim = $('#sheet-scrim');
+      var y0 = null, dy = 0, lastY = 0, lastT = 0, vel = 0, h = 1, raf = 0, behind = null;
+      // One style write per frame, however fast touch events arrive.
+      function paint() {
+        raf = 0;
+        if (y0 == null) return;
+        var shown = dy > 0 ? dy : -Math.sqrt(-dy) * 2, k = Math.max(0, Math.min(1, dy / h));
+        panel.style.transform = 'translateY(' + shown + 'px)';
+        scrim.style.opacity = String(1 - k);
+        // The card behind grows back toward full size as the sheet comes down.
+        if (behind) behind.style.transform = 'translateY(calc((10px + var(--safe-t)) * ' + (1 - k).toFixed(3) + ')) scale(' + (0.92 + 0.08 * k).toFixed(4) + ')';
+      }
+      body.addEventListener('scroll', function () { sheetScroll = body.scrollTop; }, { passive: true });
       panel.addEventListener('touchstart', function (e) {
-        y0 = body.contains(e.target) && body.scrollTop > 0 ? null : e.touches[0].clientY; dy = 0; vel = 0;
-        lastY = y0; lastT = Date.now();
+        y0 = body.contains(e.target) && sheetScroll > 0 ? null : e.touches[0].clientY; dy = 0; vel = 0;
+        lastY = y0; lastT = Date.now(); h = panel.offsetHeight || 1;
       }, { passive: true });
       panel.addEventListener('touchmove', function (e) {
         if (y0 == null) return;
@@ -692,14 +751,19 @@ TL.ui = (function () {
         // Finger speed in px/ms, smoothed; ignore samples too close together to measure.
         if (now - lastT >= 8) { vel = vel * .4 + ((y - lastY) / (now - lastT)) * .6; lastY = y; lastT = now; }
         if (dy < -6 && !panel.classList.contains('dragging')) { y0 = null; return; }
-        // Follow the finger; pulling up past the top resists like rubber.
-        var shown = dy > 0 ? dy : -Math.sqrt(-dy) * 2;
-        panel.classList.add('dragging'); panel.style.transform = 'translateY(' + shown + 'px)';
-        $('#sheet-scrim').style.opacity = String(Math.max(0, 1 - Math.max(0, dy) / panel.offsetHeight));
+        if (!panel.classList.contains('dragging')) {
+          panel.classList.add('dragging'); document.body.classList.add('sheet-dragging');
+          behind = document.querySelector('.screen.active');
+        }
+        if (!raf) raf = requestAnimationFrame(paint);
       }, { passive: true });
       function end() {
         if (y0 == null) return;
-        y0 = null; panel.classList.remove('dragging'); panel.style.transform = ''; $('#sheet-scrim').style.opacity = '';
+        y0 = null;
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        panel.classList.remove('dragging'); document.body.classList.remove('sheet-dragging');
+        panel.style.transform = ''; scrim.style.opacity = '';
+        if (behind) { behind.style.transform = ''; behind = null; }
         // A quick flick closes it even when it hasn't travelled far.
         if (dy > 140 || (dy > 30 && vel > .55)) closeAll();
       }

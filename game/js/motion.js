@@ -45,13 +45,15 @@ TL.motion = (function () {
     if (oldEl && oldEl !== newEl) {
       oldEl.classList.add('leaving');
       oldEl.style.zIndex = kind === 'pop' ? 2 : 0;
-      var out = kind === 'push' ? [{ transform: 'none', filter: 'brightness(1)' }, { transform: 'translateX(-30%)', filter: 'brightness(.9)' }]
+      // Transform and opacity only: both run on the GPU compositor, so the
+      // slide stays at full frame rate even while the next screen is painting.
+      var out = kind === 'push' ? [{ transform: 'none' }, { transform: 'translateX(-30%)' }]
         : kind === 'pop' ? [{ transform: 'none' }, { transform: 'translateX(100%)' }]
         : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(1.03)' }];
       oldEl.animate(out, opts).onfinish = function () { oldEl.classList.remove('leaving'); oldEl.style.zIndex = ''; };
     }
     var inn = kind === 'push' ? [{ transform: 'translateX(100%)' }, { transform: 'none' }]
-      : kind === 'pop' ? [{ transform: 'translateX(-30%)', filter: 'brightness(.9)' }, { transform: 'none', filter: 'brightness(1)' }]
+      : kind === 'pop' ? [{ transform: 'translateX(-30%)' }, { transform: 'none' }]
       : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }];
     newEl.animate(inn, opts);
   }
