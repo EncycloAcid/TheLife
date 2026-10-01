@@ -317,7 +317,7 @@ TL.ui = (function () {
   function entryHtml(e) {
     var t = e.t == null ? '' : String(e.t);
     var m = t.match(LEAD_EMOJI), ico = m ? m[1] : null, txt = m ? t.slice(m[0].length) : t;
-    return '<div class="entry ' + (e.c || '') + '"><span class="e-ico">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
+    return '<div class="entry ' + (e.c || '') + '"><span class="e-ico' + (ico ? ' em' : '') + '">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
   }
   // Confetti for life's big moments, once each, as they appear in the log.
   var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
@@ -335,8 +335,12 @@ TL.ui = (function () {
     years.forEach(function (y, i) {
       var last = i === years.length - 1;
       html += '<div class="year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div><div class="ycard">';
-      if (!y.entries.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
-      y.entries.forEach(function (e) { html += entryHtml(e); });
+      // Money lines are bookkeeping, not story: they sit in a quiet footer.
+      var story = y.entries.filter(function (e) { return e.c !== 'money'; });
+      var cash = y.entries.filter(function (e) { return e.c === 'money'; });
+      if (!story.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
+      story.forEach(function (e) { html += entryHtml(e); });
+      if (cash.length) html += '<div class="y-foot">' + cash.map(function (e) { return U.esc(String(e.t).replace(LEAD_EMOJI, '')); }).join(' · ') + '</div>';
       html += '</div></div>';
     });
     el.innerHTML = html;
@@ -583,7 +587,7 @@ TL.ui = (function () {
     if (it.info) { el = document.createElement('div'); el.className = 'info'; el.innerHTML = it.html; return el; }
     el = document.createElement('button');
     el.className = 'item' + (it.disabled ? ' disabled' : '') + (it.danger ? ' danger' : '');
-    var html = '<span class="i-ico" style="--h:' + hue(it.label) + '">' + (it.icon || '•') + '</span><span class="i-main"><span class="i-label">' + U.esc(it.label) + '</span>';
+    var html = '<span class="i-ico">' + (it.icon || '•') + '</span><span class="i-main"><span class="i-label">' + U.esc(it.label) + '</span>';
     if (it.sub) html += '<span class="i-sub">' + U.esc(it.sub) + '</span>';
     if (it.bar != null) html += '<span class="track small"><span class="fill ' + cls(it.bar) + '" style="width:' + it.bar + '%"></span></span>';
     html += '</span>';
@@ -598,15 +602,9 @@ TL.ui = (function () {
     else if (!it.onClick) el.classList.add('static');
     return el;
   }
-  // Stable pastel hue per label for icon bubbles.
   // A light tap of the vibration motor, like iOS haptics (Settings > Haptics).
   function haptic() {
     try { if ((E.loadGlobal().settings || {}).haptics !== false && navigator.vibrate) navigator.vibrate(8); } catch (e) { }
-  }
-  function hue(label) {
-    var h = 0, s = String(label || '');
-    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-    return h;
   }
   function back() {
     sheets.pop();
