@@ -2,7 +2,33 @@
  * changes and confetti. Everything is skipped when the phone asks for
  * reduced motion. Uses the Web Animations API (el.animate). */
 TL.motion = (function () {
-  var SPRING = 'cubic-bezier(.32, .72, 0, 1)';
+  // Real spring curves, sampled from a damped harmonic oscillator into a
+  // CSS linear() easing (Chrome 113+). Older WebViews keep the cubic-bezier
+  // fallbacks defined in style.css.
+  function springCurve(stiffness, damping) {
+    var w0 = Math.sqrt(stiffness), zeta = damping / (2 * Math.sqrt(stiffness)), wd = w0 * Math.sqrt(Math.max(1e-6, 1 - zeta * zeta));
+    function x(t) {
+      if (zeta >= 1) return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+      return 1 - Math.exp(-zeta * w0 * t) * (Math.cos(wd * t) + (zeta * w0 / wd) * Math.sin(wd * t));
+    }
+    var T = 0.05; // settle time: last moment the curve is > 0.1% away from rest
+    for (var t = 0; t < 3; t += 0.004) if (Math.abs(1 - x(t)) > 0.001) T = t;
+    var pts = [];
+    for (var i = 0; i <= 48; i++) pts.push(+x(T * i / 48).toFixed(4));
+    pts[48] = 1;
+    return { easing: 'linear(' + pts.join(', ') + ')', ms: Math.round(T * 1000) };
+  }
+  var SUPPORTS = false;
+  try { SUPPORTS = !!(window.CSS && CSS.supports && CSS.supports('transition-timing-function', 'linear(0, 1)')); } catch (e) { }
+  // bouncy: playful pops; smooth: navigation and sheets (barely overshoots).
+  var BOUNCY = springCurve(260, 17), SMOOTH = springCurve(210, 26);
+  var SPRING = SUPPORTS ? SMOOTH.easing : 'cubic-bezier(.32, .72, 0, 1)';
+  var BOUNCE = SUPPORTS ? BOUNCY.easing : 'cubic-bezier(.34, 1.56, .64, 1)';
+  if (SUPPORTS) {
+    var root = document.documentElement.style;
+    root.setProperty('--spring', SMOOTH.easing); root.setProperty('--spring-ms', SMOOTH.ms + 'ms');
+    root.setProperty('--bounce', BOUNCY.easing); root.setProperty('--bounce-ms', BOUNCY.ms + 'ms');
+  }
   var COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF2D55', '#AF52DE', '#FFCC00', '#5AC8FA'];
   function reduced() {
     try { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
@@ -11,16 +37,29 @@ TL.motion = (function () {
 
   // iOS-style navigation: push slides in from the right, pop from the left,
   // and opening a life zooms in slightly.
-  function screenIn(el, kind) {
-    if (!can(el)) return;
-    var from = kind === 'push' ? 'translateX(32%)' : kind === 'pop' ? 'translateX(-24%)' : 'scale(.96)';
-    el.animate([{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: kind === 'zoom' ? 420 : 380, easing: SPRING });
+  // Both screens move together. Push: the new one slides in over the old,
+  // which drifts left and dims. Pop: the reverse. Zoom: a soft scale + fade.
+  function transition(oldEl, newEl, kind) {
+    if (!can(newEl)) return;
+    var dur = SUPPORTS ? SMOOTH.ms : 420, opts = { duration: dur, easing: SPRING };
+    if (oldEl && oldEl !== newEl) {
+      oldEl.classList.add('leaving');
+      oldEl.style.zIndex = kind === 'pop' ? 2 : 0;
+      var out = kind === 'push' ? [{ transform: 'none', filter: 'brightness(1)' }, { transform: 'translateX(-30%)', filter: 'brightness(.9)' }]
+        : kind === 'pop' ? [{ transform: 'none' }, { transform: 'translateX(100%)' }]
+        : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(1.03)' }];
+      oldEl.animate(out, opts).onfinish = function () { oldEl.classList.remove('leaving'); oldEl.style.zIndex = ''; };
+    }
+    var inn = kind === 'push' ? [{ transform: 'translateX(100%)' }, { transform: 'none' }]
+      : kind === 'pop' ? [{ transform: 'translateX(-30%)', filter: 'brightness(.9)' }, { transform: 'none', filter: 'brightness(1)' }]
+      : [{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }];
+    newEl.animate(inn, opts);
   }
   // Children rise into place one after another.
   function stagger(parent, step, from) {
     if (!can(parent)) return;
     Array.prototype.forEach.call(parent.children, function (c, i) {
-      c.animate([{ transform: 'translateY(' + (from || 16) + 'px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 480, delay: i * (step || 45), easing: SPRING, fill: 'backwards' });
+      c.animate([{ transform: 'translateY(' + (from || 16) + 'px) scale(.98)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: SUPPORTS ? BOUNCY.ms : 500, delay: i * (step || 45), easing: BOUNCE, fill: 'backwards' });
     });
   }
   // Animate a number shown in el from a to b; fmt turns a number into text.
@@ -54,7 +93,8 @@ TL.motion = (function () {
   }
   function pop(el, scale) {
     if (!can(el)) return;
-    el.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + (scale || 1.18) + ')' }, { transform: 'scale(1)' }], { duration: 380, easing: SPRING });
+    // Jump up quickly, then let the spring settle it back.
+    el.animate([{ transform: 'scale(' + (scale || 1.18) + ')' }, { transform: 'scale(1)' }], { duration: SUPPORTS ? BOUNCY.ms : 420, easing: BOUNCE });
   }
   // Confetti burst from the top of the screen.
   function confetti(n) {
@@ -78,5 +118,5 @@ TL.motion = (function () {
       ], { duration: dur, easing: 'cubic-bezier(.2,.6,.4,1)', delay: Math.random() * 120 }).onfinish = function () { if (--left === 0) layer.remove(); };
     }
   }
-  return { reduced: reduced, screenIn: screenIn, stagger: stagger, countTo: countTo, floatText: floatText, pop: pop, confetti: confetti };
+  return { reduced: reduced, transition: transition, SPRING: SPRING, BOUNCE: BOUNCE, springMs: SUPPORTS ? SMOOTH.ms : 420, stagger: stagger, countTo: countTo, floatText: floatText, pop: pop, confetti: confetti };
 })();

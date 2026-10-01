@@ -23,7 +23,7 @@ TL.ui = (function () {
     // iOS-style navigation: push in from the right, pop back from the left.
     if (prev !== name && TL.motion) {
       var kind = name === 'game' && (prev === 'home' || prev === 'create') ? 'zoom' : (DEPTH[name] || 0) > (DEPTH[prev] || 0) ? 'push' : (DEPTH[name] || 0) < (DEPTH[prev] || 0) ? 'pop' : 'zoom';
-      TL.motion.screenIn($('#screen-' + name), kind);
+      TL.motion.transition(prev && $('#screen-' + prev), $('#screen-' + name), kind);
     }
     if (TL.motion && (name === 'home' || name === 'death')) TL.motion.stagger(document.querySelector(name === 'home' ? '.home-wrap' : '.death-wrap'), 55, 18);
     var t = $('#toast');
@@ -191,10 +191,11 @@ TL.ui = (function () {
 
   function startGame() {
     // Fresh baselines so loading a life doesn't animate counts or confetti.
-    lastMoney = null; lastAge = null; prevStats = null; logSeen = null;
+    lastMoney = null; lastAge = null; prevStats = null; logSeen = null; smoothScroll = false;
     show('game');
     refresh();
     scrollLog();
+    smoothScroll = true;
     runPending();
   }
 
@@ -341,7 +342,13 @@ TL.ui = (function () {
     freshYear = false;
     celebrate(years[years.length - 1]);
   }
-  function scrollLog() { var el = $('#log'); el.scrollTop = el.scrollHeight; }
+  // Glide to the newest year during play; jump straight there when a life loads.
+  var smoothScroll = false;
+  function scrollLog() {
+    var el = $('#log');
+    if (smoothScroll && el.scrollTo && !(TL.motion && TL.motion.reduced())) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    else el.scrollTop = el.scrollHeight;
+  }
   function refresh() {
     if (!S() || screen !== 'game') return;
     renderHeader(); renderStats(); renderLog();
@@ -468,7 +475,22 @@ TL.ui = (function () {
   function nextDialog() {
     var cfg = dialogQueue.shift();
     var ov = $('#dialog');
-    if (!cfg) { dialogOpen = false; ov.classList.remove('open'); return; }
+    var card = ov.querySelector('.dialog-card');
+    if (!cfg) {
+      dialogOpen = false;
+      if (ov.classList.contains('open') && ov.animate && !(TL.motion && TL.motion.reduced())) {
+        card.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.94)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+        ov.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in' }).onfinish = function () {
+          if (!dialogOpen) ov.classList.remove('open');
+          card.getAnimations && card.getAnimations().forEach(function (a) { a.cancel(); });
+        };
+      } else ov.classList.remove('open');
+      return;
+    }
+    var swapping = ov.classList.contains('open');
+    if (ov.getAnimations) ov.getAnimations().forEach(function (a) { a.cancel(); });
+    if (card.getAnimations) card.getAnimations().forEach(function (a) { a.cancel(); });
+    if (swapping && card.animate && !(TL.motion && TL.motion.reduced())) card.animate([{ opacity: .4, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: TL.motion.springMs, easing: TL.motion.BOUNCE });
     dialogOpen = true;
     // A title that starts with an emoji shows it in the icon bubble instead.
     var icon = cfg.icon || '', title = cfg.title || '', lead = !icon && title.match(LEAD_EMOJI);
@@ -658,20 +680,28 @@ TL.ui = (function () {
     applySettings();
     // Swipe a sheet down to dismiss it, like an iOS page sheet.
     (function () {
-      var panel = document.querySelector('.sheet-panel'), body = $('#sheet-body'), y0 = null, dy = 0;
+      var panel = document.querySelector('.sheet-panel'), body = $('#sheet-body'), y0 = null, dy = 0, lastY = 0, lastT = 0, vel = 0;
       panel.addEventListener('touchstart', function (e) {
-        y0 = body.contains(e.target) && body.scrollTop > 0 ? null : e.touches[0].clientY; dy = 0;
+        y0 = body.contains(e.target) && body.scrollTop > 0 ? null : e.touches[0].clientY; dy = 0; vel = 0;
+        lastY = y0; lastT = Date.now();
       }, { passive: true });
       panel.addEventListener('touchmove', function (e) {
         if (y0 == null) return;
-        dy = e.touches[0].clientY - y0;
-        if (dy < -6) { y0 = null; panel.style.transform = ''; return; }
-        if (dy > 0) { panel.classList.add('dragging'); panel.style.transform = 'translateY(' + dy + 'px)'; }
+        var y = e.touches[0].clientY, now = Date.now();
+        dy = y - y0;
+        if (now > lastT) vel = vel * .4 + ((y - lastY) / (now - lastT)) * .6; // px per ms, smoothed
+        lastY = y; lastT = now;
+        if (dy < -6 && !panel.classList.contains('dragging')) { y0 = null; return; }
+        // Follow the finger; pulling up past the top resists like rubber.
+        var shown = dy > 0 ? dy : -Math.sqrt(-dy) * 2;
+        panel.classList.add('dragging'); panel.style.transform = 'translateY(' + shown + 'px)';
+        $('#sheet-scrim').style.opacity = String(Math.max(0, 1 - Math.max(0, dy) / panel.offsetHeight));
       }, { passive: true });
       function end() {
         if (y0 == null) return;
-        y0 = null; panel.classList.remove('dragging'); panel.style.transform = '';
-        if (dy > 110) closeAll();
+        y0 = null; panel.classList.remove('dragging'); panel.style.transform = ''; $('#sheet-scrim').style.opacity = '';
+        // A quick flick closes it even when it hasn't travelled far.
+        if (dy > 140 || (dy > 30 && vel > .55)) closeAll();
       }
       panel.addEventListener('touchend', end); panel.addEventListener('touchcancel', end);
     })();

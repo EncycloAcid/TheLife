@@ -40,7 +40,7 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **48 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
 - **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
-- **Animation**: iOS-style push and pop transitions, the game shrinking back behind an open menu, money and stats that count up with floating +/− bubbles, new log lines that arrive one after another, confetti for achievements, graduations, weddings, births and promotions, an Age button ripple and bouncy tab icons. Turned off automatically if your phone is set to reduce motion. Light and dark themes; the phone's status and navigation bars follow the theme.
+- **Animation**: real spring physics (like iPhone), iOS-style push and pop transitions where both screens move together, the game shrinking back behind an open menu, money and stats that count up with floating +/− bubbles, new log lines that arrive one after another, confetti for achievements, graduations, weddings, births and promotions, an Age button ripple, bouncy tab icons, springy button presses, menus you can flick away, and smooth scrolling to each new year. Turned off automatically if your phone is set to reduce motion. Light and dark themes; the phone's status and navigation bars follow the theme.
 - **Settings**: theme (match your phone, dark or light), text size, haptics, and deleting all data.
 - Works offline, autosaves, and handles the Android back gesture.
 
