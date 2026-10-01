@@ -421,7 +421,7 @@ TL.features = (function () {
   function nominate() {
     var s = S(), j = s.job, nom = null;
     if (s.prison) return;
-    if (j && j.fame && !j.acting && !j.music && j.level >= (j.career === 'athlete' ? 2 : 3)) {
+    if (j && j.fame && !j.acting && !j.music && !j.pro && j.level >= (j.career === 'athlete' ? 2 : 3)) {
       var p = 0.01 + s.fame / 900 + j.perf / 2500;
       var aw = { actor: ['Academy Award', me().gender === 'F' ? 'Best Actress' : 'Best Actor'], musician: ['Grammy Award', 'Album of the Year'], athlete: ['MVP Award', 'Most Valuable Player'] }[j.career];
       if (aw && U.chance(p)) nom = { award: aw[0], cat: aw[1], win: 0.08 + s.fame / 700 + j.perf / 1200 };
@@ -627,6 +627,7 @@ TL.features = (function () {
     if (TL.creator) TL.creator.yearly();
     if (TL.acting) TL.acting.yearly();
     if (TL.music) TL.music.yearly();
+    if (TL.pro) TL.pro.yearly();
   }
   // Called by continueAs after the heir's new life exists.
   function inherit(prev, c, st, heirs) {

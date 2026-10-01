@@ -252,8 +252,9 @@ TL.sports = (function () {
         var s = S();
         if (s.job) E.quitJob(true);
         s.edu = null;
-        s.job = { career: 'athlete', level: x.skill >= 95 ? 2 : x.skill >= 91 ? 1 : 0, perf: 65, years: 0, levelYears: 0, fame: true, mult: 1, company: team };
         E.fame(x.skill >= 90 ? 12 : 6); E.stat('happy', 15); E.achieve('drafted');
+        if (TL.pro) { var p = TL.pro.fromDraft(sp.pro, x.pos, x.skill, round); return good('I\'m a professional ' + sp.name.toLowerCase() + ' player with ' + p.team + (p.stage === 'minors' ? ' (' + p.league + ')' : '') + '! ' + sp.icon); }
+        s.job = { career: 'athlete', level: x.skill >= 95 ? 2 : x.skill >= 91 ? 1 : 0, perf: 65, years: 0, levelYears: 0, fame: true, mult: 1, company: team };
         return good('I\'m a professional ' + sp.name.toLowerCase() + ' player with ' + team + '! ' + sp.icon);
       } },
       { label: 'Pass and get a regular job', run: function () { return 'I turned down pro ' + sp.name.toLowerCase() + '. Time for real life.'; } }

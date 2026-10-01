@@ -20,6 +20,7 @@ TL.recap = (function () {
     [/went VIRAL/i, '🔥', 5, 1],
     [/booked it|new face of a blockbuster/i, '🎬', 6, 3],
     [/billion-dollar hit|rave reviews/i, '🍿', 7, 3],
+    [/won the (Super Bowl|World Series|Stanley Cup|Grey Cup|Walter Cup|Japan Series|Korean Series|.* title)|won (Wimbledon|the (Australian|French|US) Open)|Honors: .*(MVP|Ballon|Cy Young|Hart)|called up|World No. 1|traded to/i, '🏆', 8, 4],
     [/Hot 100|Billboard 200|Certified (Gold|Platinum|Diamond)|I signed with .*Records/i, '🎵', 7, 4],
     [/won the (Academy|Grammy|Pulitzer|Nobel|Emmy)|Oscar|MVP|Hall of Fame|All-American|All-State/i, '🏆', 8, 4],
     [/won the election|elected|sworn in|crowned|became (King|Queen)/i, '👑', 9, 3],
@@ -121,6 +122,7 @@ TL.recap = (function () {
     var sr = TL.sports && TL.sports.aboutRow(); if (sr) out.push([sr[0].split(' ')[0], 'School sports', sr[1]]);
     var ar = TL.acting && TL.acting.aboutRow(); if (ar) out.push(['🎬', 'Acting', ar[1]]);
     var mu = TL.music && TL.music.aboutRow(); if (mu) out.push(['🎵', 'Music', mu[1]]);
+    var pr = TL.pro && TL.pro.aboutRow(); if (pr) out.push([pr[0].split(' ')[0], 'Pro sports', pr[1]]);
     var mr = TL.military && TL.military.aboutRow && TL.military.aboutRow(); if (mr) out.push(['🎖️', 'Military', mr[1]]);
     if (TL.creator) TL.creator.aboutRows().forEach(function (r) { out.push([r[0].split(' ')[0], r[0].replace(/^\S+\s/, ''), r[1]]); });
     if (s.awards && s.awards.length) out.push(['🏆', 'Awards', s.awards.map(function (a) { return a.award; }).slice(0, 3).join(', ') + (s.awards.length > 3 ? ' +' + (s.awards.length - 3) : '')]);

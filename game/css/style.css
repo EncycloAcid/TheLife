@@ -481,3 +481,9 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .mu-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: 12px 0 8px; text-align: center; }
 .mu-stats b { display: block; font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mu-stats small { font-size: .6875rem; color: var(--muted); }
+/* pro sports card */
+.pr-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.pr-ico { width: 46px; height: 46px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.pr-name { font-weight: 600; font-size: 1.0625rem; }
+.pr-sub, .pr-line { font-size: .8125rem; color: var(--muted); }
+.pr-line { margin-top: 6px; }

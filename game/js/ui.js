@@ -406,6 +406,7 @@ TL.ui = (function () {
     var sr = TL.sports && TL.sports.aboutRow(); if (sr) rows.push(sr);
     var ar = TL.acting && TL.acting.aboutRow(); if (ar) rows.push(ar);
     var mu = TL.music && TL.music.aboutRow(); if (mu) rows.push(mu);
+    var pr = TL.pro && TL.pro.aboutRow(); if (pr) rows.push(pr);
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);

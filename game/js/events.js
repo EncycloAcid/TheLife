@@ -430,7 +430,7 @@ TL.events = (function () {
       { label: 'I\'m too tired', run: function () { E.rel(c, -8); return c.first + ' was disappointed.'; } }
     ] };
   } });
-  def('workplace_injury', { min: 18, max: 65, w: 2, cond: function () { return S().job && ['construction', 'firefighter', 'military', 'police', 'athlete', 'driver'].indexOf(S().job.career) >= 0; }, build: function () {
+  def('workplace_injury', { min: 18, max: 65, w: 2, cond: function () { return S().job && !S().job.pro && ['construction', 'firefighter', 'military', 'police', 'athlete', 'driver'].indexOf(S().job.career) >= 0; }, build: function () {
     var inj = U.pick(['Broken Arm', 'Broken Leg', 'Concussion']);
     return { icon: '🚑', title: 'Injury at work', text: 'I got hurt on the job!', choices: [
       { label: 'Go to the hospital', run: function () { E.addCondition(inj); E.stat('health', -10); return bad('I have a ' + inj.toLowerCase() + '.'); } },
@@ -532,7 +532,7 @@ TL.events = (function () {
 
   // ---------- v1.1 events ----------
   // Generic workplace events skip careers with their own systems (military, basketball).
-  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids ? !j.mil && !j.hoops && !j.acting && !j.music : ids.indexOf(j.career) >= 0); }
+  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids ? !j.mil && !j.hoops && !j.acting && !j.music && !j.pro : ids.indexOf(j.career) >= 0); }
   function houses() { return S().assets.filter(function (a) { return a.kind === 'house'; }); }
   def('reelection', {
     scripted: true,
