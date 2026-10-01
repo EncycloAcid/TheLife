@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#0B0A14">
+  <meta name="theme-color" content="#F2F2F7">
   <meta name="description" content="TheLife — a deep text-based life simulator. Live from birth to death, one year at a time.">
   <title>TheLife</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="preload" href="fonts/PlusJakartaSans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/Inter.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
 
   <!-- CREATE -->
   <section id="screen-create" class="screen">
-    <div class="topbar"><button id="c-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><h2>New Life</h2><span></span></div>
+    <div class="topbar"><button id="c-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>Back</span></button><h2>New Life</h2><span></span></div>
     <div class="form">
       <label>First name<input id="c-first" maxlength="20" autocomplete="off"></label>
       <label>Last name<input id="c-last" maxlength="24" autocomplete="off"></label>
@@ -93,7 +93,7 @@
 
   <!-- GENERIC LIST -->
   <section id="screen-list" class="screen">
-    <div class="topbar"><button id="list-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><h2 id="list-title"></h2><span></span></div>
+    <div class="topbar"><button id="list-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>Back</span></button><h2 id="list-title"></h2><span></span></div>
     <div id="list-body" class="list-body"></div>
   </section>
 

@@ -40,7 +40,7 @@ TL.ui = (function () {
     [['📂', 'Saved lives', U.plural(saves.length, 'life').replace('lifes', 'lives'), savesScreen, !saves.length],
      ['🪦', 'Graveyard', U.plural(g.history.length, 'grave'), graveyard],
      ['🏆', 'Trophies', g.ach.length + ' of ' + D.ACHIEVEMENTS.length, function () { listScreen('Achievements', D.ACHIEVEMENTS.map(function (a) { var got = g.ach.indexOf(a.id) >= 0; return { icon: got ? a.icon : '🔒', label: a.name, sub: a.desc, check: got }; })); }],
-     ['💾', 'Backup', 'Save & restore', backupMenu]].forEach(function (t) {
+     ['💾', 'Backup', '', backupMenu], ['⚙️', 'Settings', '', settingsMenu]].forEach(function (t) {
       if (t[4]) return;
       var b = document.createElement('button');
       b.className = 'tile';
@@ -48,9 +48,6 @@ TL.ui = (function () {
       b.onclick = t[3];
       tiles.appendChild(b);
     });
-    var st = document.createElement('button');
-    st.className = 'linkbtn'; st.textContent = '⚙️ Settings'; st.onclick = settingsMenu;
-    el.appendChild(st);
     show('home');
   }
   function addBtn(parent, label, cls, fn) {
@@ -132,10 +129,10 @@ TL.ui = (function () {
       var g = E.loadGlobal(), st = g.settings || {}, size = st.textSize || 16, theme = st.theme || 'system';
       function set(key, val) { g.settings = g.settings || {}; g.settings[key] = val; E.saveGlobal(g); applySettings(); renderSheet(); }
       return [{ section: 'Theme' }].concat(THEMES.map(function (t) {
-        return { icon: t[2], label: t[1], check: t[0] === theme, onClick: function () { set('theme', t[0]); } };
+        return { icon: t[2], label: t[1], radio: t[0] === theme, onClick: function () { set('theme', t[0]); } };
       }), [{ section: 'Text size' }], TEXT_SIZES.map(function (t) {
-        return { icon: '<b style="font-size:' + (t[1] - 3) + 'px">Aa</b>', label: t[0], check: t[1] === size, onClick: function () { set('textSize', t[1]); } };
-      }), [{ section: 'Data' }, { icon: '🗑️', label: 'Delete all data', sub: 'Lives, achievements and the graveyard', danger: true, onClick: function () {
+        return { icon: '<b style="font-size:' + (t[1] - 3) + 'px">Aa</b>', label: t[0], radio: t[1] === size, onClick: function () { set('textSize', t[1]); } };
+      }), [{ section: 'Feel' }, { icon: '📳', label: 'Haptics', sub: 'A light buzz when you age up and choose', toggle: st.haptics !== false, onClick: function () { set('haptics', st.haptics === false); haptic(); } }], [{ section: 'Data' }, { icon: '🗑️', label: 'Delete all data', sub: 'Lives, achievements and the graveyard', danger: true, onClick: function () {
         confirm('Delete everything?', 'All saved lives, achievements and the graveyard will be permanently erased. Make a backup first if you want to keep them.', function () {
           closeAll(); E.wipeAll(); home(); alert('', 'All data deleted.', '');
         });
@@ -268,7 +265,7 @@ TL.ui = (function () {
   }
   // Four ring gauges. Built once, then updated in place so changes animate.
   var RING_R = 20, RING_C = 2 * Math.PI * RING_R;
-  var STAT_DEFS = [['happy', '😊', 'Happy', '#F5A524'], ['health', '❤️', 'Health', '#FF4D6D'], ['smarts', '🧠', 'Smarts', '#4D8BFF'], ['looks', '✨', 'Looks', '#B45CFF']];
+  var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--tint)'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
     var m = S().me, box = $('#stats');
     if (!box.querySelector('.ring')) {
@@ -305,10 +302,10 @@ TL.ui = (function () {
     var html = '';
     years.forEach(function (y, i) {
       var last = i === years.length - 1;
-      html += '<div class="year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div>';
+      html += '<div class="year' + (last ? ' latest' + (freshYear ? ' fresh' : '') : '') + '"><div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div><div class="ycard">';
       if (!y.entries.length) html += entryHtml({ t: 'Nothing much happened.', c: 'quiet' });
       y.entries.forEach(function (e) { html += entryHtml(e); });
-      html += '</div>';
+      html += '</div></div>';
     });
     el.innerHTML = html;
     freshYear = false;
@@ -386,6 +383,7 @@ TL.ui = (function () {
     closeAll();
     var before = s.money;
     freshYear = true;
+    haptic();
     E.ageUp();
     E.save();
     refresh();
@@ -464,6 +462,7 @@ TL.ui = (function () {
       btn.className = 'btn ' + (b.cls || '');
       btn.textContent = b.label;
       btn.onclick = function () {
+        if (cfg.buttons.length > 1) haptic();
         var val = cfg.area != null ? area.value : inp.value;
         dialogOpen = false;
         ov.classList.remove('open');
@@ -505,7 +504,11 @@ TL.ui = (function () {
     var top = sheets[sheets.length - 1];
     if (!top) return;
     $('#sheet-title').textContent = top.title;
-    $('#sheet-back').innerHTML = TL.icons(sheets.length > 1 ? 'back' : 'close');
+    var sb = $('#sheet-back');
+    sb.innerHTML = sheets.length > 1 ? TL.icons('back') + '<span>Back</span>' : '<span>Done</span>';
+    sb.classList.toggle('done', sheets.length <= 1);
+    sb.parentNode.classList.toggle('root', sheets.length <= 1);
+    sb.setAttribute('aria-label', sheets.length > 1 ? 'Back' : 'Done');
     var body = $('#sheet-body'), st = body.scrollTop;
     body.innerHTML = '';
     var items = top.build(), group = null;
@@ -529,7 +532,9 @@ TL.ui = (function () {
     if (it.bar != null) html += '<span class="track small"><span class="fill ' + cls(it.bar) + '" style="width:' + it.bar + '%"></span></span>';
     html += '</span>';
     var check = it.check != null ? it.check : it.right === '✔' ? true : null;
-    if (check != null) html += '<span class="i-check' + (check ? ' on' : '') + '">' + (check ? TL.icons('check') : '') + '</span>';
+    if (it.toggle != null) html += '<span class="i-switch' + (it.toggle ? ' on' : '') + '" role="switch" aria-checked="' + !!it.toggle + '"></span>';
+    else if (it.radio != null) html += '<span class="i-tick">' + (it.radio ? TL.icons('check') : '') + '</span>';
+    else if (check != null) html += '<span class="i-check' + (check ? ' on' : '') + '">' + (check ? TL.icons('check') : '') + '</span>';
     else if (it.right) html += '<span class="i-right">' + U.esc(it.right) + '</span>';
     else if (it.onClick && !it.disabled) html += '<span class="i-chev">' + TL.icons('chev') + '</span>';
     el.innerHTML = html;
@@ -538,6 +543,10 @@ TL.ui = (function () {
     return el;
   }
   // Stable pastel hue per label for icon bubbles.
+  // A light tap of the vibration motor, like iOS haptics (Settings > Haptics).
+  function haptic() {
+    try { if ((E.loadGlobal().settings || {}).haptics !== false && navigator.vibrate) navigator.vibrate(8); } catch (e) { }
+  }
   function hue(label) {
     var h = 0, s = String(label || '');
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
@@ -614,6 +623,25 @@ TL.ui = (function () {
     $('#c-reroll').onclick = rerollStats;
     $('#c-back').onclick = home;
     applySettings();
+    // Swipe a sheet down to dismiss it, like an iOS page sheet.
+    (function () {
+      var panel = document.querySelector('.sheet-panel'), body = $('#sheet-body'), y0 = null, dy = 0;
+      panel.addEventListener('touchstart', function (e) {
+        y0 = body.contains(e.target) && body.scrollTop > 0 ? null : e.touches[0].clientY; dy = 0;
+      }, { passive: true });
+      panel.addEventListener('touchmove', function (e) {
+        if (y0 == null) return;
+        dy = e.touches[0].clientY - y0;
+        if (dy < -6) { y0 = null; panel.style.transform = ''; return; }
+        if (dy > 0) { panel.classList.add('dragging'); panel.style.transform = 'translateY(' + dy + 'px)'; }
+      }, { passive: true });
+      function end() {
+        if (y0 == null) return;
+        y0 = null; panel.classList.remove('dragging'); panel.style.transform = '';
+        if (dy > 110) closeAll();
+      }
+      panel.addEventListener('touchend', end); panel.addEventListener('touchcancel', end);
+    })();
     if (window.matchMedia) {
       var mq = matchMedia('(prefers-color-scheme: dark)');
       if (mq.addEventListener) mq.addEventListener('change', syncSystemBars); else if (mq.addListener) mq.addListener(syncSystemBars);

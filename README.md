@@ -39,8 +39,8 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
 - **48 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
-- **Modern design**: dark-first, with a light theme; ring gauges for your stats; a feed-style life log; colour-coded menus; and a floating dock with a big Age button. The phone's status and navigation bars follow the theme.
-- **Settings**: theme (match your phone, dark or light), text size, and deleting all data.
+- **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics. Light and dark themes; the phone's status and navigation bars follow the theme.
+- **Settings**: theme (match your phone, dark or light), text size, haptics, and deleting all data.
 - Works offline, autosaves, and handles the Android back gesture.
 
 ## Install on Android
@@ -78,7 +78,7 @@ game/                  The game (packaged into the APK as assets)
   js/icons.js          Line icons (SVG) for the dock and menus
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes
   css/style.css        The design system: light and dark tokens, components, motion
-  fonts/               Plus Jakarta Sans (SIL Open Font License, see OFL.txt)
+  fonts/               Inter (SIL Open Font License, see OFL.txt)
 app/                   Android wrapper (Kotlin, WebView + WebViewAssetLoader)
 tests/simulate.js      Headless fuzz test that plays hundreds of random lives
 ```

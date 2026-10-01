@@ -153,8 +153,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val GAME_HOST = "appassets.androidplatform.net"
-        private const val DARK_BG = "#0B0A14"
-        private const val LIGHT_BG = "#F5F4FB"
+        private const val DARK_BG = "#000000"
+        private const val LIGHT_BG = "#F2F2F7"
         private val HEX_COLOR = Regex("#[0-9A-Fa-f]{6}")
         private val GAME_URL = Uri.Builder().scheme("https").authority(GAME_HOST)
             .appendPath("assets").appendPath("index.html").build().toString()
