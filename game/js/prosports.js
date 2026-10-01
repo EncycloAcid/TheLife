@@ -357,10 +357,10 @@ TL.pro = (function () {
     if (x.best && x.sport === 'Tennis') acc.push('Career-high No. ' + x.best);
     if (x.hof) acc.push('🏛️ Hall of Fame');
     var where = x.stage === 'retired' ? 'Retired' : (x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league);
-    return '<div class="pr-card"><div class="pr-top"><span class="pr-ico">' + C.icon + '</span><div><div class="pr-name">' + U.esc(x.stage === 'retired' ? 'Retired ' + x.pos : title()) + '</div><div class="pr-sub">' + U.esc(where) + '</div></div></div>' +
+    return '<div class="pr-card"><div class="pr-top"><span class="pr-ico">' + (x.team && x.stage !== 'retired' && TL.logos ? TL.logos.badge(x.team, { shape: 'team' }) : C.icon) + '</span><div><div class="pr-name">' + U.esc(x.stage === 'retired' ? 'Retired ' + x.pos : title()) + '</div><div class="pr-sub">' + U.esc(where) + '</div></div></div>' +
       bar('Overall', x.ovr) + (x.stage !== 'retired' ? bar('Potential', x.pot) : '') +
       (x.contract && x.sport !== 'Tennis' ? '<div class="pr-line">✍️ ' + E.fmt(E.$(x.contract.salary)) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left</div>' : '') +
-      (x.endorse ? '<div class="pr-line">👟 ' + U.esc(x.endorse.brand) + ' · ' + E.fmt(E.$(x.endorse.pay)) + '/yr</div>' : '') +
+      (x.endorse ? '<div class="pr-line">' + (TL.logos ? TL.logos.badge(x.endorse.brand, { size: 'xs' }) + ' ' : '👟 ') + U.esc(x.endorse.brand) + ' · ' + E.fmt(E.$(x.endorse.pay)) + '/yr</div>' : '') +
       (acc.length ? '<div class="pr-line">' + acc.join(' · ') + '</div>' : '') + '</div>';
   }
   var TRAIN = [['str', '🏋️', 'Strength & conditioning', function (x) { me().athl = U.clamp(me().athl + 2, 0, 100); E.stat('health', 2); return 1; }],
@@ -415,7 +415,7 @@ TL.pro = (function () {
     ui().menu('Season history', function () {
       if (!x.seasons.length) return [{ info: true, html: '<p class="muted">No seasons yet.</p>' }];
       return x.seasons.slice().reverse().map(function (q) {
-        return { icon: q.result && /Won/.test(q.result) || /won/.test(q.line || '') ? '🏆' : SP[x.sport].icon, label: q.year + ' · ' + (q.team || '').replace(/^the /, '') + ' (age ' + q.age + ')', sub: q.line + (q.rec && x.sport !== 'Tennis' ? ' · ' + q.rec : '') + (q.award ? ' · ' + q.award : ''), right: q.ovr ? String(q.ovr) : '' };
+        return { icon: TL.logos && q.team ? TL.logos.badge(q.team, { shape: 'team' }) : SP[x.sport].icon, label: q.year + ' · ' + (q.team || '').replace(/^the /, '') + ' (age ' + q.age + ')', sub: q.line + (q.rec && x.sport !== 'Tennis' ? ' · ' + q.rec : '') + (q.award ? ' · ' + q.award : ''), right: q.ovr ? String(q.ovr) : '' };
       });
     });
   }

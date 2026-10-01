@@ -275,7 +275,7 @@ TL.music = (function () {
   function card(x) {
     var aw = (S().awards || []).filter(function (a) { return a.award === 'Grammy Award'; }).length;
     var hits = x.songs.filter(function (s2) { return s2.peak; }).length;
-    return '<div class="mu-card"><div class="mu-top"><span class="mu-ico">🎵</span><div><div class="mu-name">' + U.esc(x.name) + '</div><div class="mu-sub">' + U.esc(title()) + ' · ' + x.genre + ' · ' + (x.label ? U.esc(x.label.name) : 'Independent') + '</div></div></div>' +
+    return '<div class="mu-card"><div class="mu-top"><span class="mu-ico">' + (x.label && TL.logos ? TL.logos.badge(x.label.name) : '🎵') + '</span><div><div class="mu-name">' + U.esc(x.name) + '</div><div class="mu-sub">' + U.esc(title()) + ' · ' + x.genre + ' · ' + (x.label ? U.esc(x.label.name) : 'Independent') + '</div></div></div>' +
       '<div class="mu-stats"><div><b>' + big(x.fans) + '</b><small>fans</small></div><div><b>' + big(x.streams) + '</b><small>streams</small></div><div><b>' + (hits || '—') + '</b><small>Hot 100 hits</small></div><div><b>' + (aw || '—') + '</b><small>Grammys</small></div></div>' +
       '<div class="minibar"><span>Musicianship</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
       '<div class="mu-line">✍️ ' + U.plural(x.vault.length, 'unreleased song') + (x.label && x.label.owed ? ' · owe ' + x.label.name + ' ' + U.plural(x.label.owed, 'album') : '') + '</div></div>';

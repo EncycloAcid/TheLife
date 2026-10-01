@@ -234,7 +234,7 @@ TL.acting = (function () {
   // ------------------------------------------------------------ menus
   function card(x) {
     var aw = (S().awards || []).filter(function (a) { return /Academy|Emmy|Golden Globe|Tony/.test(a.award); });
-    return '<div class="ac-card"><div class="ac-top"><span class="ac-ico">🎬</span><div><div class="ac-name">' + U.esc(title()) + '</div><div class="ac-sub">' + (x.agent ? 'Repped by ' + U.esc(x.agent.name) : 'No agent') + ' · ' + U.plural(x.credits.length, 'credit') + (aw.length ? ' · 🏆 ' + aw.length : '') + '</div></div></div>' +
+    return '<div class="ac-card"><div class="ac-top"><span class="ac-ico">' + (x.agent && x.agent.tier >= 2 && TL.logos ? TL.logos.badge(x.agent.name) : '🎬') + '</span><div><div class="ac-name">' + U.esc(title()) + '</div><div class="ac-sub">' + (x.agent ? 'Repped by ' + U.esc(x.agent.name) : 'No agent') + ' · ' + U.plural(x.credits.length, 'credit') + (aw.length ? ' · 🏆 ' + aw.length : '') + '</div></div></div>' +
       '<div class="minibar"><span>Craft</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
       '<div class="minibar"><span>Star power</span><span class="track"><span class="fill ' + (x.rep >= 60 ? 'hi' : x.rep >= 25 ? 'mid' : 'lo') + '" style="width:' + Math.min(100, Math.round(x.rep)) + '%"></span></span></div>' +
       (x.series ? '<div class="ac-line">📺 Series regular on "' + U.esc(x.series.title) + '" (' + U.esc(x.series.network) + ')' + (x.series.seasons ? ', ' + U.plural(x.series.seasons, 'season') : '') + '</div>' : '') +
@@ -254,7 +254,7 @@ TL.acting = (function () {
       items.push({ section: 'Casting calls · ' + Math.max(0, left) + ' auditions left' });
       calls().forEach(function (c) {
         var k = KINDS[c.kind], p = odds(x, c);
-        items.push({ icon: k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + ' · ' + c.studio + ' · ' + oddsWord(p), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
+        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + ' · ' + c.studio + ' · ' + oddsWord(p), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
       });
       if (!x.calls.list.length) items.push({ info: true, html: '<p class="muted">No more casting calls this year.</p>' });
       items.push({ section: 'Career' });
@@ -275,7 +275,7 @@ TL.acting = (function () {
       if (!x.credits.length) return [{ info: true, html: '<p class="muted">No credits yet.</p>' }];
       return x.credits.slice().reverse().map(function (r) {
         var k = KINDS[r.kind];
-        return { icon: k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : '' };
+        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : '' };
       });
     });
   }

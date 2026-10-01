@@ -560,7 +560,7 @@ TL.actions = (function () {
       var serving = s.mil && s.mil.active;
       if (s.job) {
         var j = s.job;
-        items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (TL.work ? TL.work.card(j) : '') + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
+        items.push({ info: true, html: '<div class="kv">' + (TL.logos && j.company ? '<div class="job-head">' + TL.logos.badge(j.company, { size: 'md' }) + '<div><b>' + U.esc(E.jobTitle(j)) + '</b><br><span class="muted">' + U.esc(String(j.company).replace(/^the /, '')) + '</span></div></div>' : '<b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>') + 'Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (TL.work ? TL.work.card(j) : '') + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
         if (!j.hoops && !j.mil && !j.acting && !j.music && !j.pro) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
         if (j.politics) politicsItems(j).forEach(function (it) { items.push(it); });
         if (TL.work && TL.work.regular(j)) TL.work.items(j).forEach(function (it) { items.push(it); });
@@ -577,7 +577,7 @@ TL.actions = (function () {
       if (m.age >= D.POLITICS.minAge && !(s.job && s.job.politics)) items.push({ icon: '🗳️', label: 'Run for office', sub: 'Start a political career', onClick: function () { campaignMenu(0); } });
       if (m.age >= 8 && m.age < 18) items.push({ icon: '🧃', label: 'Odd jobs', sub: 'Lemonade stands, mowing lawns', onClick: oddJobs });
       if (m.age >= 18) items.push({ icon: '📈', label: 'Start a business', onClick: businessMenu });
-      if (s.jobHistory.length) items.push({ icon: '🗂️', label: 'Job history', onClick: function () { ui().menu('Job history', function () { return s.jobHistory.slice().reverse().map(function (h) { return { icon: h.fired ? '🔥' : '💼', label: h.title, sub: (h.company || '') + ' · ' + U.plural(h.years, 'year') + (h.fired ? ' · fired' : '') }; }); }); } });
+      if (s.jobHistory.length) items.push({ icon: '🗂️', label: 'Job history', onClick: function () { ui().menu('Job history', function () { return s.jobHistory.slice().reverse().map(function (h) { return { icon: h.company && TL.logos ? TL.logos.badge(h.company) : h.fired ? '🔥' : '💼', label: h.title, sub: (h.company || '') + ' · ' + U.plural(h.years, 'year') + (h.fired ? ' · fired' : '') }; }); }); } });
       return items;
     });
   }
