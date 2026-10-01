@@ -11,13 +11,21 @@ TL.ui = (function () {
   function S() { return TL.S; }
 
   // ---------------------------------------------------------------- screens
+  var DEPTH = { home: 0, create: 1, list: 1, game: 1, death: 2 };
   function show(name) {
+    var prev = screen;
     screen = name;
     ['home', 'create', 'game', 'death', 'list'].forEach(function (n) {
       var el = $('#screen-' + n);
       if (el) el.classList.toggle('active', n === name);
     });
     closeAll();
+    // iOS-style navigation: push in from the right, pop back from the left.
+    if (prev !== name && TL.motion) {
+      var kind = name === 'game' && (prev === 'home' || prev === 'create') ? 'zoom' : (DEPTH[name] || 0) > (DEPTH[prev] || 0) ? 'push' : (DEPTH[name] || 0) < (DEPTH[prev] || 0) ? 'pop' : 'zoom';
+      TL.motion.screenIn($('#screen-' + name), kind);
+    }
+    if (TL.motion && (name === 'home' || name === 'death')) TL.motion.stagger(document.querySelector(name === 'home' ? '.home-wrap' : '.death-wrap'), 55, 18);
     var t = $('#toast');
     if (t) t.classList.remove('show');
   }
@@ -182,6 +190,8 @@ TL.ui = (function () {
   }
 
   function startGame() {
+    // Fresh baselines so loading a life doesn't animate counts or confetti.
+    lastMoney = null; lastAge = null; prevStats = null; logSeen = null;
     show('game');
     refresh();
     scrollLog();
@@ -257,14 +267,19 @@ TL.ui = (function () {
     $('#h-avatar').textContent = avatar();
     $('#h-name').textContent = m.first + ' ' + m.last;
     $('#h-sub').textContent = c.flag + ' ' + statusLine();
-    var cash = E.fmt(s.money);
-    $('#h-money').textContent = cash;
+    var cash = E.fmt(s.money), mEl = $('#h-money');
+    if (lastMoney != null && lastMoney !== s.money && TL.motion) TL.motion.countTo(mEl, lastMoney, s.money, function (v) { return E.fmt(Math.round(v)); });
+    else { mEl._count = (mEl._count || 0) + 1; mEl.textContent = cash; }
+    lastMoney = s.money;
+    if (lastAge != null && lastAge !== m.age && TL.motion) TL.motion.pop($('#h-age'), 1.25);
+    lastAge = m.age;
     $('#h-money').className = 'money' + (s.money < 0 ? ' neg' : '') + (cash.length > 9 ? ' long' : '');
     $('#h-age').textContent = 'Age ' + m.age;
     $('#ageup-label').textContent = m.age < 1 ? 'Age' : 'Age';
   }
   // Four ring gauges. Built once, then updated in place so changes animate.
   var RING_R = 20, RING_C = 2 * Math.PI * RING_R;
+  var lastMoney = null, lastAge = null, prevStats = null, logSeen = null;
   var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--tint)'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
     var m = S().me, box = $('#stats');
@@ -273,12 +288,18 @@ TL.ui = (function () {
         return '<div class="stat" data-k="' + d[0] + '" style="--c:' + d[3] + '"><div class="ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="' + RING_R + '"/><circle class="rf" cx="25" cy="25" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(1) + '" stroke-dashoffset="' + RING_C.toFixed(1) + '"/></svg><span class="ring-ico">' + d[1] + '</span></div><div class="stat-lbl">' + d[2] + ' <b></b></div></div>';
       }).join('');
     }
+    void box.offsetWidth; // let freshly built rings sweep in from empty
     STAT_DEFS.forEach(function (d) {
-      var v = m[d[0]], el = box.querySelector('[data-k="' + d[0] + '"]');
+      var v = m[d[0]], el = box.querySelector('[data-k="' + d[0] + '"]'), was = prevStats ? prevStats[d[0]] : null;
       el.querySelector('.rf').setAttribute('stroke-dashoffset', (RING_C * (1 - v / 100)).toFixed(1));
-      el.querySelector('b').textContent = v;
+      var num = el.querySelector('b');
+      if (was != null && was !== v && TL.motion) {
+        TL.motion.countTo(num, was, v, function (x) { return String(Math.round(x)); }, 600);
+        TL.motion.floatText(el, (v > was ? '+' : '−') + Math.abs(v - was), v > was);
+      } else { num._count = (num._count || 0) + 1; num.textContent = v; }
       el.classList.toggle('low', v < 25);
     });
+    prevStats = { happy: m.happy, health: m.health, smarts: m.smarts, looks: m.looks };
   }
   function cls(v) { return v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo'; }
   // A leading emoji becomes the entry's icon bubble; otherwise a small dot.
@@ -296,6 +317,15 @@ TL.ui = (function () {
     var m = t.match(LEAD_EMOJI), ico = m ? m[1] : null, txt = m ? t.slice(m[0].length) : t;
     return '<div class="entry ' + (e.c || '') + '"><span class="e-ico">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
   }
+  // Confetti for life's big moments, once each, as they appear in the log.
+  var CELEBRATE = /Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
+  function celebrate(y) {
+    if (!y) return;
+    var key = y.age + ':' + y.year, from = logSeen && logSeen.key === key ? logSeen.n : logSeen ? 0 : y.entries.length;
+    var fresh = y.entries.slice(from);
+    logSeen = { key: key, n: y.entries.length };
+    if (fresh.some(function (e) { return e.c !== 'bad' && CELEBRATE.test(String(e.t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
+  }
   function renderLog() {
     var s = S(), el = $('#log');
     var years = s.log.slice(-60);
@@ -309,6 +339,7 @@ TL.ui = (function () {
     });
     el.innerHTML = html;
     freshYear = false;
+    celebrate(years[years.length - 1]);
   }
   function scrollLog() { var el = $('#log'); el.scrollTop = el.scrollHeight; }
   function refresh() {
@@ -494,6 +525,7 @@ TL.ui = (function () {
     var body = $('#sheet-body');
     body.scrollTop = 0;
     body.classList.remove('enter'); void body.offsetWidth; body.classList.add('enter');
+    document.body.classList.add('sheet-open');
     clearTimeout(menu.t);
     menu.t = setTimeout(function () { body.classList.remove('enter'); }, 450);
   }
@@ -554,13 +586,14 @@ TL.ui = (function () {
   }
   function back() {
     sheets.pop();
-    if (!sheets.length) { $('#sheet').classList.remove('open'); setActiveNav(null); return; }
+    if (!sheets.length) { $('#sheet').classList.remove('open'); document.body.classList.remove('sheet-open'); setActiveNav(null); return; }
     renderSheet();
   }
   function closeAll() {
     sheets = [];
     var sh = $('#sheet');
     if (sh) sh.classList.remove('open');
+    document.body.classList.remove('sheet-open');
     setActiveNav(null);
   }
 

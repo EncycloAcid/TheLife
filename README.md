@@ -39,7 +39,8 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Death & legacy**: an obituary with a life ribbon, a graveyard of past lives, and the option to continue as one of your children, or a grandchild if no children survive, with an inheritance.
 - **48 achievements**, tracked per life and across all lives.
 - **Backup & restore**: export all your lives as a code and restore them on any device.
-- **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics. Light and dark themes; the phone's status and navigation bars follow the theme.
+- **iPhone-style design**: iOS system colours and typography (Inter), large titles, inset grouped lists like the Settings app, iOS alerts and banners, page sheets you can swipe down to close, a floating glass tab bar, activity-style rings for your stats, switches and checkmarks, and light haptics.
+- **Animation**: iOS-style push and pop transitions, the game shrinking back behind an open menu, money and stats that count up with floating +/− bubbles, new log lines that arrive one after another, confetti for achievements, graduations, weddings, births and promotions, an Age button ripple and bouncy tab icons. Turned off automatically if your phone is set to reduce motion. Light and dark themes; the phone's status and navigation bars follow the theme.
 - **Settings**: theme (match your phone, dark or light), text size, haptics, and deleting all data.
 - Works offline, autosaves, and handles the Android back gesture.
 
@@ -76,6 +77,7 @@ game/                  The game (packaged into the APK as assets)
   js/features.js       Royalty, organized crime, skills & books, wills
   js/extras.js         Family tree, holidays, resolutions, tattoos, coming out
   js/icons.js          Line icons (SVG) for the dock and menus
+  js/motion.js         Screen transitions, count-ups, floating stat changes, confetti
   js/ui.js             Screens, life log, bottom-sheet menus, dialogs, themes
   css/style.css        The design system: light and dark tokens, components, motion
   fonts/               Inter (SIL Open Font License, see OFL.txt)

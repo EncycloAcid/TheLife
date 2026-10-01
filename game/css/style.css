@@ -350,6 +350,43 @@ h1 { text-align: center; margin: 0; font-size: 2.125rem; font-weight: 700; lette
 .dstat small { display: block; color: var(--muted); font-size: .75rem; text-transform: uppercase; }
 .dstat b { display: block; font-size: 1.0625rem; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
 
+/* ---------------------------------------------------------------- motion */
+/* iOS card stack: the screen behind an open sheet shrinks back. */
+.screen { background: var(--bg); transition: transform .45s cubic-bezier(.32, .72, 0, 1), border-radius .45s ease, filter .45s ease; transform-origin: 50% 0; }
+body.sheet-open { background: #000; }
+body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t))) scale(.92); border-radius: 14px; overflow: hidden; filter: brightness(.85); }
+/* floating "+3" over a stat ring */
+.stat { position: relative; }
+.floater { position: absolute; left: 50%; top: 2px; font-size: .8125rem; font-weight: 700; pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.floater.up { color: var(--green); }
+.floater.down { color: var(--red); }
+/* confetti */
+.confetti { position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; z-index: 30; overflow: hidden; }
+.confetti i { position: absolute; top: 28%; display: block; }
+/* new year's lines arrive one after another */
+.year.fresh .entry { animation: rise .45s cubic-bezier(.32, .72, 0, 1) both; }
+.year.fresh .entry:nth-child(2) { animation-delay: .07s; }
+.year.fresh .entry:nth-child(3) { animation-delay: .14s; }
+.year.fresh .entry:nth-child(4) { animation-delay: .21s; }
+.year.fresh .entry:nth-child(5) { animation-delay: .28s; }
+.year.fresh .entry:nth-child(n+6) { animation-delay: .35s; }
+.year.fresh .year-h { animation: rise .35s cubic-bezier(.32, .72, 0, 1) both; }
+/* Age button ripple */
+.ageup { position: relative; }
+.ageup.pop::after { content: ''; position: absolute; top: -2px; right: -2px; bottom: -2px; left: -2px; border-radius: 50%; border: 2px solid var(--tint); animation: ripple .6s ease-out forwards; pointer-events: none; }
+@keyframes ripple { to { transform: scale(1.6); opacity: 0; } }
+/* tab icons bounce when their menu opens */
+.nav-btn.active .ic { animation: tab-pop .45s cubic-bezier(.32, 1.6, .5, 1); }
+@keyframes tab-pop { 40% { transform: scale(.82); } }
+/* toggles and checks spring */
+.i-tick .ic, .i-check.on .ic { animation: tick-in .35s cubic-bezier(.32, 1.6, .5, 1); }
+@keyframes tick-in { from { transform: scale(.3); opacity: 0; } }
+/* low stat warning breathes */
+.stat.low .ring { animation: pulse 1.8s ease-in-out infinite; }
+/* death screen tombstone drops in */
+#screen-death.active .tomb { animation: drop .7s cubic-bezier(.32, 1.4, .5, 1) both; }
+@keyframes drop { from { transform: translateY(-40px) scale(.7); opacity: 0; } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
