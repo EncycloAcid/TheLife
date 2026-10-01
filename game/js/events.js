@@ -304,7 +304,7 @@ TL.events = (function () {
       { label: 'Report to HR', run: function () { return 'HR had a talk with ' + c.first + '.'; } }
     ] };
   } });
-  def('boss_overtime', { min: 18, max: 70, w: 6, cond: function () { return S().job && !S().job.fame && !S().job.partTime; }, build: function () {
+  def('boss_overtime', { min: 18, max: 70, w: 6, cond: function () { return S().job && !S().job.fame && !S().job.partTime && !S().job.mil; }, build: function () {
     return { icon: '💼', title: 'Overtime', text: 'My boss is asking me to work this weekend to meet a deadline.', choices: [
       { label: 'Work the weekend', run: function () { S().job.perf = Math.min(100, S().job.perf + 10); E.stat('happy', -4); return 'My boss appreciated the extra effort.'; } },
       { label: 'Politely decline', run: function () { S().job.perf = Math.max(0, S().job.perf - 4); return 'I declined. My boss wasn\'t thrilled.'; } },
@@ -530,7 +530,8 @@ TL.events = (function () {
   } });
 
   // ---------- v1.1 events ----------
-  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids || ids.indexOf(j.career) >= 0); }
+  // Generic workplace events skip careers with their own systems (military, basketball).
+  function hasJob(ids) { var j = S().job; return j && !j.partTime && (!ids ? !j.mil && !j.hoops : ids.indexOf(j.career) >= 0); }
   function houses() { return S().assets.filter(function (a) { return a.kind === 'house'; }); }
   def('reelection', {
     scripted: true,
@@ -608,7 +609,7 @@ TL.events = (function () {
       { label: 'Track down the thief online', run: function () { if (U.chance(me().smarts / 150)) return good('I found the thief and the police arrested them!'); E.addMoney(-loss); return bad('I got nowhere and lost ' + E.fmt(loss) + '.'); } }
     ] };
   } });
-  def('deployment', { min: 18, max: 60, w: 10, cond: function () { return hasJob(['military']); }, build: function () {
+  def('deployment', { min: 18, max: 60, w: 10, cond: function () { return hasJob(['military']) && !S().job.mil; }, build: function () {
     return { icon: '🎖️', title: 'Deployment', text: 'My unit is being deployed overseas.', choices: [
       { label: 'Volunteer for the front line', run: function () {
         var r = U.rand(1, 100), j = S().job;
@@ -730,7 +731,7 @@ TL.events = (function () {
 
   // ---------- v1.4 home events ----------
   function homeIs(t) { return me().age >= 18 && !S().prison && E.home().type === t; }
-  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent && E.parentsAround().length > 0; }, build: function () {
+  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent && E.parentsAround().length > 0 && !(S().job && S().job.mil); }, build: function () {
     var rent = E.$(U.pick([3000, 5000, 8000]));
     var p = E.parentsAround()[0];
     return { icon: '🏠', title: 'House rules', text: 'My ' + p.role + ' says it\'s time I either pay rent or move out.', choices: [
@@ -890,13 +891,19 @@ TL.events = (function () {
       if (d.once) s.flags['ev_' + d.id] = true;
     }
   }
+  // The event shown to the player is remembered so that resolving a choice
+  // uses exactly the same options (some events roll random offers in build).
+  var shown = { p: null, ev: null };
   function build(p) {
     var d = defs[p.id];
     if (!d) return null;
+    if (shown.p === p && shown.ev) return shown.ev;
     if (p.data && p.data.pid && !E.person(p.data.pid)) return null;
     // Circumstances may have changed since the event was queued (fired, jailed, sold the house...).
     if (d.cond && !d.cond()) return null;
-    return d.build(p.data || {});
+    var ev = d.build(p.data || {});
+    shown = { p: p, ev: ev };
+    return ev;
   }
   // Resolve the pending event at the front of the queue with choice index i.
   function resolve(i) {
@@ -904,6 +911,8 @@ TL.events = (function () {
     if (!p) return null;
     var ev = build(p);
     if (!ev) return null;
+    shown = { p: null, ev: null };
+    if (!ev.choices[i]) return null;
     var res = ev.choices[i].run(p.data || {});
     if (res == null) return null;
     if (typeof res === 'string') res = { text: res, cls: '' };

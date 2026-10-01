@@ -620,6 +620,7 @@ TL.features = (function () {
     nominate();
     if (TL.extras) TL.extras.yearly();
     if (TL.hoops) TL.hoops.yearly();
+    if (TL.military) TL.military.yearly();
   }
   // Called by continueAs after the heir's new life exists.
   function inherit(prev, c, st, heirs) {

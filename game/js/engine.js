@@ -341,6 +341,10 @@ TL.engine = (function () {
       enroll('uni', Object.assign({ major: major, funding: 'parents' }, at));
       return { ok: true, msg: 'My ' + rich.role + ' agreed to pay my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '.' };
     }
+    if (funding === 'gibill') {
+      enroll('uni', Object.assign({ major: major, funding: 'gibill' }, at));
+      return { ok: true, msg: 'The GI Bill covers my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '. 🎖️' };
+    }
     if (funding === 'scholarship') {
       var g = s.lastGrade || 50;
       var p = g >= 90 ? 0.8 : g >= 80 ? 0.45 : g >= 70 ? 0.2 : 0.03;
@@ -400,13 +404,14 @@ TL.engine = (function () {
 
   // ---------- jobs ----------
   function jobSalary(job) {
-    if (job.hoops && job.salary) return job.salary;
+    if ((job.hoops || job.mil) && job.salary) return job.salary;
     if (job.partTime) return $(D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].salary);
     var c = D.career(job.career);
     return Math.round($(c.levels[job.level][1]) * (job.mult || 1));
   }
   function jobTitle(job) {
     if (!job) return 'Unemployed';
+    if (job.mil) return job.title || 'Soldier';
     if (job.hoops) return (job.title || 'Basketball Player') + (TL.hoops && S().hoops ? ' (' + ({ PG: 'PG', SG: 'SG', SF: 'SF', PF: 'PF', C: 'C' }[S().hoops.pos]) + ')' : '');
     if (job.partTime) return D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].name + ' (part-time)';
     return D.career(job.career).levels[job.level][0];
@@ -442,6 +447,8 @@ TL.engine = (function () {
     if (TL.features) p += TL.features.skillBonus(careerId);
     p += Math.min(0.2, (s.internships || 0) * 0.08);
     p += bonus || 0; // how the interview went
+    // Veterans get hiring preference, especially where their service skills carry over.
+    if (TL.military && TL.military.veteran()) p += ['police', 'firefighter', 'detective', 'security', 'nurse', 'mechanic', 'engineer', 'software', 'pilot'].indexOf(careerId) >= 0 ? 0.15 : 0.05;
     var prestige = s.degrees.reduce(function (t, d) { return Math.max(t, d.tier || 0); }, 0);
     p += prestige === 3 ? 0.12 : prestige === 2 ? 0.05 : 0; // a big-name degree opens doors
     p -= c.hard || 0;
@@ -503,6 +510,7 @@ TL.engine = (function () {
     if (!j || s.prison) return 0;
     j.years++; j.levelYears++;
     if (j.hoops && TL.hoops) return TL.hoops.season();
+    if (j.mil && TL.military) return TL.military.year();
     var earned = jobSalary(j);
     if (j.partTime) return earned;
     if (j.politics) return politicsYear(j, earned);

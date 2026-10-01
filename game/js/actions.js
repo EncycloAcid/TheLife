@@ -501,19 +501,22 @@ TL.actions = (function () {
       // Job
       items.push({ section: 'Career' });
       if (s.hoops) items.push({ icon: '🏀', label: 'Basketball', sub: TL.hoops.summary(), onClick: TL.hoops.menu });
+      if (s.mil) items.push({ icon: '🎖️', label: 'Military', sub: TL.military.summary(), onClick: TL.military.menu });
+      var serving = s.mil && s.mil.active;
       if (s.job) {
         var j = s.job;
         items.push({ info: true, html: '<div class="kv"><b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
-        if (!j.hoops) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
+        if (!j.hoops && !j.mil) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
         if (j.politics) politicsItems(j).forEach(function (it) { items.push(it); });
-        if (!j.partTime && !j.fame && !j.politics) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
+        if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
         if (j.fame && !j.hoops) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
-        if (!j.partTime && !j.fame && !j.politics) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
-        if (me().age >= 55 && !j.partTime) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
-        items.push({ icon: '🚪', label: j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.hoops ? 'Retire?' : 'Quit?', j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
+        if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
+        if (me().age >= 55 && !j.partTime && !j.mil) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
+        if (!j.mil) items.push({ icon: '🚪', label: j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.hoops ? 'Retire?' : 'Quit?', j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.</p>' });
-      if (m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
-      if (m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
+      if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
+      if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
+      if (!serving && m.age >= 17 && m.age <= 39) items.push({ icon: '🎖️', label: 'Join the military', sub: 'Talk to a recruiter', onClick: TL.military.recruiter });
       items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Basketball · Pro Sports', onClick: fameMenu });
       if (m.age >= D.POLITICS.minAge && !(s.job && s.job.politics)) items.push({ icon: '🗳️', label: 'Run for office', sub: 'Start a political career', onClick: function () { campaignMenu(0); } });
       if (m.age >= 8 && m.age < 18) items.push({ icon: '🧃', label: 'Odd jobs', sub: 'Lemonade stands, mowing lawns', onClick: oddJobs });
@@ -587,7 +590,7 @@ TL.actions = (function () {
       { label: 'Apply for a scholarship', fn: function () { finishEnroll(E.enrollUni(major, 'scholarship', u)); } },
       { label: 'Student loans', fn: function () { finishEnroll(E.enrollUni(major, 'loans', u)); } },
       { label: 'Pay with savings', fn: function () { finishEnroll(E.enrollUni(major, 'savings', u)); } }
-    ]);
+    ].concat(TL.military && TL.military.veteran() ? [{ label: '🎖️ Use the GI Bill', fn: function () { finishEnroll(E.enrollUni(major, 'gibill', u)); } }] : []));
   }
   function fundingMenu(major) {
     var cost = E.$(28000) * 4;
@@ -635,8 +638,9 @@ TL.actions = (function () {
     var s = S();
     if (!s.yearActs.jobs) {
       // A mix of openings, weighted towards jobs I qualify for.
-      var ok = D.CAREERS.filter(function (c) { return !E.eligible(c).length; });
-      var no = D.CAREERS.filter(function (c) { return E.eligible(c).length; });
+      // The military is joined through a recruiter, not the job board.
+      var ok = D.CAREERS.filter(function (c) { return c.id !== 'military' && !E.eligible(c).length; });
+      var no = D.CAREERS.filter(function (c) { return c.id !== 'military' && E.eligible(c).length; });
       s.yearActs.jobs = U.shuffle(ok).slice(0, 9).concat(U.shuffle(no).slice(0, 5)).map(function (c) { return c.id; });
     }
     ui().menu('Job openings', function () {
