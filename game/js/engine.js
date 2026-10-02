@@ -440,7 +440,7 @@ TL.engine = (function () {
     if (c.maxAge && m.age > c.maxAge) reasons.push('Too old');
     if (c.edu && c.edu !== 'none') {
       if (c.edu === 'hs' && eduRank() < 1) reasons.push('Needs high school diploma');
-      if (c.edu === 'bachelor' && !hasDegree('bachelor', c.majors)) reasons.push(c.majors ? 'Needs degree in ' + c.majors.join('/') : 'Needs a bachelor\'s degree');
+      if (c.edu === 'bachelor' && !hasDegree('bachelor', c.majors)) reasons.push(c.majors ? 'Needs a degree in ' + (c.majors.length > 1 ? c.majors.slice(0, -1).join(', ') + ' or ' + c.majors[c.majors.length - 1] : c.majors[0]) : 'Needs a bachelor\'s degree');
       if (c.edu === 'trade' && !hasDegree('trade', c.majors)) reasons.push('Needs ' + c.majors[0].toLowerCase() + ' trade school');
       if (['law', 'med', 'mba', 'phd', 'vet', 'dental'].indexOf(c.edu) >= 0 && !hasDegree(c.edu)) reasons.push('Needs ' + { law: 'law degree', med: 'medical degree', mba: 'an MBA', phd: 'a PhD', vet: 'vet school', dental: 'dental school' }[c.edu]);
     }
@@ -928,7 +928,9 @@ TL.engine = (function () {
       if (p.age === 67 && p.job !== 'Retired' && U.chance(0.7)) p.job = 'Retired';
       p.money = Math.round(p.money * 1.02 + (p.age >= 18 && p.job !== 'Unemployed' && p.job !== 'Student' ? $(U.rand(1000, 8000)) : 0));
       // death
-      var hazard = p.age < 50 ? 0.0015 : 0.005 * Math.exp((p.age - 78) / 7);
+      // Real-world-ish mortality: about 1% a year at 60, 6% at 80, a third at 100,
+      // shifted by the country's life expectancy.
+      var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life)) / 11.5);
       if (U.chance(Math.min(0.8, hazard))) {
         p.alive = false; p.died = s.year;
         var cause = p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia']) : U.pick(['a car accident', 'cancer', 'an overdose', 'a heart attack', 'a boating accident']);
