@@ -683,7 +683,8 @@ TL.engine = (function () {
     if (m.age >= 18 && !s.prison) {
       validateHome();
       var h = home();
-      var living = $(h.type === 'parents' ? 4000 : h.type === 'homeless' ? 2000 : 9000);
+      // Parents cover a young adult at home until they're earning (or turn 22).
+      var living = $(h.type === 'parents' ? (m.age < 22 && !s.job ? 0 : 4000) : h.type === 'homeless' ? 2000 : 9000);
       if (!(s.edu && s.edu.funding === 'parents')) living += rentCost(h);
       if (s.edu && (s.edu.stage === 'uni' || s.edu.stage === 'grad' || s.edu.stage === 'trade') && s.edu.funding === 'loans') {
         s.studentDebt += living; living = 0;

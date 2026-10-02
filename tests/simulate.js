@@ -1,8 +1,15 @@
 /* Headless fuzz test: plays many complete lives, randomly opening menus,
  * tapping items and picking dialog choices. Fails on any exception or on
- * corrupt state (NaN stats/money). Run: node tests/simulate.js [lives] */
+ * corrupt state (NaN stats/money). Each family gets its own seed, so a
+ * failure prints the seed that replays it exactly.
+ * Run: node tests/simulate.js [families] [seed] */
 var fs = require('fs'), path = require('path'), vm = require('vm');
-var ctx = { console: console, Math: Math, Date: Date, JSON: JSON };
+// Seeded random numbers (mulberry32) for the game and the fuzzer alike.
+var rng = 1;
+function seed(x) { rng = x >>> 0; }
+function rand() { rng = (rng + 0x6D2B79F5) >>> 0; var t = rng; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+var SMath = Object.create(Math); SMath.random = rand;
+var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 ['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'recap'].forEach(function (f) {
@@ -21,10 +28,10 @@ TL.ui = {
   prompt: function (t, text, def, cb) { dialogs.push({ buttons: [{ fn: function () { cb('Test Co'); } }] }); },
   toast: function () {},
   // Time travel swaps TL.S for a restored copy, so the loop below always reads TL.S.
-  timeMachine: function () { var ages = TL.engine.tmAges(); if (ages.length) TL.engine.timeTravel(1 + Math.floor(Math.random() * ages.length)); },
+  timeMachine: function () { var ages = TL.engine.tmAges(); if (ages.length) TL.engine.timeTravel(1 + Math.floor(rand() * ages.length)); },
   runPending: function () {}
 };
-function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function pick(a) { return a[Math.floor(rand() * a.length)]; }
 function drainDialogs() {
   var guard = 0;
   while (dialogs.length && guard++ < 50) { var d = dialogs.shift(); var b = pick(d.buttons); if (b.fn) b.fn(); }
@@ -34,7 +41,7 @@ function runPending() {
   while (S.pending.length && guard++ < 20) {
     var ev = TL.events.build(S.pending[0]);
     if (!ev) { S.pending.shift(); continue; }
-    TL.events.resolve(Math.floor(Math.random() * ev.choices.length));
+    TL.events.resolve(Math.floor(rand() * ev.choices.length));
     drainDialogs();
     tapAround(2);
   }
@@ -61,8 +68,17 @@ function check(S) {
 }
 
 var N = +process.argv[2] || 200, ages = [], gens = 0, rich = 0, jailed = 0, married = 0, deg = 0;
+var base = process.argv[3] != null ? +process.argv[3] : Math.floor(Math.random() * 1e9);
 for (var n = 0; n < N; n++) {
-  TL.engine.newLife({ royal: Math.random() < 0.3 });
+  seed(base + n);
+  try { playFamily(); } catch (e) {
+    console.error('FAILED on family ' + n + ' — replay with: node tests/simulate.js 1 ' + (base + n));
+    console.error(e && e.stack || e);
+    process.exit(1);
+  }
+}
+function playFamily() {
+  TL.engine.newLife({ royal: rand() < 0.3 });
   var lives = 0;
   while (true) {
     var years = 0;

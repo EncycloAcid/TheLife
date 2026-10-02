@@ -126,4 +126,4 @@ tests/simulate.js      Headless fuzz test that plays hundreds of random lives
 node tests/simulate.js 200
 ```
 
-This plays 200 families (plus their heirs) by tapping random menu items and choices every year. It fails on any exception or corrupted state, such as NaN money or stats out of range.
+This plays 200 families (plus their heirs) by tapping random menu items and choices every year. It fails on any exception or corrupted state, such as NaN money or stats out of range. Each family runs on its own seed, so a failure prints a command that replays it exactly, e.g. `node tests/simulate.js 1 123456`. Pass a second number to choose the starting seed.
