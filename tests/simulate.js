@@ -12,7 +12,7 @@ var SMath = Object.create(Math); SMath.random = rand;
 var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'history', 'ancient', 'medieval', 'viking', 'eras', 'maps', 'recap'].forEach(function (f) {
+['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'history', 'ancient', 'medieval', 'viking', 'eras', 'mapdata', 'maps', 'recap'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;

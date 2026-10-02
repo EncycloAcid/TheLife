@@ -28,20 +28,37 @@ TL.maps = (function () {
   function see(title, icon) { var s = S(), h = s.era || (s.era = { seen: [], served: [] }); if (h.seen.length < 40) h.seen.push({ year: s.year, age: me().age, icon: icon, title: title }); }
 
   // ------------------------------------------------------------ the maps
-  // provs: [id, name, x, y, tribute per year (era coins), defense 1-5, label side]
-  // links: [a, b, sea?]. base(year) gives each province's historical owner.
+  // Real coastlines come from js/mapdata.js (Natural Earth). Each province is a
+  // territory: the land nearest to its anchor points (Voronoi cells) clipped to
+  // the coast. provs: [id, name, lon, lat (label), tribute per year, defense 1-5].
+  // seeds: more anchors per province, so territories follow the real shape.
+  // wild: anchors for lands outside the game (left unclaimed on the map).
+  // links: [a, b, sea?] which provinces border each other (for wars).
+  // base(year) gives each province's historical owner.
   var MAPS = {
     rome: {
-      title: 'The Roman world', w: 360, h: 252, blob: 22, unit: 100, war: 30000, capital: 'italia', realmWord: 'empire',
-      factions: { realm: ['The Roman Empire', '#AF52DE'], parthia: ['Parthia', '#FF9500'], germani: ['Germanic tribes', '#34C759'], caledonii: ['Caledonians', '#30B0C7'], hiberni: ['Irish kings', '#64D2FF'],
-        britons: ['Britons', '#5856D6'], dacians: ['Dacians', '#A2845E'], goths: ['Goths', '#8E8E93'], sarmatians: ['Sarmatians', '#FFCC00'], armenia: ['Armenia', '#FF2D55'], nabataea: ['Nabataeans', '#C69C6D'],
-        garamantes: ['Garamantes', '#B5A48A'], moors: ['Kingdom of Mauretania', '#E0B072'], gallic: ['Gallic Empire', '#FF3B30'], palmyra: ['Palmyra', '#FF6482'] },
-      provs: [['caledonia', 'Caledonia', 43, 17, 200, 4], ['hibernia', 'Hibernia', 21, 45, 250, 3], ['britannia', 'Britannia', 57, 52, 900, 3], ['germania', 'Germania', 120, 59, 400, 5], ['gallia', 'Gallia', 79, 90, 2000, 3],
-        ['hispania', 'Hispania', 43, 136, 1800, 3], ['mauretania', 'Mauretania', 37, 178, 600, 2], ['africa', 'Africa', 120, 164, 1800, 2], ['garamantes', 'Garamantes', 142, 227, 250, 3], ['italia', 'Italia', 134, 118, 3000, 5],
-        ['pannonia', 'Pannonia', 164, 90, 700, 3, 't'], ['dacia', 'Dacia', 197, 94, 900, 4, 't'], ['sarmatia', 'Sarmatia', 241, 78, 300, 4, 't'], ['dalmatia', 'Dalmatia', 161, 112, 600, 2], ['macedonia', 'Macedonia', 186, 129, 700, 2, 'r'],
-        ['thracia', 'Thracia', 216, 114, 600, 3, 't'], ['achaea', 'Achaea', 189, 150, 1000, 2], ['asia', 'Asia', 219, 144, 2200, 2], ['galatia', 'Galatia', 249, 140, 800, 2], ['armenia', 'Armenia', 304, 136, 600, 3],
-        ['syria', 'Syria', 264, 171, 1800, 3, 'r'], ['judaea', 'Judaea', 253, 196, 700, 4, 'l'], ['arabia', 'Arabia', 275, 220, 600, 3], ['aegyptus', 'Aegyptus', 231, 227, 3000, 2], ['cyrenaica', 'Cyrenaica', 186, 192, 500, 2],
-        ['mesopotamia', 'Mesopotamia', 298, 178, 1200, 4], ['parthia', 'Persia', 335, 185, 2500, 5]],
+      title: 'The Roman world', label: 8, unit: 100, war: 30000, capital: 'italia', realmWord: 'empire',
+      factions: { realm: ['The Roman Empire', '#AF52DE'], parthia: ['Parthia', '#FF9500'], germani: ['Germanic tribes', '#34C759'], caledonii: ['Caledonians', '#5856D6'], hiberni: ['Irish kings', '#2E9E6B'],
+        britons: ['Britons', '#FF6482'], dacians: ['Dacians', '#A2845E'], goths: ['Goths', '#8E8E93'], sarmatians: ['Sarmatians', '#FFCC00'], armenia: ['Armenia', '#FF2D55'], nabataea: ['Nabataeans', '#C69C6D'],
+        garamantes: ['Garamantes', '#B5A48A'], moors: ['Kingdom of Mauretania', '#E0B072'], gallic: ['Gallic Empire', '#FF3B30'], palmyra: ['Palmyra', '#E86A92'] },
+      provs: [['caledonia', 'Caledonia', -4.3, 57.2, 200, 4], ['hibernia', 'Hibernia', -8, 53.2, 250, 3], ['britannia', 'Britannia', -1.6, 52.4, 900, 3], ['germania', 'Germania', 10.5, 51.6, 400, 5], ['gallia', 'Gallia', 2.4, 46.8, 2000, 3],
+        ['hispania', 'Hispania', -4, 40, 1800, 3], ['mauretania', 'Mauretania', -4.5, 33.8, 600, 2], ['africa', 'Africa', 9.6, 34.6, 1800, 2], ['garamantes', 'Garamantes', 13.5, 26.6, 250, 3], ['italia', 'Italia', 12.8, 42.4, 3000, 5],
+        ['pannonia', 'Pannonia', 17.6, 46.9, 700, 3], ['dacia', 'Dacia', 24.3, 46.3, 900, 4], ['sarmatia', 'Sarmatia', 33, 48.5, 300, 4], ['dalmatia', 'Dalmatia', 18.2, 43.9, 600, 2], ['macedonia', 'Macedonia', 21.8, 40.7, 700, 2],
+        ['thracia', 'Thracia', 25.6, 42.6, 600, 3], ['achaea', 'Achaea', 22.3, 37.6, 1000, 2], ['asia', 'Asia', 28.8, 38.6, 2200, 2], ['galatia', 'Galatia', 34, 39.4, 800, 2], ['armenia', 'Armenia', 44, 40, 600, 3],
+        ['syria', 'Syria', 37.6, 35.2, 1800, 3, [-5, 0]], ['judaea', 'Judaea', 35.1, 31.6, 700, 4, [-12, 0]], ['arabia', 'Arabia', 36.6, 29.4, 600, 3, [6, 4]], ['aegyptus', 'Aegyptus', 31.2, 27.8, 3000, 2], ['cyrenaica', 'Cyrenaica', 22, 31.4, 500, 2],
+        ['mesopotamia', 'Mesopotamia', 43.4, 34.6, 1200, 4, [6, 3]], ['parthia', 'Persia', 50.4, 32.4, 2500, 5]],
+      seeds: { caledonia: [[-3.6, 56.3], [-5, 58.2]], hibernia: [[-8.6, 52.3], [-7, 54.6]], britannia: [[0.3, 51.6], [-1.8, 54.2], [-3.7, 52.2], [-4.2, 50.6], [-2.8, 55]],
+        germania: [[9.3, 55.8], [13.6, 52.9], [8, 52.9], [12, 50.1], [17.5, 52.7], [15.5, 50.5]], gallia: [[3, 49.8], [0, 47.8], [-2.8, 48.1], [0.4, 44.5], [4.4, 43.8], [7.5, 48.5], [5.5, 46]],
+        hispania: [[-7.8, 42.5], [-8.2, 39.3], [-5.5, 37.6], [0.4, 41.5], [-1, 38.4], [-3.5, 42.6]], mauretania: [[-1, 35], [3, 36.2], [-7.5, 32], [6, 36.4]], africa: [[8, 36.5], [11, 33.3], [14.2, 32.2], [10.2, 36.7]],
+        garamantes: [[10.5, 28.6]], cyrenaica: [[24, 31], [18.6, 30.6], [20.3, 32.2]], aegyptus: [[31, 30.4], [31.5, 26.4], [32.8, 24.4], [30.4, 29.2]], arabia: [[35.8, 30.4], [37.6, 28.4], [34, 29.7], [36.4, 31.9]],
+        judaea: [[35.3, 32.6]], syria: [[36.3, 33.8], [36.6, 36.4], [38.9, 35.9], [35.9, 34.9]], mesopotamia: [[44.4, 33.2], [40.2, 36.8], [46.2, 31.4], [42.2, 36.4]], parthia: [[48.6, 35.6], [52.5, 29.6], [48.7, 31.3], [52, 36.3]],
+        armenia: [[41.4, 39.9], [46, 39.4], [43.2, 41]], galatia: [[36.2, 40.4], [35.6, 38.4], [38.6, 38.6], [33.4, 37.2], [32.6, 41.3]], asia: [[29.8, 40.3], [27.4, 37.6], [30.4, 36.9]],
+        thracia: [[24.6, 43.6], [27.7, 43.3], [26.4, 41.3], [21.5, 43.6]], macedonia: [[20.3, 39.8], [21.2, 41.6], [23.6, 40.8]], achaea: [[23.6, 38.4], [21.6, 38.8], [24.9, 35.2]],
+        dalmatia: [[16, 44.8], [19.4, 42.6], [20.5, 44.2]], pannonia: [[16.5, 47.6], [19.5, 45.4], [14, 47.3], [11, 47.8]], dacia: [[25.6, 45.6], [22.5, 45.2], [24.6, 47.3], [27.3, 47.2]],
+        sarmatia: [[30.5, 47], [27.5, 49.6], [37.5, 47.5], [33.8, 45.2], [40.6, 46.6], [36, 50.4]],
+        italia: [[9.5, 45.4], [11.5, 44.3], [14.3, 41], [16.3, 40.5], [16.3, 38.8], [14, 37.5], [9, 40.1], [9.1, 42.1], [7.5, 45]] },
+      wild: [[14, 58.6], [9, 58.8], [17.5, 57.8], [-6, 27.5], [2, 28.6], [8, 30.6], [20.5, 27], [26, 26.2], [32, 22.6], [40.2, 29.6], [43, 26], [47.5, 26.5], [45, 47.5], [48, 44], [44.6, 42.6], [53, 41.2],
+        [21, 54.4], [26, 54], [35, 54], [-1, 31], [5, 32.5]],
       links: [['caledonia', 'britannia'], ['hibernia', 'britannia', 1], ['britannia', 'gallia', 1], ['gallia', 'germania'], ['gallia', 'hispania'], ['gallia', 'italia'], ['germania', 'pannonia'], ['germania', 'sarmatia'],
         ['italia', 'pannonia'], ['italia', 'dalmatia', 1], ['pannonia', 'dalmatia'], ['pannonia', 'dacia'], ['dalmatia', 'macedonia'], ['macedonia', 'thracia'], ['macedonia', 'achaea'], ['thracia', 'dacia'], ['dacia', 'sarmatia'],
         ['thracia', 'sarmatia'], ['thracia', 'asia', 1], ['achaea', 'asia', 1], ['asia', 'galatia'], ['galatia', 'armenia'], ['galatia', 'syria'], ['armenia', 'mesopotamia'], ['syria', 'mesopotamia'], ['syria', 'judaea'],
@@ -64,14 +81,21 @@ TL.maps = (function () {
       here: { Londinium: 'britannia', Lugdunum: 'gallia', Carthage: 'africa', Alexandria: 'aegyptus', Antioch: 'syria', Athens: 'achaea', Corinth: 'achaea', Ephesus: 'asia', Corsica: 'italia', Sardinia: 'italia', Pandateria: 'italia' }
     },
     medieval: {
-      title: 'Medieval Western Europe', w: 360, h: 392, blob: 25, unit: 50, war: 20000, capital: 'england', realmWord: 'kingdom',
-      factions: { realm: ['The Kingdom of England', '#FF3B30'], france: ['France', '#007AFF'], scotland: ['Scotland', '#5856D6'], welsh: ['Welsh princes', '#34C759'], irish: ['Irish kings', '#30B0C7'],
+      title: 'Medieval Western Europe', label: 8.6, unit: 50, war: 20000, capital: 'england', realmWord: 'kingdom',
+      factions: { realm: ['The Kingdom of England', '#FF3B30'], france: ['France', '#3F6FD8'], scotland: ['Scotland', '#7E57C2'], welsh: ['Welsh princes', '#2E9E6B'], irish: ['Irish kings', '#7CB518'],
         brittany: ['Brittany', '#A2845E'], burgundy: ['Burgundy', '#AF52DE'], toulouse: ['Toulouse', '#FF9500'], castile: ['Castile', '#FFCC00'], aragon: ['Aragon', '#FF2D55'], spain: ['Spain', '#FFCC00'],
-        portugal: ['Portugal', '#00C7BE'], moors: ['Granada', '#E0B072'], hre: ['Holy Roman Empire', '#8E8E93'] },
-      provs: [['highlands', 'Highlands', 93, 36, 1500, 5], ['lowlands', 'Lowlands', 106, 63, 4000, 4, 'l'], ['north', 'Northumbria', 126, 89, 8000, 4, 'r'], ['england', 'England', 137, 127, 20000, 5], ['wales', 'Wales', 103, 119, 3000, 4],
-        ['irelandE', 'Leinster', 70, 103, 3000, 3, 't'], ['irelandW', 'Connacht', 37, 111, 1500, 4], ['brittany', 'Brittany', 112, 186, 4000, 3], ['normandy', 'Normandy', 152, 169, 9000, 3, 't'], ['anjou', 'Anjou', 143, 198, 6000, 3],
-        ['paris', 'Île-de-France', 180, 175, 15000, 5, 'r'], ['flanders', 'Flanders', 191, 140, 12000, 3, 'r'], ['burgundy', 'Burgundy', 211, 201, 9000, 4, 'r'], ['aquitaine', 'Aquitaine', 156, 228, 8000, 3, 'r'], ['gascony', 'Gascony', 143, 252, 9000, 3, 'l'],
-        ['languedoc', 'Languedoc', 193, 260, 7000, 3], ['castile', 'Castile', 100, 300, 10000, 4], ['aragon', 'Aragon', 138, 290, 8000, 4], ['portugal', 'Portugal', 50, 324, 5000, 3], ['granada', 'Granada', 105, 361, 7000, 5], ['hre', 'Germany', 262, 148, 15000, 5]],
+        portugal: ['Portugal', '#55A630'], moors: ['Granada', '#E0B072'], hre: ['Holy Roman Empire', '#8E8E93'] },
+      provs: [['highlands', 'Highlands', -4.6, 57.4, 1500, 5], ['lowlands', 'Lowlands', -3.4, 55.7, 4000, 4], ['north', 'Northumbria', -1.8, 54.4, 8000, 4], ['england', 'England', -1, 52.1, 20000, 5], ['wales', 'Wales', -3.7, 52.3, 3000, 4],
+        ['irelandE', 'Leinster', -6.6, 53.1, 3000, 3], ['irelandW', 'Connacht', -8.6, 53.6, 1500, 4], ['brittany', 'Brittany', -3.1, 48.1, 4000, 3], ['normandy', 'Normandy', 0, 49.1, 9000, 3, [-6, -2]], ['anjou', 'Anjou', -0.3, 47.5, 6000, 3],
+        ['paris', 'Île-de-France', 2.6, 48.6, 15000, 5, [6, 3]], ['flanders', 'Flanders', 3.2, 50.8, 12000, 3], ['burgundy', 'Burgundy', 5, 47, 9000, 4], ['aquitaine', 'Aquitaine', 0.9, 45.8, 8000, 3], ['gascony', 'Gascony', -0.5, 44.2, 9000, 3],
+        ['languedoc', 'Languedoc', 2.6, 43.8, 7000, 3], ['castile', 'Castile', -4.2, 40.6, 10000, 4], ['aragon', 'Aragon', -0.6, 41.3, 8000, 4], ['portugal', 'Portugal', -8, 39.8, 5000, 3], ['granada', 'Granada', -3.7, 37.2, 7000, 5], ['hre', 'Germany', 9.8, 50.6, 15000, 5]],
+      seeds: { highlands: [[-4, 58.3], [-5.3, 56.6]], lowlands: [[-2.6, 56.4], [-4.5, 55.2]], north: [[-2.8, 54.6], [-1.2, 53.7]], england: [[0.9, 52.4], [-3.4, 50.7], [-2.2, 51.4], [-1.6, 53], [0.6, 51.2]],
+        wales: [[-3.7, 51.7], [-3.8, 53]], irelandE: [[-6.8, 52.5]], irelandW: [[-8.7, 52.2], [-7.3, 54.6]], brittany: [[-4, 48.3]], normandy: [[-1.2, 49], [1, 49.6]], anjou: [[0.4, 48.2]],
+        paris: [[2.3, 47.3], [4.2, 48.6], [2.8, 49.6]], flanders: [[2.4, 50.4]], burgundy: [[5.9, 46.9], [4.6, 46.3]], aquitaine: [[0.4, 46.4], [1, 45.2], [2.6, 45.4]], gascony: [[-0.6, 44.8], [-0.4, 43.6]],
+        languedoc: [[1.8, 43.6], [3.6, 43.7], [3, 44.6]], castile: [[-4.7, 41.8], [-6.5, 42.6], [-8, 42.8], [-3, 39.2], [-6, 37.5], [-4.2, 43.1]], aragon: [[1.8, 41.8], [-0.5, 39.5], [-1.6, 42.7]],
+        portugal: [[-8.3, 41.2], [-8, 37.6]], granada: [[-4.6, 36.8]],
+        hre: [[10.5, 52.6], [8.5, 49.3], [11.5, 48.6], [13.5, 50.7], [8, 47.1], [5.5, 51.8], [6, 43.9], [9.5, 45.6], [7.3, 45.2], [14.5, 47.5], [15.5, 49.5], [12.5, 46.5]] },
+      wild: [[12.5, 42.5], [15, 40.8], [16.3, 38.9], [14, 37.6], [9, 40], [9.1, 42.2], [11.2, 43.6], [-5.5, 34.5], [-1, 35.2], [3, 36.4], [9.5, 36.2], [9.3, 56], [11.8, 55.5], [10, 58.8], [13.5, 56.5], [16.5, 52.5], [16, 54.5]],
       links: [['highlands', 'lowlands'], ['lowlands', 'north'], ['north', 'england'], ['england', 'wales'], ['north', 'wales'], ['irelandE', 'irelandW'], ['irelandE', 'wales', 1], ['england', 'normandy', 1], ['england', 'flanders', 1],
         ['england', 'gascony', 1], ['normandy', 'brittany'], ['normandy', 'paris'], ['normandy', 'anjou'], ['brittany', 'anjou'], ['anjou', 'paris'], ['anjou', 'aquitaine'], ['paris', 'flanders'], ['paris', 'burgundy'], ['paris', 'aquitaine'],
         ['flanders', 'hre'], ['burgundy', 'hre'], ['burgundy', 'languedoc'], ['aquitaine', 'gascony'], ['aquitaine', 'languedoc'], ['gascony', 'languedoc'], ['gascony', 'castile'], ['languedoc', 'aragon'], ['castile', 'aragon'],
@@ -97,15 +121,23 @@ TL.maps = (function () {
       here: { York: 'north', Durham: 'north' }
     },
     viking: {
-      title: 'The Viking world', w: 360, h: 262, blob: 20, unit: 50, war: 8000, capital: 'vestfold', realmWord: 'kingdom',
-      factions: { realm: ['The Kingdom of Norway', '#007AFF'], petty: ['Petty kings of Norway', '#8E8E93'], denmark: ['Denmark', '#FF3B30'], svear: ['The Svear', '#FFCC00'], icelanders: ['Icelanders', '#30B0C7'],
-        greenlanders: ['Greenlanders', '#64D2FF'], empty: ['Unsettled', '#C7C7CC'], orkney: ['Earls of Orkney', '#AF52DE'], alba: ['Scots and Picts', '#5856D6'], irish: ['Irish kings', '#34C759'], dublin: ['Norse Dublin', '#FF9500'],
-        english: ['The English', '#FF2D55'], jorvik: ['Norse Jorvik', '#FF9F0A'], franks: ['The Franks', '#A2845E'], normans: ['The Normans', '#D4A373'], germans: ['The Germans', '#636366'], slavs: ['Slavs', '#00C7BE'], rus: ['The Rus', '#E9C46A'] },
-      provs: [['greenland', 'Greenland', 30, 30, 100, 1], ['iceland', 'Iceland', 84, 40, 300, 2], ['orkney', 'Orkney', 146, 56, 300, 2, 'r'], ['hebrides', 'The Isles', 112, 92, 250, 2, 'l'], ['alba', 'Alba', 150, 104, 500, 4, 'l'],
-        ['dublin', 'Dublin', 96, 132, 700, 3, 'l'], ['ireland', 'Ireland', 60, 158, 500, 3], ['northumbria', 'Northumbria', 150, 140, 900, 3, 'r'], ['danelaw', 'Danelaw', 164, 172, 1200, 3, 'r'], ['wessex', 'Wessex', 126, 188, 1500, 4, 'l'],
-        ['normandy', 'Normandy', 150, 224, 1000, 3, 'l'], ['frankia', 'Frankia', 200, 240, 2500, 5, 'r'], ['frisia', 'Frisia', 212, 194, 700, 2, 'r'], ['saxony', 'Saxony', 252, 214, 1200, 4, 'r'], ['jutland', 'Jutland', 232, 152, 900, 4, 'l'],
-        ['scania', 'Scania', 270, 158, 800, 4], ['gotaland', 'Götaland', 282, 126, 600, 3, 'l'], ['svealand', 'Svealand', 300, 90, 900, 4, 't'], ['vestfold', 'Vestfold', 240, 108, 800, 3, 'l'], ['vestlandet', 'Vestlandet', 210, 74, 700, 3, 'l'],
-        ['trondelag', 'Trøndelag', 244, 46, 700, 4, 'r'], ['halogaland', 'Hålogaland', 268, 16, 400, 3, 'r'], ['novgorod', 'Novgorod', 334, 112, 800, 3], ['kiev', 'Kiev', 330, 200, 1200, 4]],
+      title: 'The Viking world', label: 7.6, unit: 50, war: 8000, capital: 'vestfold', realmWord: 'kingdom', inset: 'greenland',
+      factions: { realm: ['The Kingdom of Norway', '#E4572E'], petty: ['Petty kings of Norway', '#9A8C98'], denmark: ['Denmark', '#7B2CBF'], svear: ['The Svear', '#FFC300'], icelanders: ['Icelanders', '#52B788'],
+        greenlanders: ['Greenlanders', '#95D5B2'], empty: ['Unsettled', '#C7C7CC'], orkney: ['Earls of Orkney', '#C77DFF'], alba: ['Scots and Picts', '#B07D62'], irish: ['Irish kings', '#2D6A4F'], dublin: ['Norse Dublin', '#F8961E'],
+        english: ['The English', '#90BE6D'], jorvik: ['Norse Jorvik', '#F3722C'], franks: ['The Franks', '#A2845E'], normans: ['The Normans', '#D4A373'], germans: ['The Germans', '#6C757D'], slavs: ['Slavs', '#B08968'], rus: ['The Rus', '#E9C46A'] },
+      provs: [['greenland', 'Greenland', -45.5, 61.6, 100, 1], ['iceland', 'Iceland', -18.6, 64.9, 300, 2], ['orkney', 'Orkney', -2.6, 59.4, 300, 2], ['hebrides', 'The Isles', -7, 57.6, 250, 2, [-8, -3]], ['alba', 'Alba', -4.1, 56.9, 500, 4, [4, 3]],
+        ['dublin', 'Dublin', -6.4, 53.2, 700, 3, [0, 8]], ['ireland', 'Ireland', -8.4, 53, 500, 3, [-8, -6]], ['northumbria', 'Northumbria', -1.8, 54.4, 900, 3], ['danelaw', 'Danelaw', -0.4, 52.8, 1200, 3], ['wessex', 'Wessex', -2.2, 51.2, 1500, 4],
+        ['normandy', 'Normandy', 0, 49, 1000, 3, [-8, 0]], ['frankia', 'Frankia', 3.2, 48.6, 2500, 5, [10, -6]], ['frisia', 'Frisia', 5.8, 52.6, 700, 2], ['saxony', 'Saxony', 10.4, 51.8, 1200, 4], ['jutland', 'Jutland', 9.2, 56.1, 900, 4, [-8, 0]],
+        ['scania', 'Scania', 13.2, 55.8, 800, 4, [6, 3]], ['gotaland', 'Götaland', 14.3, 57.8, 600, 3], ['svealand', 'Svealand', 16.4, 60.2, 900, 4, [8, -4]], ['vestfold', 'Vestfold', 10.3, 60, 800, 3, [2, 6]], ['vestlandet', 'Vestlandet', 6.6, 60.8, 700, 3, [-14, -4]],
+        ['trondelag', 'Trøndelag', 11.2, 63.6, 700, 4], ['halogaland', 'Hålogaland', 15.6, 67.6, 400, 3], ['novgorod', 'Novgorod', 32, 58.6, 800, 3], ['kiev', 'Kiev', 30.8, 50.4, 1200, 4]],
+      seeds: { iceland: [[-16, 65.4], [-21.5, 64]], orkney: [[-1.3, 60.3], [-3.4, 58.5]], hebrides: [[-6.3, 56.5], [-4.5, 54.2]], alba: [[-3.2, 57.4], [-3.9, 56], [-5, 57.8]], dublin: [[-6.5, 52.6]],
+        ireland: [[-8.7, 52.2], [-7.3, 54.6]], northumbria: [[-2.6, 54.7], [-1.2, 53.8], [-2.7, 55.4]], danelaw: [[0.9, 52.5], [-1.2, 52.3], [0, 53.5]], wessex: [[-3.4, 50.7], [0.4, 51.2], [-2.4, 52.3]],
+        normandy: [[-1.2, 49.1]], frankia: [[4.5, 49.3], [1, 47.9], [2.4, 48.9]], frisia: [[4.5, 51.8], [7.2, 53.3]], saxony: [[9, 53.5], [11.8, 51.3], [8.5, 50.7], [11.5, 48.6], [9, 48.5]],
+        jutland: [[9.3, 55.1], [9.8, 57.2]], scania: [[13.6, 55.8], [10.4, 55.3], [12, 55.5]], gotaland: [[15.6, 57.4], [12.3, 58.3], [15.6, 58.4]], svealand: [[17.3, 59.7], [15, 60.3], [14.5, 61.4]],
+        vestfold: [[10.6, 60.6], [11.3, 59.2], [8, 58.4], [10.2, 59.4], [9, 60.6]], vestlandet: [[5.8, 59], [6.6, 61.4], [7.4, 62.6], [6, 60.4]], trondelag: [[12.5, 64.5], [9, 62.8], [11.5, 62.5], [10.6, 63.4]],
+        halogaland: [[13.2, 65.8], [16.8, 68.6], [19, 69.6], [14.8, 67.3]], novgorod: [[32.5, 60], [28.5, 57.6], [35, 57.5]], kiev: [[32.5, 51.5], [28.5, 50], [35, 50]] },
+      wild: [[-3.7, 52.3], [-3, 48.1], [25, 61.5], [27, 63.5], [25.5, 66], [17.5, 63.5], [20.5, 65.8], [25, 69.5], [21, 67.5], [25.5, 58.6], [24.5, 57], [23.5, 55.3], [21, 55], [14.5, 53.3], [18, 52.5], [21, 52], [17, 50.5],
+        [14.5, 50], [40, 56.5], [38.5, 53], [41, 60.5], [38, 63], [34, 64.5], [33, 63], [35, 67.5], [37, 48.5], [-24, 66.5]],
       links: [['greenland', 'iceland', 1], ['iceland', 'orkney', 1], ['iceland', 'vestlandet', 1], ['orkney', 'vestlandet', 1], ['orkney', 'hebrides'], ['orkney', 'alba'], ['hebrides', 'dublin', 1], ['hebrides', 'alba'],
         ['dublin', 'ireland'], ['dublin', 'northumbria', 1], ['alba', 'northumbria'], ['northumbria', 'danelaw'], ['danelaw', 'wessex'], ['wessex', 'normandy', 1], ['danelaw', 'frisia', 1], ['frisia', 'jutland'], ['frisia', 'saxony'],
         ['frisia', 'frankia'], ['normandy', 'frankia'], ['saxony', 'jutland'], ['saxony', 'frankia'], ['jutland', 'scania', 1], ['jutland', 'vestfold', 1], ['vestfold', 'vestlandet'], ['vestlandet', 'trondelag'], ['trondelag', 'halogaland'],
@@ -133,14 +165,9 @@ TL.maps = (function () {
       // A crowned ruler of Norway holds all of Norway, whatever history said.
       crown: ['vestfold', 'vestlandet', 'trondelag', 'halogaland'],
       here: { 'Vestfold': 'vestfold', 'Oppland': 'vestfold', 'Kaupang': 'vestfold', 'Trøndelag': 'trondelag', 'Hålogaland': 'halogaland', 'Lofoten': 'halogaland', 'Rogaland': 'vestlandet', 'Hordaland': 'vestlandet',
-        'Sogn': 'vestlandet', 'Agder': 'vestlandet', 'Møre': 'vestlandet', 'Hedeby': 'jutland', 'Ribe': 'jutland', 'Birka': 'svealand', 'Dublin': 'dublin', 'Jorvik': 'northumbria', 'Iceland': 'iceland', 'Greenland': 'greenland', 'Orkney': 'orkney' }
+        'Sogn': 'vestlandet', 'Agder': 'vestfold', 'Møre': 'vestlandet', 'Hedeby': 'jutland', 'Ribe': 'jutland', 'Birka': 'svealand', 'Dublin': 'dublin', 'Jorvik': 'northumbria', 'Iceland': 'iceland', 'Greenland': 'greenland', 'Orkney': 'orkney' }
     }
   };
-  // The modern world: every country in the game, drawn with its flag.
-  var WORLD = { w: 360, h: 190,
-    places: { 'United States': [48, 62], 'Canada': [45, 30], 'Mexico': [42, 90], 'Jamaica': [78, 96], 'Brazil': [110, 140], 'United Kingdom': [160, 36], 'France': [168, 56], 'Spain': [150, 70], 'Germany': [188, 42], 'Italy': [192, 64],
-      'Nigeria': [183, 108], 'South Africa': [197, 160], 'India': [262, 92], 'South Korea': [314, 66], 'Japan': [338, 58], 'Philippines': [312, 102], 'Australia': [326, 158] },
-    land: [[55, 60, 50, 42], [110, 138, 26, 40], [176, 52, 32, 24], [190, 122, 30, 46], [272, 64, 74, 42], [326, 158, 24, 15]] };
 
   function def() { return MAPS[era()] || null; }
   function P(d, id) { return d.provs.filter(function (p) { return p[0] === id; })[0]; }
@@ -162,53 +189,153 @@ TL.maps = (function () {
     m.own = o; m.frozen = true; m.start = JSON.parse(JSON.stringify(o));
   }
 
+  // ------------------------------------------------------------ geometry
+  function geo(id) { return TL.mapdata && TL.mapdata[id]; }
+  function proj(g, lon, lat) { return [(lon - g.lon0) * g.kx, (g.lat1 - lat) * g.ky]; }
+  function r1(v) { return Math.round(v * 10) / 10; }
+  // Clip a convex polygon (as edges [a, b, neighbor]) to the half-plane f(p) <= 0;
+  // the new edge along the cut is labeled with the neighbor j that made it.
+  function clipEdges(edges, f, j) {
+    var out = [], exitPt = null, entryPt = null, exitAt = -1;
+    edges.forEach(function (ed) {
+      var a = ed[0], b = ed[1], fa = f(a), fb = f(b);
+      if (fa <= 0 && fb <= 0) out.push(ed);
+      else if (fa <= 0) { var t = fa / (fa - fb), I = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; out.push([a, I, ed[2]]); exitPt = I; exitAt = out.length; }
+      else if (fb <= 0) { var t2 = fa / (fa - fb), J = [a[0] + (b[0] - a[0]) * t2, a[1] + (b[1] - a[1]) * t2]; out.push([J, b, ed[2]]); entryPt = J; }
+    });
+    if (exitPt && entryPt) out.splice(exitAt, 0, [exitPt, entryPt, j]);
+    return out;
+  }
+  // Voronoi cells of the anchor points, each cell knowing its neighbors (cached per map).
+  var cellCache = {};
+  function cells(id, d) {
+    if (cellCache[id]) return cellCache[id];
+    var g = geo(id), W = g.w, H = g.h, pts = [];
+    d.provs.forEach(function (p) {
+      if (p[0] === d.inset) return;
+      [[p[2], p[3]]].concat((d.seeds && d.seeds[p[0]]) || []).forEach(function (q) { var xy = proj(g, q[0], q[1]); pts.push({ x: xy[0], y: xy[1], p: p[0] }); });
+    });
+    (d.wild || []).forEach(function (q) { var xy = proj(g, q[0], q[1]); pts.push({ x: xy[0], y: xy[1], p: null }); });
+    var out = pts.map(function (si, i) {
+      var e = [[[-40, -40], [W + 40, -40], -1], [[W + 40, -40], [W + 40, H + 40], -1], [[W + 40, H + 40], [-40, H + 40], -1], [[-40, H + 40], [-40, -40], -1]];
+      for (var j = 0; j < pts.length && e.length; j++) {
+        if (j === i) continue;
+        var sj = pts[j], nx = sj.x - si.x, ny = sj.y - si.y, mx = (si.x + sj.x) / 2, my = (si.y + sj.y) / 2;
+        e = clipEdges(e, function (q) { return (q[0] - mx) * nx + (q[1] - my) * ny; }, j);
+      }
+      return { p: si.p, edges: e };
+    });
+    cellCache[id] = out;
+    return out;
+  }
+  function polyPath(edges) { return edges.length ? 'M' + edges.map(function (e) { return r1(e[0][0]) + ' ' + r1(e[0][1]); }).join('L') + 'Z' : ''; }
+
   // ------------------------------------------------------------ drawing
   function esc(t) { return U.esc(String(t)); }
-  function label(p, small) {
-    var side = p[6] || 'b', x = p[2], yy = p[3], dx = 0, dy = 18, anchor = 'middle';
-    if (side === 't') dy = -12; else if (side === 'l') { dx = -12; dy = 3.5; anchor = 'end'; } else if (side === 'r') { dx = 12; dy = 3.5; anchor = 'start'; }
-    return '<text class="map-lbl' + (small ? ' sm' : '') + '" x="' + (x + dx) + '" y="' + (yy + dy) + '" text-anchor="' + anchor + '">' + esc(p[1]) + '</text>';
-  }
-  function svg(d, o, opts) {
-    var h = ['<svg class="map" viewBox="0 0 ' + d.w + ' ' + d.h + '" role="img" aria-label="' + esc(d.title) + '">', '<rect class="map-sea" width="' + d.w + '" height="' + d.h + '" rx="10"/>'];
-    d.provs.forEach(function (p) { h.push('<circle class="map-land" cx="' + p[2] + '" cy="' + p[3] + '" r="' + d.blob + '"/>'); });
-    d.links.forEach(function (l) { var a = P(d, l[0]), b = P(d, l[1]); h.push('<line class="map-link' + (l[2] ? ' sea' : '') + '" x1="' + a[2] + '" y1="' + a[3] + '" x2="' + b[2] + '" y2="' + b[3] + '"/>'); });
-    d.provs.forEach(function (p) {
-      var f = o[p[0]], col = (d.factions[f] || ['', '#8E8E93'])[1];
-      if (opts.wars && opts.wars[f]) h.push('<circle class="map-war" cx="' + p[2] + '" cy="' + p[3] + '" r="12"/>');
-      h.push('<circle class="map-node' + (f === 'realm' && opts.mine ? ' mine' : '') + '" cx="' + p[2] + '" cy="' + p[3] + '" r="8" fill="' + col + '"/>');
-      if (p[0] === opts.here) h.push('<circle class="map-you" cx="' + p[2] + '" cy="' + p[3] + '" r="13"/>');
+  function color(d, f) { return (d.factions[f] || ['', '#8E8E93'])[1]; }
+  function svg(id, d, o, opts) {
+    var g = geo(id), cs = cells(id, d), clip = 'tlmap-' + id, mine = opts.mine;
+    var h = ['<svg class="map real" viewBox="0 0 ' + g.w + ' ' + g.h + '" role="img" aria-label="' + esc(d.title) + '" onclick="TL.maps.tap(event)">',
+      '<defs><clipPath id="' + clip + '"><path d="' + g.land + '"/></clipPath></defs>',
+      '<rect class="map-sea" width="' + g.w + '" height="' + g.h + '" rx="10"/>', '<path class="map-land" d="' + g.land + '"/>', '<g clip-path="url(#' + clip + ')">'];
+    // Territories, one path per province.
+    var byProv = {};
+    cs.forEach(function (c) { if (c.p) (byProv[c.p] = byProv[c.p] || []).push(polyPath(c.edges)); });
+    Object.keys(byProv).forEach(function (p) {
+      var f = o[p];
+      h.push('<path class="map-cell' + (f === 'realm' && mine ? ' mine' : '') + (opts.wars && opts.wars[f] ? ' war' : '') + '" data-p="' + p + '" fill="' + color(d, f) + '" d="' + byProv[p].join('') + '"/>');
     });
-    d.provs.forEach(function (p) { h.push(label(p)); });
+    // Borders: between provinces of one owner (thin), between owners (bold), around my realm (gold).
+    var thin = [], bold = [], gold = [];
+    cs.forEach(function (c, i) {
+      c.edges.forEach(function (e) {
+        var j = e[2]; if (j < 0 || j < i) return;
+        var other = cs[j]; if (c.p === other.p) return;
+        var seg = 'M' + r1(e[0][0]) + ' ' + r1(e[0][1]) + 'L' + r1(e[1][0]) + ' ' + r1(e[1][1]);
+        var fa = c.p ? o[c.p] : null, fb = other.p ? o[other.p] : null;
+        if (fa === fb) thin.push(seg); else bold.push(seg);
+        if (mine && (fa === 'realm') !== (fb === 'realm')) gold.push(seg);
+      });
+    });
+    h.push('<path class="map-pb" d="' + thin.join('') + '"/><path class="map-ob" d="' + bold.join('') + '"/>');
+    if (gold.length) h.push('<path class="map-rb" d="' + gold.join('') + '"/>');
+    h.push('</g><path class="map-coast" d="' + g.land + '"/>');
+    // Greenland and other far-off lands in an inset.
+    if (d.inset && g.inset) {
+      var gi = g.inset, f = o[d.inset], ip = P(d, d.inset);
+      h.push('<g class="map-inset" transform="translate(' + gi.x + ' ' + gi.y + ')"><rect class="map-sea" width="' + gi.w + '" height="' + gi.h + '"/>',
+        '<path class="map-land" d="' + gi.land + '"/><path class="map-cell' + (f === 'realm' && mine ? ' mine' : '') + (opts.wars && opts.wars[f] ? ' war' : '') + '" data-p="' + d.inset + '" fill="' + color(d, f) + '" d="' + gi.land + '"/>',
+        '<path class="map-coast" d="' + gi.land + '"/><rect class="map-frame" width="' + gi.w + '" height="' + gi.h + '"/></g>');
+    }
+    // Markers and labels.
+    d.provs.forEach(function (p) {
+      var xy = p[0] === d.inset && g.inset ? proj(g.inset, p[2], p[3]) : proj(g, p[2], p[3]), off = p[6] || [0, 0], x = r1(xy[0] + off[0]), yy = r1(xy[1] + off[1]), f = o[p[0]];
+      if (p[0] === opts.here) h.push('<circle class="map-here" cx="' + x + '" cy="' + r1(yy - 7.5) + '" r="2.8"/>');
+      else if (mine && p[0] === d.capital) h.push('<text class="map-mark" x="' + x + '" y="' + r1(yy - 5) + '" text-anchor="middle">👑</text>');
+      if (opts.wars && opts.wars[f] && p[0] !== opts.here) h.push('<text class="map-mark" x="' + x + '" y="' + r1(yy - 5) + '" text-anchor="middle">⚔️</text>');
+      h.push('<text class="map-lbl" x="' + x + '" y="' + r1(yy + 3) + '" text-anchor="middle" data-p="' + p[0] + '"' + (d.label ? ' style="font-size:' + d.label + 'px"' : '') + '>' + esc(p[1]) + '</text>');
+    });
     h.push('</svg>');
     return h.join('');
   }
   function legend(d, o) {
     var n = {}; Object.keys(o).forEach(function (k) { n[o[k]] = (n[o[k]] || 0) + 1; });
     var keys = Object.keys(n).sort(function (a, b) { return (b === 'realm') - (a === 'realm') || n[b] - n[a]; });
-    return '<div class="map-legend">' + keys.map(function (f) { return '<span><i style="background:' + d.factions[f][1] + '"></i>' + esc(fname(d, f)) + ' · ' + n[f] + '</span>'; }).join('') + '<span><i class="you"></i>I am here</span></div>';
+    return '<div class="map-legend">' + keys.map(function (f) { return '<span><i style="background:' + d.factions[f][1] + '"></i>' + esc(fname(d, f)) + ' · ' + n[f] + '</span>'; }).join('') + '<span><i class="you"></i>I am here</span><span class="hint">Tap a province</span></div>';
   }
   function worldSvg(opts) {
-    var w = WORLD, h = ['<svg class="map" viewBox="0 0 ' + w.w + ' ' + w.h + '" role="img" aria-label="World map">', '<rect class="map-sea" width="' + w.w + '" height="' + w.h + '" rx="10"/>'];
-    w.land.forEach(function (l) { h.push('<ellipse class="map-land" cx="' + l[0] + '" cy="' + l[1] + '" rx="' + l[2] + '" ry="' + l[3] + '"/>'); });
+    var g = geo('world'), h = ['<svg class="map real" viewBox="0 0 ' + g.w + ' ' + g.h + '" role="img" aria-label="World map" onclick="TL.maps.tap(event)">', '<rect class="map-sea" width="' + g.w + '" height="' + g.h + '" rx="8"/>',
+      '<path class="map-land map-countries" d="' + g.land + '"/>'];
     D.COUNTRIES.forEach(function (c) {
-      var p = w.places[c.name]; if (!p) return;
+      var k = g.countries[c.name]; if (!k) return;
       var cls = c.name === opts.home ? ' home' : opts.lived.indexOf(c.name) >= 0 ? ' lived' : opts.war.indexOf(c.name) >= 0 ? ' war' : '';
-      h.push('<circle class="map-flag' + cls + '" cx="' + p[0] + '" cy="' + p[1] + '" r="10.5"/>');
-      h.push('<text class="map-emoji" x="' + p[0] + '" y="' + (p[1] + 4.5) + '" text-anchor="middle">' + c.flag + '</text>');
+      h.push('<path class="map-country' + cls + '" data-c="' + esc(c.name) + '" d="' + k.d + '"/>');
+    });
+    D.COUNTRIES.forEach(function (c) {
+      var k = g.countries[c.name]; if (!k) return;
+      // A ring behind the flag, so home and past homes show even when the country is tiny (the UK, Jamaica).
+      var ring = c.name === opts.home ? 'home' : opts.lived.indexOf(c.name) >= 0 ? 'lived' : '';
+      if (ring) h.push('<circle class="map-ring ' + ring + '" cx="' + k.at[0] + '" cy="' + r1(k.at[1] + 0.6) + '" r="6.2" data-c="' + esc(c.name) + '"/>');
+      h.push('<text class="map-emoji" x="' + k.at[0] + '" y="' + r1(k.at[1] + 3) + '" text-anchor="middle" data-c="' + esc(c.name) + '">' + c.flag + '</text>');
     });
     h.push('</svg>');
     return h.join('');
+  }
+  // Tapping the map: a province (early eras) or a country (the modern world).
+  function tap(ev) {
+    var t = ev && ev.target, p = t && t.getAttribute && t.getAttribute('data-p'), c = t && t.getAttribute && t.getAttribute('data-c');
+    if (p) return province(p);
+    if (c) return country(c);
+  }
+  function province(id) {
+    var d = def(); if (!d) return;
+    var p = P(d, id); if (!p) return;
+    ui().menu(p[1], function () {
+      var o = owners(d), f = o[id], m = state(), r = ruling() && st().rule, items = [];
+      var stars = '★★★★★'.slice(0, p[5]) + '☆☆☆☆☆'.slice(0, 5 - p[5]);
+      items.push({ info: true, html: '<div class="kv"><b><i class="map-dot" style="background:' + color(d, f) + '"></i> ' + esc(fname(d, f)) + '</b><br><span class="muted">Defense ' + stars + ' · worth ' + E.fmt(coins(d, p[4])) + ' a year' + (id === here(d) ? ' · I live here' : '') + (r && m.wars[f] ? ' · at war with me' : '') + (r && m.prev[id] && f === 'realm' ? ' · conquered from ' + esc(fname(d, m.prev[id])) : '') + '</span></div>' });
+      var nb = adj(d, id).map(function (q) { return P(d, q)[1] + ' (' + fname(d, o[q]) + ')'; });
+      if (nb.length) items.push({ info: true, html: '<p class="muted">Borders ' + esc(nb.join(', ')) + '.</p>' });
+      if (r && f !== 'realm') {
+        var border = adj(d, id).some(function (q) { return o[q] === 'realm'; });
+        items.push({ icon: f === 'empty' ? '🏕️' : '🗡️', label: (f === 'empty' ? 'Settle ' : 'Invade ') + p[1], sub: border ? (count('map_campaign') ? 'My armies have already marched this year' : 'Send an army across the border') : 'It doesn\'t border my ' + d.realmWord, disabled: !border || count('map_campaign') > 0, onClick: function () { campaign(d, p, f); } });
+      } else if (!r) items.push({ info: true, html: '<p class="muted">Take the throne to make war and move borders yourself.</p>' });
+      return items;
+    });
+  }
+  function country(name) {
+    var c = D.country(name), s = S(), lived = (s.lived || []).indexOf(name) >= 0;
+    ui().choose(c.flag + ' ' + c.name, (name === s.country ? 'I live here. ' : lived ? 'I used to live here. ' : '') + 'Life expectancy ' + c.life + ' · income tax ' + Math.round(c.tax * 100) + '% · money: ' + c.cur + '.', [{ label: 'Close', fn: function () { } }]);
   }
 
   // ------------------------------------------------------------ the menu
   function menu() {
     if (!era()) return worldMenu();
-    var d = def(); if (!d) return;
+    var d = def(), id = era(); if (!d || !geo(id)) return;
     ui().menu(ruling() ? 'The map and my wars' : d.title, function () {
       var o = owners(d), m = state(), r = ruling() && st().rule, items = [], hp = here(d);
       endWars(d, o);
-      items.push({ info: true, html: '<div class="map-box">' + svg(d, o, { here: hp, mine: !!r, wars: r ? m.wars : null }) + legend(d, o) + '</div>' });
+      items.push({ info: true, html: '<div class="map-box">' + svg(id, d, o, { here: hp, mine: !!r, wars: r ? m.wars : null }) + legend(d, o) + '</div>' });
       var mineCount = Object.keys(o).filter(function (k) { return o[k] === 'realm'; }).length;
       if (!r) {
         items.push({ info: true, html: '<p>I live in ' + esc(P(d, hp)[1]) + ', held by ' + esc(fname(d, o[hp])) + '. ' + (o[hp] === 'realm' || mineCount ? esc(fname(d, 'realm')) + ' holds ' + U.plural(mineCount, 'province') + '.' : '') + '</p><p class="muted" style="margin-top:6px">Borders move with history. Take the throne to make war and move them yourself.</p>' });
@@ -247,10 +374,11 @@ TL.maps = (function () {
     });
   }
   function worldMenu() {
+    if (!geo('world')) return;
     ui().menu('World map', function () {
       var s = S(), lived = (s.lived || []).filter(function (c) { return c !== s.country; }), war = [], wars = TL.history && TL.history.wars ? TL.history.wars(s.year) : [];
       wars.forEach(function (w) { Object.keys(w.draft).forEach(function (c) { if (s.year >= w.draft[c] && war.indexOf(c) < 0) war.push(c); }); });
-      var items = [{ info: true, html: '<div class="map-box">' + worldSvg({ home: s.country, lived: lived, war: war }) + '<div class="map-legend"><span><i class="you"></i>Home</span>' + (lived.length ? '<span><i class="lived"></i>Lived</span>' : '') + (war.length ? '<span><i class="war"></i>At war</span>' : '') + '</div></div>' }];
+      var items = [{ info: true, html: '<div class="map-box">' + worldSvg({ home: s.country, lived: lived, war: war }) + '<div class="map-legend"><span><i class="home"></i>Home</span>' + (lived.length ? '<span><i class="lived"></i>Lived</span>' : '') + (war.length ? '<span><i class="war"></i>At war</span>' : '') + '<span><i class="game"></i>Countries in the game</span><span class="hint">Tap a country</span></div></div>' }];
       var c = D.country(s.country);
       items.push({ info: true, html: '<p>' + c.flag + ' I live in ' + esc((s.city ? s.city + ', ' : '') + E.countryName(c.name)) + '.</p>' + (lived.length ? '<p class="muted" style="margin-top:6px">I\'ve also lived in ' + esc(lived.join(', ')) + '.</p>' : '') + (wars.length ? '<p class="muted" style="margin-top:6px">' + esc(wars.map(function (w) { return U.cap(w.name); }).join(' and ')) + ' ' + (wars.length > 1 ? 'are' : 'is') + ' being fought this year.</p>' : '') });
       D.COUNTRIES.forEach(function (k) { if (k.name === s.country) return; items.push({ icon: k.flag, label: k.name, sub: (lived.indexOf(k.name) >= 0 ? 'I lived here · ' : '') + (war.indexOf(k.name) >= 0 ? 'At war · ' : '') + 'Life expectancy ' + k.life }); });
@@ -380,5 +508,5 @@ TL.maps = (function () {
     return { icon: '⚔️', title: fname(d, f) + ' invade ' + p[1], text: 'An army from ' + fname(d, f) + ' has crossed into ' + p[1] + (cap ? ', my capital! The walls are manned and the people are arming.' : '.'), choices: choices };
   } };
 
-  return { menu: menu, freeze: freeze, tribute: tribute, summary: summary, reignYear: reignYear, MAPS: MAPS, owners: owners };
+  return { menu: menu, tap: tap, freeze: freeze, tribute: tribute, summary: summary, reignYear: reignYear, MAPS: MAPS, owners: owners, cells: cells };
 })();
