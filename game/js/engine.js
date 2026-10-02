@@ -306,7 +306,9 @@ TL.engine = (function () {
         return;
       }
       s.degrees.push({ type: 'hs' });
-      log('🎓 I graduated from ' + e.school + ' with ' + (/^[AEF]/.test(gradeLetter(e.grade)) ? 'an ' : 'a ') + gradeLetter(e.grade) + ' average!', 'good');
+      var gl = gradeLetter(e.grade), avg = (/^[AEF]/.test(gl) ? 'an ' : 'a ') + gl + ' average';
+      // Only cheer for grades worth cheering.
+      log(/^[AB]/.test(gl) ? '🎓 I graduated from ' + e.school + ' with ' + avg + '!' : /^C/.test(gl) ? '🎓 I graduated from ' + e.school + ' with ' + avg + '.' : '🎓 I scraped through ' + e.school + ' with ' + avg + ', but I graduated.', /^[ABC]/.test(gl) ? 'good' : '');
       if (e.grade >= 95) { log('🥇 I was named valedictorian of my class!', 'good'); achieve('valedictorian'); }
       stat('happy', 10);
       s.lastGrade = e.grade;
@@ -919,7 +921,9 @@ TL.engine = (function () {
       p.age++;
       // relationship decay
       if (['classmate', 'coworker', 'former classmate'].indexOf(p.role) < 0) {
-        var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : U.rand(0, 4);
+        // Family bonds fade slowly and rarely to nothing; friendships fade faster.
+        var family = ['mother', 'father', 'stepmother', 'stepfather', 'sibling', 'child', 'grandparent', 'grandchild'].indexOf(p.role) >= 0;
+        var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : family ? (p.rel > 40 ? U.rand(0, 2) : U.chance(0.4) ? 1 : 0) : U.rand(0, 4);
         rel(p, -decay);
       }
       if (p.age === 5 && p.job === 'Toddler') p.job = 'Student';
