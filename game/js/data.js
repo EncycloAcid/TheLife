@@ -384,6 +384,8 @@ TL.data = (function () {
     { id: 'ipo', name: 'Ring the Bell', desc: 'Take a company public', icon: '🔔' },
     { id: 'caught_early', name: 'Caught It Early', desc: 'Get diagnosed with stage 1 cancer', icon: '🔬' },
     { id: 'second_chance', name: 'Second Chance', desc: 'Survive a heart attack', icon: '🚑' },
+    { id: 'market_millionaire', name: 'Wall Street', desc: 'Grow a stock portfolio to $1 million', icon: '📈' },
+    { id: 'buy_the_dip', name: 'Buy the Dip', desc: 'Buy stocks during a market crash', icon: '🛒' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
@@ -401,16 +403,24 @@ TL.data = (function () {
     { type: 'Hotel', cost: 6000000, base: 0.16 }
   ];
 
+  /* Stocks. price: starting share price in base dollars; beta: how hard it
+   * follows the overall market; drift: long-run yearly return; vol: its own
+   * yearly swings on top of the market; div: dividend yield. */
   var STOCKS = [
-    { sym: 'FRUT', name: 'Fruit Computers', vol: 0.25, drift: 0.09 },
-    { sym: 'MEGA', name: 'MegaMart Retail', vol: 0.15, drift: 0.05 },
-    { sym: 'ROKT', name: 'Rocketeer Space', vol: 0.55, drift: 0.12 },
-    { sym: 'OILX', name: 'Crude Energy Co', vol: 0.3, drift: 0.04 },
-    { sym: 'HLTH', name: 'Wellspring Pharma', vol: 0.3, drift: 0.07 },
-    { sym: 'BANK', name: 'Granite Bank', vol: 0.2, drift: 0.05 },
-    { sym: 'INDX', name: 'Total Market Index', vol: 0.16, drift: 0.07 },
-    { sym: 'COIN', name: 'MoonCoin (crypto)', vol: 0.9, drift: 0.15 }
+    { sym: 'VOO', name: 'S&P 500 Index Fund', sector: 'Index fund', price: 480, beta: 1, drift: 0.075, vol: 0.02, div: 0.014 },
+    { sym: 'BND', name: 'Total Bond Fund', sector: 'Bonds', price: 72, beta: 0.08, drift: 0.035, vol: 0.05, div: 0.035 },
+    { sym: 'AAPL', name: 'Apple', sector: 'Tech', price: 180, beta: 1.2, drift: 0.095, vol: 0.22, div: 0.005 },
+    { sym: 'MSFT', name: 'Microsoft', sector: 'Tech', price: 400, beta: 1.1, drift: 0.09, vol: 0.2, div: 0.008 },
+    { sym: 'NVDA', name: 'Nvidia', sector: 'Chips', price: 120, beta: 1.7, drift: 0.13, vol: 0.45, div: 0.001 },
+    { sym: 'TSLA', name: 'Tesla', sector: 'Cars', price: 250, beta: 1.6, drift: 0.1, vol: 0.55, div: 0 },
+    { sym: 'AMZN', name: 'Amazon', sector: 'Retail & cloud', price: 180, beta: 1.2, drift: 0.09, vol: 0.27, div: 0 },
+    { sym: 'WMT', name: 'Walmart', sector: 'Retail', price: 70, beta: 0.5, drift: 0.065, vol: 0.15, div: 0.014 },
+    { sym: 'KO', name: 'Coca-Cola', sector: 'Drinks', price: 62, beta: 0.55, drift: 0.055, vol: 0.13, div: 0.03 },
+    { sym: 'PFE', name: 'Pfizer', sector: 'Pharma', price: 28, beta: 0.6, drift: 0.045, vol: 0.24, div: 0.05 },
+    { sym: 'GS', name: 'Goldman Sachs', sector: 'Banking', price: 450, beta: 1.35, drift: 0.075, vol: 0.25, div: 0.024 }
   ];
+  // Tickers from saves before v1.22 and the real stock each one became.
+  var OLD_STOCKS = { FRUT: 'AAPL', MEGA: 'WMT', ROKT: 'TSLA', OILX: 'AMZN', HLTH: 'PFE', BANK: 'GS', INDX: 'VOO', COIN: 'NVDA' };
 
   return {
     COUNTRIES: COUNTRIES, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
@@ -418,7 +428,7 @@ TL.data = (function () {
     HOUSES: HOUSES, STREETS: STREETS, STREET_TYPES: STREET_TYPES, CARS: CARS, CAR_COLORS: CAR_COLORS,
     JEWELRY: JEWELRY, PETS: PETS, PET_NAMES: PET_NAMES, ILLNESSES: ILLNESSES, CRIMES: CRIMES, CLUBS: CLUBS,
     SPORTS_TEAMS: SPORTS_TEAMS, VACATIONS: VACATIONS, TRAITS: TRAITS, ZODIAC: ZODIAC, MONTHS: MONTHS,
-    ACHIEVEMENTS: ACHIEVEMENTS, BUSINESS_TYPES: BUSINESS_TYPES, STOCKS: STOCKS,
+    ACHIEVEMENTS: ACHIEVEMENTS, BUSINESS_TYPES: BUSINESS_TYPES, STOCKS: STOCKS, OLD_STOCKS: OLD_STOCKS,
     career: function (id) {
       var all = CAREERS.concat(FAME_CAREERS, [POLITICS]);
       for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];

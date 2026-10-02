@@ -181,8 +181,9 @@ TL.engine = (function () {
       yearActs: {}, pending: [], dead: false, cause: null, legacy: opts.legacy || null,
       famePerks: null, social: { platform: false }, home: { type: 'parents' }
     };
-    D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round(U.randf(20, 300) * 100) / 100; });
     TL.S = st;
+    // Share prices start near real levels, in local currency.
+    D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round($(s.price || U.randf(20, 300)) * U.randf(0.75, 1.3) * 100) / 100; });
     st.log.push({ age: 0, year: startYear, entries: [] });
 
     if (opts.legacy) {
@@ -730,15 +731,19 @@ TL.engine = (function () {
     // health insurance premiums and prescriptions
     if (TL.health) expense += TL.health.costs();
 
+    // stock market (js/market.js): prices, dividends and news
+    var divs = TL.market ? TL.market.year() : 0;
+    if (divs) income += divs;
     addMoney(income - expense);
+    if (TL.market && earned) TL.market.autoInvest(Math.round(earned * (1 - c.tax)));
     if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
     if (s.money < 0) {
       stat('happy', -8);
       if (s.money < -$(20000) && U.chance(0.35)) bankruptcy();
       else log('I\'m in debt. Creditors keep calling me.', 'bad');
     }
-    // stock market
-    D.STOCKS.forEach(function (st) {
+    // stock market (fallback without js/market.js)
+    if (!TL.market) D.STOCKS.forEach(function (st) {
       var change = U.gauss(st.drift, st.vol);
       s.prices[st.sym] = Math.max(0.01 * k(), Math.round(s.prices[st.sym] * (1 + change) * 100) / 100);
     });

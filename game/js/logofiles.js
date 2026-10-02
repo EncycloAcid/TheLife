@@ -90,7 +90,6 @@ TL.LOGO_FILES = {
 "club américa": "club-america.png",
 "cnn": "co-cnn.png",
 "coachella valley firebirds": "co-coachella-valley-firebirds.png",
-"coca-cola": "co-coca-cola.png",
 "coldwell banker": "co-coldwell-banker.png",
 "columbia records": "co-columbia-records.png",
 "connecticut sun": "connecticut-sun.png",

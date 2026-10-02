@@ -894,7 +894,11 @@ TL.actions = (function () {
       var held = Object.keys(s.stocks).filter(function (k) { return s.stocks[k] > 0; });
       if (held.length) {
         items.push({ section: 'Portfolio' });
-        held.forEach(function (k) { items.push({ icon: '📊', label: k + ' × ' + s.stocks[k], sub: 'Worth ' + E.fmt(s.stocks[k] * s.prices[k]), onClick: stockMenu }); });
+        held.forEach(function (k) {
+          var x = D.STOCKS.filter(function (y) { return y.sym === k; })[0];
+          if (TL.market && x) items.push({ icon: TL.logos && !/fund/i.test(x.name) ? TL.logos.badge(x.name) : '📊', label: x.name, sub: s.stocks[k].toLocaleString() + ' shares', right: E.fmt(Math.round(s.stocks[k] * s.prices[k])), onClick: function () { TL.market.detail(k); } });
+          else items.push({ icon: '📊', label: k + ' × ' + s.stocks[k], sub: 'Worth ' + E.fmt(s.stocks[k] * s.prices[k]), onClick: stockMenu });
+        });
       }
       if (s.prison) return items;
       items.push({ section: 'Shopping' });
@@ -902,7 +906,7 @@ TL.actions = (function () {
         items.push({ icon: '🏠', label: 'Real estate', sub: 'Buy a home', onClick: realEstate });
         items.push({ icon: '🚗', label: 'Vehicles', sub: 'Cars, bikes, jets & yachts', onClick: dealership });
         items.push({ icon: '💎', label: 'Jewelry & luxury', onClick: jewelryStore });
-        items.push({ icon: '📈', label: 'Stock market', onClick: stockMenu });
+        items.push({ icon: '📈', label: 'Stock market', sub: TL.market && TL.market.held().length ? 'Portfolio ' + E.fmt(TL.market.portfolio()) : 'Stocks, index funds and bonds', onClick: TL.market ? TL.market.menu : stockMenu });
         items.push({ icon: '🪙', label: 'Crypto', sub: TL.creator.cryptoValue() ? 'Wallet ' + E.fmt(TL.creator.cryptoValue()) : 'Bitcoin, Ethereum, Solana, Dogecoin', onClick: TL.creator.cryptoMenu });
         items.push({ icon: '🏢', label: 'Start a business', onClick: businessMenu });
       } else items.push({ info: true, html: '<p class="muted">I need to be 18 to buy property, vehicles, or stocks.</p>' });
@@ -1447,6 +1451,7 @@ TL.actions = (function () {
             s.assets.forEach(function (a) { a.value = Math.round(a.value * ratio); a.price = Math.round((a.price || 0) * ratio); a.loan = Math.round((a.loan || 0) * ratio); a.payment = Math.round((a.payment || 0) * ratio); });
             s.pension = Math.round(s.pension * ratio);
             Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.max(0.01, Math.round(s.prices[k] * ratio * 100) / 100); });
+            if (TL.market) TL.market.convert(ratio);
             s.people.forEach(function (p) { p.money = Math.round(p.money * ratio); });
             s.country = c.name;
             s.city = TL.real ? TL.real.city(c.name) : null;

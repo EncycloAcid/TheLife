@@ -48,7 +48,7 @@ DOMAINS = {
     'KPMG': 'kpmg.com', 'Grant Thornton': 'grantthornton.com', 'The New York Times': 'nytimes.com', 'The Washington Post': 'washingtonpost.com', 'CNN': 'cnn.com',
     'BBC': 'bbc.co.uk', 'Reuters': 'reuters.com', 'Associated Press': 'apnews.com', 'The Guardian': 'theguardian.com', 'Bloomberg': 'bloomberg.com', 'IDEO': 'ideo.com',
     'Pentagram': 'pentagram.com', 'Airbnb': 'airbnb.com', 'Figma': 'figma.com', 'Ogilvy': 'ogilvy.com', 'WPP': 'wpp.com', 'Publicis': 'publicisgroupe.com',
-    'Coca-Cola': 'coca-cola.com', 'Procter & Gamble': 'pg.com', 'Unilever': 'unilever.com', 'Boeing': 'boeing.com', 'Airbus': 'airbus.com', 'Tesla': 'tesla.com',
+    'Procter & Gamble': 'pg.com', 'Unilever': 'unilever.com', 'Boeing': 'boeing.com', 'Airbus': 'airbus.com', 'Tesla': 'tesla.com',
     'General Electric': 'ge.com', 'Siemens': 'siemens.com', 'Toyota': 'toyota.com', 'Lockheed Martin': 'lockheedmartin.com', 'SpaceX': 'spacex.com',
     'Goldman Sachs': 'goldmansachs.com', 'JPMorgan Chase': 'jpmorganchase.com', 'Morgan Stanley': 'morganstanley.com', 'BlackRock': 'blackrock.com', 'Citi': 'citi.com',
     'HSBC': 'hsbc.com', 'Barclays': 'barclays.co.uk', 'UBS': 'ubs.com', 'Gensler': 'gensler.com', 'Foster + Partners': 'fosterandpartners.com',
