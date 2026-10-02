@@ -23,6 +23,7 @@ TL.ancient = (function () {
     },
     birthOptions: function () { return all().reduce(function (a, e) { return a.concat(e.birthOptions()); }, []); }
   };
+  ['heir', 'housed'].forEach(function (n) { api[n] = function () { var e = era(); return e[n].apply(e, arguments); }; });
   ['jobYear', 'salary', 'title'].forEach(function (n) { api[n] = function (j) { return (byCareer(j.career) || era())[n](j); }; });
   ['st', 'yearly', 'npcJob', 'homeLabel', 'occupationMenu', 'assetsMenu', 'activitiesMenu', 'acts', 'aboutRows', 'recapRow', 'illName', 'txt'].forEach(function (n) {
     api[n] = function () { var e = era(); return e[n].apply(e, arguments); };

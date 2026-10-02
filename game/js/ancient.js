@@ -471,7 +471,7 @@ TL.eras.rome = (function () {
   var HOMES = { insula: ['A room in an insula', 120, -2], apt: ['An insula apartment', 300, 0], fine: ['A fine apartment on the first floor', 900, 3] };
   function homeLabel(h) {
     var a = st();
-    if (h.type === 'parents') return a.cls === 'slave' ? 'The household of ' + a.master : me().age < 18 ? 'My family\'s home' : 'Living with my family';
+    if (h.type === 'parents') return a.cls === 'slave' ? 'The household of ' + a.master : !E.parentsAround().length ? 'The family domus' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
     if (h.type === 'homeless') return 'Sleeping in the streets';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
     return (HOMES[h.anc] || HOMES.apt)[0];
@@ -813,6 +813,22 @@ TL.eras.rome = (function () {
     'Osteoporosis': 'Brittle Bones', 'Chlamydia': 'A Shameful Disease', 'Herpes': 'Sores', 'Broken Arm': 'A Broken Arm', 'Broken Leg': 'A Broken Leg',
     'Concussion': 'A Blow to the Head', 'Alcoholism': 'Drunkenness', 'Gambling Addiction': 'A Gambling Habit', 'Nicotine Addiction': 'A Bad Habit' };
   function illName(n) { return ILL[n] || n; }
+  // Continuing as my heir: the family keeps its standing (engine.continueAs).
+  // Who keeps a roof without parents: the enslaved live in their master's house, patricians in the family domus.
+  function housed() { var c = st().cls; return c === 'slave' || c === 'patrician'; }
+  function heir(old) {
+    var a = st(), o = old || {};
+    a.cls = o.cls === 'freed' ? 'plebeian' : o.cls || 'plebeian'; // a freedperson's children are born free
+    if (a.cls === 'slave') a.master = o.master;
+    a.emp = emperor(y());
+    var was = me().first + ' ' + me().last;
+    me().last = D.gentile(me().last, me().gender);
+    S().log[0].entries.forEach(function (e) { e.t = e.t.replace(was, me().first + ' ' + me().last); });
+    if (o.patron) a.patron = o.patron;
+    if ((a.cls === 'patrician' || a.cls === 'equestrian') && me().age >= 14) a.edu = 'letters'; // tutored at home
+    if (a.cls === 'slave') E.log('⛓️ Like my parent, I belong to the household of ' + a.master + '.', 'bad');
+    else E.log('🏛️ I am ' + E.an(CLASS_NAME[a.cls].toLowerCase()) + ', like my family before me.');
+  }
   function birthOptions() { return [['rome', '🏛️ Ancient Rome · AD 40–160']]; }
   // Era-specific wording for shared menus (actions.js, engine.js).
   var TXT = {
@@ -833,5 +849,5 @@ TL.eras.rome = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, txt: txt, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
+    emperor: emperor, birthOptions: birthOptions, txt: txt, heir: heir, housed: housed, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();

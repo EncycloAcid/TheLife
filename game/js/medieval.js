@@ -472,7 +472,7 @@ TL.eras.medieval = (function () {
   var HOMES = { hovel: ['A one-room hovel', 40, -2], cottage: ['A thatched cottage', 100, 0], town: ['A timber townhouse', 400, 3] };
   function homeLabel(h) {
     var a = st();
-    if (h.type === 'parents') return a.cls === 'villein' && me().age < 18 ? 'My family\'s cottage on the manor' : a.cls === 'noble' ? 'My family\'s castle' : a.cls === 'gentry' ? 'My family\'s manor house' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
+    if (h.type === 'parents') return serf() ? (me().age < 18 ? 'My family\'s cottage on the manor' : 'A cottage on the manor') : a.cls === 'noble' ? 'My family\'s castle' : a.cls === 'gentry' ? 'My family\'s manor house' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
     if (h.type === 'cloister') return S().job && S().job.company ? S().job.company : 'The cloister';
     if (h.type === 'homeless') return 'Sleeping rough';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
@@ -851,6 +851,18 @@ TL.eras.medieval = (function () {
     'Osteoporosis': 'Brittle Bones', 'Chlamydia': 'The Burning', 'Herpes': 'Sores', 'Broken Arm': 'A Broken Arm', 'Broken Leg': 'A Broken Leg',
     'Concussion': 'A Blow to the Head', 'Alcoholism': 'Drunkenness', 'Gambling Addiction': 'A Love of Dice', 'Nicotine Addiction': 'A Bad Habit' };
   function illName(n) { return ILL[n] || n; }
+  // Continuing as my heir: the family keeps its standing (engine.continueAs).
+  // Lords and knights keep the family seat when their parents die; serfs hold their cottage from the lord.
+  function housed() { return gentle() || serf(); }
+  function heir(old) {
+    var a = st(), o = old || {};
+    a.cls = o.cls || 'free';
+    if (a.cls === 'villein') { a.lord = o.lord; if (o.fled) { a.fled = o.fled; a.village = o.village; a.fledTo = o.fledTo; } }
+    a.king = king(y());
+    if ((a.cls === 'noble' || a.cls === 'gentry') && me().age >= 14) a.edu = 'letters'; // tutored at home
+    var lines = { noble: '🏰 I am heir to my family\'s lands and titles.', gentry: '🛡️ The family manor passes to my generation.', burgher: '🏘️ I carry on my family\'s place among the townsfolk.', free: '🌾 Like my parents, I am a free peasant.', villein: '🌾 Like my parents, I am a serf on the manor of ' + a.lord + '.' };
+    E.log(lines[a.cls], a.cls === 'villein' ? 'bad' : '');
+  }
   function birthOptions() { return [['medieval', '🏰 Medieval England · 1150–1420']]; }
   var TXT = {
     matchSub: 'Most marriages are arranged', matchEvent: 'm_marriage',
@@ -870,6 +882,6 @@ TL.eras.medieval = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    king: king, birthOptions: birthOptions, illName: illName, txt: txt, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
+    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
     id: 'medieval', land: 'Kingdom of England', years: [1150, 1420], gentile: false };
 })();

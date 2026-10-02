@@ -827,7 +827,7 @@ TL.engine = (function () {
     var s = S(), h = home(), why = null;
     if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
     else if (h.type === 'palace' && !s.royal) why = 'I left the palace and moved into a studio apartment.';
-    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = ancient() ? TL.ancient.txt('parentsGone') : 'With my parents gone, I moved into a studio apartment.';
+    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length && !(ancient() && TL.ancient.housed())) why = ancient() ? TL.ancient.txt('parentsGone') : 'With my parents gone, I moved into a studio apartment.';
     if (why && ancient()) why = why.replace('a studio apartment', TL.ancient.txt('moveOut'));
     if (why) { s.home = ancient() ? JSON.parse(JSON.stringify(TL.ancient.txt('rentHome'))) : { type: 'rent', tier: 1 }; log(why); }
   }
@@ -1222,8 +1222,12 @@ TL.engine = (function () {
     log('👑 Generation ' + gen + ': I am ' + c.first + ' ' + c.last + ', age ' + c.age + '.');
     log('My ' + (viaGrandchild ? 'grand' : '') + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');
     if (inheritance > 0) log('📜 I inherited ' + fmt(inheritance) + ' from ' + his(dead) + ' estate.', 'good');
-    if (c.age >= 6 && c.age < 18) { st.edu = null; enroll(c.age < 11 ? 'elementary' : c.age < 14 ? 'middle' : 'high'); st.edu.year = c.age - (c.age < 11 ? 5 : c.age < 14 ? 10 : 13); }
-    if (c.age >= 18) st.degrees.push({ type: 'hs' });
+    // Earlier eras have no schools to enroll in; the family's standing carries on (js/eras.js).
+    if (ancient() && TL.ancient) TL.ancient.heir(s.anc);
+    else {
+      if (c.age >= 6 && c.age < 18) { st.edu = null; enroll(c.age < 11 ? 'elementary' : c.age < 14 ? 'middle' : 'high'); st.edu.year = c.age - (c.age < 11 ? 5 : c.age < 14 ? 10 : 13); }
+      if (c.age >= 18) st.degrees.push({ type: 'hs' });
+    }
     st.flags.wealth = inheritance > $(1000000) ? 'rich' : 'middle';
     if (TL.extras) TL.extras.recordAncestor(s, st);
     if (gen >= 3) achieve('dynasty');
