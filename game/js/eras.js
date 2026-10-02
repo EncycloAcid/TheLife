@@ -34,7 +34,17 @@ TL.ancient = (function () {
   ['WEDDINGS', 'TOPICS', 'KID_TOPICS', 'ACH'].forEach(function (n) { Object.defineProperty(api, n, { get: function () { return era()[n]; } }); });
   // An heir keeps the family's map of conquests (js/maps.js).
   var eraHeir = api.heir;
-  api.heir = function (old) { if (old && old.map) api.st().map = old.map; return eraHeir(old); };
+  api.heir = function (old, prev) {
+    var a = api.st();
+    if (old && old.map) a.map = old.map;
+    // Once a family has held the throne, history stays changed for its children too.
+    if (old && (old.alt || old.ruled || old.after || (old.dyn && old.dyn.how === 'birth'))) { a.alt = true; if (old.after) a.after = old.after; }
+    return eraHeir(old, prev);
+  };
+  // A royal heir's place shows in About and the life recap (TL.dynasty).
+  var eraAbout = api.aboutRows, eraRecap = api.recapRow;
+  api.aboutRows = function () { return eraAbout().concat(TL.dynasty ? TL.dynasty.about() : []); };
+  api.recapRow = function () { return eraRecap().concat(TL.dynasty ? TL.dynasty.recap() : []); };
   return api;
 })();
 
@@ -138,11 +148,14 @@ TL.coup = (function () {
     if (c.rule.cls) a.cls = c.rule.cls; // a ruler joins the highest rank
     if (TL.maps) TL.maps.freeze();
     E.fame(25); E.stat('happy', 20);
+    E.achieve('royal');
+    if (TL.dynasty) TL.dynasty.crowned(); // a crown taken from my own family
   }
   // The reign is over (deposed, fled, abdicated): out of the palace.
   function lostThrone() {
     var a = st(), s = S();
     a.rule = null;
+    if (TL.dynasty) TL.dynasty.fallen(); // whoever took my throne keeps it; history doesn't come back
     if (s.home && s.home.type === 'palace') s.home = JSON.parse(JSON.stringify(TL.ancient.txt('rentHome')));
   }
   function endRule() { E.quitJob(true); lostThrone(); }
@@ -271,7 +284,303 @@ TL.coup = (function () {
   function inherits(rule) {
     if (!rule.heirName || rule.heirName === me().first) return true;
     E.log('👑 My ' + (rule.heirName ? 'sibling ' + rule.heirName : 'sibling') + ' was named heir and wears the crown now.');
+    if (TL.dynasty) TL.dynasty.sibling(rule.heirName); // the family keeps the throne; it may still come to me
     return false;
   }
   return { menu: menu, yearly: yearly, crown: crown, reignYear: reignYear, reignItems: reignItems, inherits: inherits, lostThrone: lostThrone, endRule: endRule, danger: danger };
+})();
+
+/* v1.37: born to rule. In every early era a life can start as the ruler's
+ * firstborn: history follows your family from then on, you grow up as the
+ * heir, and the crown comes to you when the ruler dies, steps aside, or is
+ * pushed. A wayward heir can be passed over for a brother or sister. Each
+ * era also opens a road for outsiders: Roman emperors adopt their heirs
+ * (js/ancient.js), a Lord Protector can keep a boy king's crown
+ * (js/medieval.js), and the Thing can choose a new king (js/viking.js).
+ * Each era hands over its words (royalCfg). State: S.anc.dyn = { how ('birth'
+ * or 'adopted'), ruler (the person who reigns), heir, rival, regent, hist
+ * (an adoptive emperor's name), support, love, craft }. */
+TL.dynasty = (function () {
+  var U = TL.util, E = TL.engine;
+  function S() { return TL.S; }
+  function me() { return S().me; }
+  function ui() { return TL.ui; }
+  function good(t) { return { text: t, cls: 'good' }; }
+  function bad(t) { return { text: t, cls: 'bad' }; }
+  function done(r) { return TL.actions.done(r); }
+  function nope(t) { return TL.actions.nope(t); }
+  function count(k) { var y = S().yearActs || (S().yearActs = {}); return y[k] || 0; }
+  function bump(k) { var y = S().yearActs || (S().yearActs = {}); y[k] = (y[k] || 0) + 1; }
+  function on() { return !!(TL.S && TL.ancient && TL.ancient.on()); }
+  function st() { return TL.ancient.st(); }
+  function era() { return TL.ancient.era(); }
+  function cfg() { var e = on() && era(); return e && e.royalCfg ? e.royalCfg() : null; }
+  function dyn() { return on() ? st().dyn || null : null; }
+  function alive(p) { return !!p && p.alive !== false; }
+  function ruler() { var y = dyn(), p = y && y.ruler ? E.person(y.ruler) : null; return alive(p) ? p : null; }
+  function gi(p) { return p.gender === 'M' ? 0 : 1; }
+  function kin(p) { return { father: 'father', mother: 'mother', grandparent: p.gender === 'M' ? 'grandfather' : 'grandmother', sibling: p.gender === 'M' ? 'brother' : 'sister' }[p.role] || 'kinsman'; }
+  function parentLike(p) { return ['father', 'mother', 'grandparent'].indexOf(p.role) >= 0; }
+  function fill(t, p, c) {
+    var mine = c.ruler[gi(me())];
+    t = t.replace(/\{title\}/g, mine).replace(/\{titlel\}/g, mine.toLowerCase());
+    return p ? t.replace(/\{ruler\}/g, c.ruler[gi(p)] + ' ' + E.fullName(p)).replace(/\{kin\}/g, kin(p)) : t;
+  }
+  function see(title, icon) { var s = S(), h = s.era || (s.era = { seen: [], served: [] }); if (h.seen.length < 40) h.seen.push({ year: s.year, age: me().age, icon: icon, title: title }); }
+  // The era's own record of who rules (a.emp in Rome, a.king elsewhere) follows the family.
+  function sync() { var e = era(), a = st(), yr = S().year; if (e.emperor) a.emp = e.emperor(yr); else if (e.king) a.king = e.king(yr); }
+
+  // Who sits on the throne while my family reigns (null when history decides).
+  function reigning() {
+    if (!on()) return null;
+    var a = st(), y = a.dyn;
+    if (a.rule) return null;
+    if (y && y.regent) return { name: me().first + ' ' + me().last, gender: me().gender };
+    var p = ruler();
+    if (p) return { name: E.fullName(p), gender: p.gender };
+    return a.after || null;
+  }
+  // My reign (or my family's) ended: the man who took the throne founds a new line.
+  function fallen() {
+    var a = st(), c = cfg(), cty = TL.data.country(S().country);
+    if (!c || !c.usurper) return;
+    a.after = { name: c.usurper(U.pick(cty.male)), gender: 'M' };
+    if (a.dyn) { a.dyn.heir = false; a.dyn.ruler = null; a.dyn.regent = false; a.dyn.rival = null; }
+  }
+  // Continuing as my child when my sibling was named heir: the family still reigns.
+  function sibling(name) {
+    var sib = E.people('sibling').filter(function (p) { return p.first === name; })[0], c = cfg();
+    if (!sib || !c) return;
+    sib.job = c.ruler[gi(sib)];
+    st().dyn = { how: 'birth', ruler: sib.id, heir: false, support: 20, love: 30, craft: 10, since: S().year };
+    S().home = { type: 'palace' };
+  }
+  // Still part of the reigning family (heir, regent, or kin of the ruler).
+  function royal() { var y = dyn(); return !!(y && !st().rule && (y.heir || y.regent || ruler())); }
+  // History stops being history once my family holds the throne.
+  function altered() { var a = on() && st(); return !!(a && (a.rule || a.ruled || a.alt || (a.dyn && a.dyn.how === 'birth'))); }
+  function title() { var y = dyn(), c = y && royal() && cfg(); if (!c) return null; return y.regent ? c.ruler[gi(me())] : y.heir ? c.heir[gi(me())] : null; }
+
+  // ---- a royal birth (called by the era's setup)
+  function born(s, c) {
+    var a = st(), dad = E.people('father')[0], mom = E.people('mother')[0], mon = dad || mom;
+    if (!mon) return false;
+    // I am the firstborn: older brothers and sisters are left out of this story.
+    var older = E.people('sibling').map(function (p) { return p.id; });
+    if (older.length) {
+      s.people = s.people.filter(function (p) { return older.indexOf(p.id) < 0; });
+      s.log.forEach(function (yy) { yy.entries = yy.entries.filter(function (e) { return !/^I have an older (brother|sister), /.test(e.t); }); });
+    }
+    mon.job = c.ruler[gi(mon)];
+    var con = mon === dad ? mom : dad;
+    if (con) { con.job = c.consort[gi(con)]; con.married = mon.married = true; s.log.forEach(function (yy) { yy.entries = yy.entries.filter(function (e) { return e.t !== 'My parents aren\'t married.'; }); }); }
+    [dad, mom].forEach(function (p) { if (p) p.money = Math.max(p.money, E.$(U.rand(30, 120) * 1000000)); });
+    a.cls = c.cls; s.city = c.city; s.home = { type: 'palace' }; s.flags.wealth = 'rich'; s.fame = Math.max(s.fame, 30);
+    a.dyn = { how: 'birth', ruler: mon.id, heir: true, support: 10, love: 20, craft: 0, since: s.year };
+    E.log(fill(c.born, mon, c), 'good');
+    return true;
+  }
+  // A Roman emperor adopts me as his son and heir (js/ancient.js).
+  function adopt(old) {
+    var a = st(), s = S();
+    a.dyn = { how: 'adopted', hist: old, ruler: null, heir: true, support: 25 + Math.round(s.fame / 4), love: 20 + Math.round(s.fame / 5), craft: 25, since: s.year };
+    s.home = { type: 'palace' };
+    E.fame(10); E.stat('happy', 15);
+    see('Adopted by Emperor ' + old, '👑');
+  }
+
+  // ---- the crown passes
+  function take(c, text) {
+    var e = era(), a = st(), y = a.dyn;
+    y.heir = false; y.regent = false; y.ruler = null; y.rival = null;
+    TL.coup.crown(e.coupCfg('throne'));
+    a.ruled = a.rule; sync();
+    // A well-prepared heir starts with the great men and the people behind them.
+    a.rule.pop = U.clamp(Math.round(42 + y.love * 0.35 + y.craft * 0.12), 25, 90);
+    a.rule.guard = U.clamp(Math.round(40 + y.support * 0.4 + y.craft * 0.12), 25, 90);
+    see('Crowned ' + c.ruler[gi(me())], '👑');
+    E.log(text, 'good');
+  }
+  function succeed(p) {
+    var y = dyn(), c = cfg(), age = me().age;
+    if (!y || !c) return;
+    y.ruler = null;
+    var rv = !y.heir && y.rival ? E.person(y.rival) : null;
+    if (alive(rv)) {
+      // I was passed over: my brother or sister wears the crown.
+      y.ruler = rv.id; y.rival = null; rv.job = c.ruler[gi(rv)]; sync();
+      E.log('👑 My ' + kin(rv) + ' ' + rv.first + ' was crowned ' + c.ruler[gi(rv)] + ' in my place.', 'bad');
+      return;
+    }
+    y.heir = true; y.rival = null;
+    if (age < 16) {
+      y.regent = true; sync();
+      E.log(fill('👑 {ruler}, my {kin}, is dead. The crown is mine, but I am only ' + age + ': ' + c.regent + ' will rule in my name until I turn 16.', p, c), 'good');
+      return;
+    }
+    take(c, fill(c.succeed, p, c));
+  }
+  // Someone died (engine.npcDies).
+  function onDeath(p) {
+    var y = dyn();
+    if (!y || st().rule) return;
+    if (p.id === y.rival) {
+      y.rival = null;
+      if (!y.heir) { y.heir = true; E.log('👑 With my ' + kin(p) + ' ' + p.first + ' gone, I am heir to the throne again.', 'good'); }
+      return;
+    }
+    if (p.id === y.ruler) succeed(p);
+  }
+  // I was crowned (TL.coup.crown). If my own family still held the throne, I took it from them.
+  function crowned() {
+    var y = dyn();
+    if (!y) return;
+    var p = ruler(), c = cfg();
+    y.heir = false; y.regent = false; y.ruler = null; y.rival = null;
+    if (!p || !c) return;
+    if (c.depose) { p.job = c.deposed[gi(p)]; E.log(fill(c.depose, p, c), 'bad'); }
+    else E.npcDies(p, c.killed);
+  }
+
+  // How a reigning ruler dies of natural causes (engine.yearlyPeople): no "accident at work" for a king.
+  function deathCause(p) {
+    var y = dyn(), c = y && y.ruler === p.id && cfg();
+    return c ? U.pick(c.deaths.concat(p.age >= 65 ? ['old age', 'old age'] : [])) : null;
+  }
+
+  // ---- every year (called first thing by the era's yearly)
+  function yearly() {
+    var a = st(), y = a.dyn, s = S(), c = cfg();
+    if (!y || a.rule || s.dead || !c) return;
+    // The treasury keeps the ruler's family.
+    if (royal() && c.allowance) { var amt = Math.round(c.allowance * (me().age < 16 ? 0.25 : 1)); E.addMoney(amt); E.log('🏰 An allowance from ' + c.treasury + ': ' + E.fmt(amt), 'money'); }
+    if (y.regent) {
+      if (me().age >= 16) take(c, '👑 I turned sixteen and took ' + c.realm + ' into my own hands. The regency is over.');
+      return;
+    }
+    if (y.how === 'adopted') {
+      // My adoptive father's reign ends when history says it does, or sooner.
+      if (y.heir && (era().emperor(s.year) !== y.hist || U.chance(0.06))) take(c, fill(c.adoptedTake.replace('{old}', y.hist), null, c));
+      return;
+    }
+    var p = ruler();
+    if (!p) {
+      // The ruler vanished from my life without a death (a lost save, an old bug): the crown passes anyway.
+      if (y.ruler) succeed(E.person(y.ruler) || { first: '', last: '', gender: 'M', role: 'father' });
+      return;
+    }
+    // Rulers rarely die in bed.
+    if (U.chance(0.006 + Math.max(0, p.age - 55) * 0.003)) { E.npcDies(p, U.pick(c.deaths)); return; }
+    var age = me().age;
+    if (y.heir && age >= 14 && parentLike(p)) {
+      // A wayward heir can be passed over for a younger brother or sister.
+      var sib = E.people('sibling').filter(function (q) { return q.age >= 4; }).sort(function (x, z) { return z.age - x.age; })[0];
+      if (sib && (p.rel < 15 || s.record.length >= 2) && U.chance(0.15)) {
+        y.heir = false; y.rival = sib.id;
+        E.log('😠 My ' + kin(p) + ' named my ' + kin(sib) + ' ' + sib.first + ' heir to the throne instead of me.', 'bad');
+      }
+    } else if (!y.heir && y.rival && parentLike(p) && p.rel >= 70 && !s.record.length && U.chance(0.25)) {
+      y.heir = true; y.rival = null;
+      E.log('👑 My ' + kin(p) + ' forgave me and named me heir to the throne again.', 'good');
+    }
+    if (age >= 6 && U.chance(0.12)) E.log(fill(U.pick(c.news), p, c));
+  }
+
+  // ---- the heir's part of the Occupation menu
+  function bar(label, v) { v = Math.round(v); return '<div class="minibar"><span>' + U.esc(label) + '</span><div class="track"><div class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></div></div></div>'; }
+  function grow(k, d) { var y = dyn(); y[k] = U.clamp(Math.round(y[k] + d), 0, 100); }
+  function items() {
+    var y = dyn(), c = cfg(), out = [];
+    if (!y || !c || !royal()) return out;
+    var p = ruler(), age = me().age, s = S(), rv = y.rival ? E.person(y.rival) : null;
+    var head = y.regent ? 'The crown is mine. ' + U.cap(c.regent) + ' rules in my name until I turn 16.'
+      : y.how === 'adopted' ? 'Adopted son and heir of Emperor ' + y.hist + '.'
+      : !y.heir ? (alive(rv) ? 'My ' + kin(rv) + ' ' + rv.first + ' is heir now. Win back the favor I lost, or take what should be mine.' : p && p.role === 'sibling' ? 'My ' + kin(p) + ' wears the crown. If ' + E.he(p) + ' dies, it comes to me.' : 'I am not the heir.')
+      : 'Heir to ' + c.realm + '.';
+    var who = p ? 'My ' + kin(p) + ', ' + c.ruler[gi(p)] + ' ' + E.fullName(p) + ', is ' + p.age + (p.age >= 60 ? ' and growing old' : '') + '.' : '';
+    out.push({ section: c.section });
+    out.push({ info: true, html: '<div class="kv"><b>' + U.esc(head) + '</b>' + (who ? '<br><span class="muted">' + U.esc(who) + '</span>' : '') + bar(c.greatName, y.support) + bar(c.peopleName, y.love) + bar('Statecraft', y.craft) + '</div>' });
+    if (age < 8) return out;
+    out.push({ icon: c.learn[0], label: c.learn[1], sub: c.learn[2], onClick: function () {
+      if (count('dy_learn')) return done(nope('I learned enough statecraft for one year.'));
+      bump('dy_learn'); grow('craft', U.rand(6, 11)); E.stat('smarts', 1); if (p) E.rel(p, 3);
+      // The court's clerks teach the heir to read along the way.
+      if (!st().edu && c.edu && U.chance(0.5)) { st().edu = c.edu; return done(good(U.pick(c.learn[3]) + ' The clerks taught me to read and write, too. ✍️')); }
+      done(U.pick(c.learn[3]));
+    } });
+    if (age >= 12) out.push({ icon: c.show[0], label: c.show[1], sub: c.show[2], right: E.fmt(c.show[3]), onClick: function () {
+      if (count('dy_show')) return done(nope('Once a year is enough, or it looks like I\'m campaigning.'));
+      if (s.money < c.show[3]) return done(nope('That costs ' + E.fmt(c.show[3]) + '.'));
+      bump('dy_show'); E.addMoney(-c.show[3]); grow('love', U.rand(9, 15)); E.fame(2);
+      done(U.pick(c.show[4]));
+    } });
+    if (age >= 14) out.push({ icon: c.great[0], label: c.great[1], sub: c.great[2], right: E.fmt(c.great[3]), onClick: function () {
+      if (count('dy_great')) return done(nope('Too much courting in one year would look like a plot.'));
+      if (s.money < c.great[3]) return done(nope('That costs ' + E.fmt(c.great[3]) + '.'));
+      bump('dy_great'); E.addMoney(-c.great[3]); grow('support', U.rand(9, 15));
+      done(U.pick(c.great[4]));
+    } });
+    if (y.regent) return out;
+    if (age >= 16) out.push({ icon: c.command[0], label: c.command[1], sub: c.command[2], danger: true, onClick: function () {
+      if (count('dy_war')) return done(nope('One campaign a year.'));
+      bump('dy_war');
+      if (U.chance(0.55 + me().athl / 400 + y.craft / 500)) { E.fame(6); grow('support', 8); grow('love', 6); if (p) E.rel(p, 4); return done(good(U.pick(c.command[3]))); }
+      if (U.chance(0.07)) { E.die(c.command[5]); return done(bad(U.pick(c.command[4]) + ' I did not come home.')); }
+      grow('support', -5); E.fame(1); E.stat('happy', -4);
+      done(bad(U.pick(c.command[4])));
+    } });
+    if (age >= 16 && !E.partner()) out.push({ icon: '💍', label: 'Make a royal marriage', sub: 'A foreign match brings allies', onClick: function () {
+      var R = era().coupCfg('throne').rule, gg = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(gg === 'F' ? R.brides : R.grooms), cty = TL.data.country(s.country);
+      var sp = E.addPerson({ role: 'spouse', gender: gg, age: me().age + U.rand(-4, 4), rel: U.rand(35, 70) }); sp.first = U.pick(gg === 'F' ? cty.female : cty.male); sp.job = 'Royal consort';
+      grow('support', 10); E.achieve('married');
+      done(good('I married ' + sp.first + ', ' + who + '. Their family\'s swords stand behind my claim now. 💍'));
+    } });
+    if (y.heir && p && parentLike(p) && age >= 18) {
+      var odds = U.clamp(0.03 + (p.age - 50) * 0.02 + (p.rel - 50) / 250 + y.craft / 500 + (p.health < 40 ? 0.15 : 0), 0.02, 0.75);
+      out.push({ icon: c.step[0], label: c.step[1], sub: p.age < 50 ? 'Not while my ' + kin(p) + ' is in ' + E.his(p) + ' prime' : c.step[2] + ' · about ' + Math.round(odds * 100) + '% chance', disabled: p.age < 50, onClick: function () {
+        if (count('dy_step')) return done(nope('I asked once this year. Asking again would be an insult.'));
+        bump('dy_step');
+        if (U.chance(odds)) {
+          y.ruler = null; p.job = c.retired[gi(p)];
+          ui().closeAll && ui().closeAll();
+          take(c, fill('👑 ' + c.step[3], p, c));
+          return done(good(fill(c.step[3], p, c) + ' 👑'));
+        }
+        E.rel(p, -U.rand(4, 9));
+        done(bad(fill(U.pick(c.step[4]), p, c)));
+      } });
+    }
+    return out;
+  }
+
+  // ---- continuing as my child (the era's heir(), with the previous life)
+  // If I die as the heir while my parent still reigns, my own child becomes the heir.
+  function inherit(old, prev) {
+    var y = old && old.dyn, c = cfg();
+    if (!y || old.rule || !y.heir || y.regent || y.how !== 'birth' || !prev || !c) return false;
+    var mon = (prev.people || []).filter(function (p) { return p.id === y.ruler && p.alive !== false; })[0];
+    if (!mon) return false;
+    var gp = E.addPerson({ role: 'grandparent', gender: mon.gender, age: mon.age, first: mon.first, last: mon.last, rel: U.rand(50, 85), money: mon.money });
+    gp.first = mon.first; gp.last = mon.last; gp.job = mon.job;
+    st().dyn = { how: 'birth', ruler: gp.id, heir: true, support: Math.round(y.support / 2), love: Math.round(y.love / 2), craft: 0, since: S().year };
+    S().home = { type: 'palace' };
+    E.log(fill('👑 My ' + kin(gp) + ', {ruler}, still reigns. With my ' + (prev.me.gender === 'M' ? 'father' : 'mother') + ' gone, I am heir to the throne.', gp, c), 'good');
+    return true;
+  }
+
+  // ---- About and the life recap
+  function about() {
+    var y = dyn(), c = cfg();
+    if (!y || !c || !royal()) return [];
+    var rv = y.rival ? E.person(y.rival) : null;
+    return [['👑 Throne', y.regent ? 'Under a regent until 16' : y.heir ? (y.how === 'adopted' ? 'Adopted heir' : 'Heir') + ' · support ' + Math.round(y.support) + ' · people ' + Math.round(y.love) + ' · statecraft ' + Math.round(y.craft) : alive(rv) ? 'Passed over for my ' + kin(rv) + ' ' + rv.first : 'Royal family']];
+  }
+  function recap() {
+    var a = on() && st(), y = a && a.dyn, c = cfg();
+    if (!y || a.ruled || !c) return [];
+    return [y.how === 'adopted' ? ['👑', 'Caesar', 'Adopted heir of Emperor ' + y.hist] : ['👑', c.heir[gi(me())], y.heir ? 'Born heir to ' + c.realm + ', but never crowned' : 'Born to the royal family, passed over for the crown']];
+  }
+
+  return { reigning: reigning, fallen: fallen, sibling: sibling, deathCause: deathCause, royal: royal, altered: altered, title: title, born: born, adopt: adopt, yearly: yearly, onDeath: onDeath, crowned: crowned,
+    items: items, inherit: inherit, about: about, recap: recap };
 })();

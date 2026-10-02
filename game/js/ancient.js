@@ -35,7 +35,7 @@ TL.eras.rome = (function () {
     [117, 'Hadrian'], [138, 'Antoninus Pius'], [161, 'Marcus Aurelius'], [180, 'Commodus'], [193, 'Septimius Severus'], [211, 'Caracalla'], [217, 'Macrinus'], [218, 'Elagabalus'],
     [222, 'Severus Alexander'], [235, 'Maximinus Thrax'], [238, 'Gordian III'], [244, 'Philip the Arab'], [249, 'Decius'], [253, 'Valerian'], [260, 'Gallienus'], [268, 'Claudius Gothicus'],
     [270, 'Aurelian'], [275, 'Tacitus'], [276, 'Probus'], [282, 'Carus'], [284, 'Diocletian'], [305, 'Constantius'], [306, 'Constantine']];
-  function emperor(yr) { if (TL.S && on() && S().anc && S().anc.rule) return me().first + ' ' + me().last; var e = EMPERORS[0][1]; EMPERORS.forEach(function (x) { if (yr >= x[0]) e = x[1]; }); return e; }
+  function emperor(yr) { if (TL.S && on() && S().anc && S().anc.rule) return me().first + ' ' + me().last; var dn = TL.S && on() && TL.dynasty && TL.dynasty.reigning(); if (dn) return dn.name; var e = EMPERORS[0][1]; EMPERORS.forEach(function (x) { if (yr >= x[0]) e = x[1]; }); return e; }
   // [year, icon, what happened, short label, only in these cities]
   var MOMENTS = [
     [43, '⛵', 'Emperor Claudius invaded Britannia.', 'The conquest of Britain'],
@@ -120,7 +120,7 @@ TL.eras.rome = (function () {
   // ------------------------------------------------------------ birth
   function setup(s, opts) {
     var a = st(), w = s.flags.wealth;
-    a.cls = opts.cls || (w === 'rich' ? 'patrician' : w === 'upper' ? 'equestrian' : w === 'poor' && U.chance(0.35) ? 'slave' : 'plebeian');
+    a.cls = opts.royal ? 'patrician' : opts.cls || (w === 'rich' ? 'patrician' : w === 'upper' ? 'equestrian' : w === 'poor' && U.chance(0.35) ? 'slave' : 'plebeian');
     var mom = E.people('mother')[0], dad = E.people('father')[0];
     var par = { patrician: ['Senator', 'Matrona'], equestrian: ['Merchant', 'Matrona'], plebeian: [U.pick(NPC_JOBS.slice(0, 12)), U.pick(['Homemaker', 'Weaver', 'Shopkeeper', 'Midwife'])], slave: ['Enslaved Servant', 'Enslaved Servant'] }[a.cls];
     if (dad) dad.job = par[0]; if (mom) mom.job = par[1];
@@ -130,7 +130,8 @@ TL.eras.rome = (function () {
       [mom, dad].forEach(function (p) { if (p) p.money = 0; });
       s.money = 0;
       E.log('⛓️ I was born into slavery in the household of ' + a.master + '.', 'bad');
-    } else E.log({ patrician: '🏛️ My family are patricians, one of Rome\'s oldest and noblest houses.', equestrian: '🐎 My family are equestrians, wealthy and well connected.', plebeian: 'My family are plebeians, ordinary Roman citizens.' }[a.cls], a.cls === 'patrician' ? 'good' : '');
+    } else if (opts.royal && TL.dynasty.born(s, royalCfg())) { a.emp = emperor(s.year); return; }
+    else E.log({ patrician: '🏛️ My family are patricians, one of Rome\'s oldest and noblest houses.', equestrian: '🐎 My family are equestrians, wealthy and well connected.', plebeian: 'My family are plebeians, ordinary Roman citizens.' }[a.cls], a.cls === 'patrician' ? 'good' : '');
     a.emp = emperor(s.year);
     E.log('👑 ' + a.emp + ' rules the empire.');
   }
@@ -138,11 +139,13 @@ TL.eras.rome = (function () {
   // ------------------------------------------------------------ the year
   function yearly() {
     var s = S(), a = st(), age = me().age, yr = s.year;
+    TL.dynasty.yearly(); // my family's throne (js/eras.js)
+    if (s.dead) return;
     var em = emperor(yr);
     if (em !== a.emp) { a.emp = em; if (age >= 5 && !a.rule) E.log('👑 ' + em + ' became emperor.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
-      if (a.rule && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // I'm the emperor now: history went another way
+      if (TL.dynasty.altered() && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // my family rules now: history went another way
       E.log(mo[1] + ' ' + mo[2]); see(mo[3], mo[1]);
     });
     if (yr === 79 && /Pompeii|Herculaneum|Neapolis/.test(s.city)) s.pending.push({ id: 'r_vesuvius' });
@@ -404,6 +407,7 @@ TL.eras.rome = (function () {
         return items;
       }
       if (j && j.career === 'r_emperor') { items.push({ section: 'The empire' }); return items.concat(TL.coup.reignItems(coupCfg('throne'))); }
+      items = items.concat(TL.dynasty.items());
       if (j) {
         items.push({ section: 'My work' });
         if (j.career === 'r_cursus') {
@@ -436,9 +440,10 @@ TL.eras.rome = (function () {
         } });
       }
       if (j && j.career === 'r_vestal') return items;
-      items.push({ section: 'Find work' });
+      // The ruler's family doesn't hire out as farmhands (js/eras.js, TL.dynasty).
+      if (!TL.dynasty.royal()) items.push({ section: 'Find work' });
       CAREERS.forEach(function (c) {
-        if (j && j.career === c.id) return;
+        if ((j && j.career === c.id) || TL.dynasty.royal()) return;
         var why = age < c.min ? 'Must be ' + c.min + '+' : c.need ? c.need() : null;
         items.push({ icon: c.icon, label: c.levels[0][0], sub: c.name + ' · ' + E.fmt(den(c.levels[0][1])) + '/yr' + (why ? ' · ' + why : ''), disabled: !!why, onClick: function () { apply(c); } });
       });
@@ -453,7 +458,7 @@ TL.eras.rome = (function () {
       items.push({ icon: '🦉', label: 'Become a philosopher', sub: canPhil ? 'Stoic, Epicurean, Cynic or Platonist' : 'Needs schooling and a sharp mind', disabled: !canPhil || age < 16 || (j && j.career === 'r_philo'), onClick: becomePhilosopher });
       var canPol = (a.cls === 'patrician' || a.cls === 'equestrian') && a.edu === 'rhetoric';
       items.push({ icon: '🏛️', label: 'Enter politics', sub: canPol ? 'The cursus honorum, from quaestor to consul' : 'Needs a patrician or equestrian family and rhetoric school', disabled: !canPol || age < 28 || (j && j.career === 'r_cursus'), onClick: function () { E.quitJob(true); hire('r_cursus'); done(good('I entered public life. My first goal: quaestor at 30.')); } });
-      var canPlot = age >= 25 && (a.cls === 'patrician' || S().fame >= 40 || (j && (j.career === 'r_cursus' || (j.career === 'r_legion' && j.level >= 3))));
+      var canPlot = (age >= 25 && (a.cls === 'patrician' || S().fame >= 40 || (j && (j.career === 'r_cursus' || (j.career === 'r_legion' && j.level >= 3))))) || (age >= 16 && TL.dynasty.royal() && !(a.dyn && a.dyn.regent));
       items.push({ icon: '🗡️', label: a.plot ? 'The conspiracy' : 'Plot against the emperor', sub: a.plot ? 'Strength ' + Math.round(a.plot.power) + ' · suspicion ' + Math.round(a.plot.heat) : canPlot ? 'Seize the throne, or die trying' : 'Needs to be 25+ and a patrician, senator, centurion or famous', danger: true, disabled: !canPlot && !a.plot, onClick: function () { TL.coup.menu(coupCfg(a.plot ? a.plot.kind : 'throne')); } });
       if (j && j.years >= 15 && age >= 50) items.push({ section: ' ' }, { icon: '🏖️', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
       return items;
@@ -805,6 +810,18 @@ TL.eras.rome = (function () {
       { label: 'Help the hunters with a spear', run: function () { if (U.chance(0.4 + me().athl / 300)) { E.fame(3); return good('I helped pin it with my spear. Even the hunters were impressed.'); } E.stat('health', -U.rand(15, 30)); return bad('The lion got a paw on me before the hunters got their nets on it.'); } }
     ] };
   } });
+  // Emperors without sons adopted the best man they knew: Nerva chose Trajan, Trajan chose Hadrian.
+  def('r_adoption', { notRuler: true, min: 25, max: 55, w: 3, cond: function () {
+    var a = st(), j = S().job;
+    return !a.dyn && !a.rule && !a.plot && (a.cls === 'patrician' || a.cls === 'equestrian') && S().fame >= 40 && S().karma >= 30
+      && (S().fame >= 60 || a.offices.indexOf('Consul') >= 0 || !!(j && ((j.career === 'r_cursus' && j.governor) || (j.career === 'r_legion' && j.level >= 3))));
+  }, build: function () {
+    var old = emperor(y());
+    return { icon: '👑', title: 'The emperor\'s choice', text: 'Emperor ' + old + ' has no son to follow him. He has watched my career for years, and today he asked me to become his son and heir.', choices: [
+      { label: 'Accept, and become Caesar', run: function () { TL.dynasty.adopt(old); E.log('👑 Emperor ' + old + ' adopted me as his son. I am Caesar now, heir to the empire.', 'good'); return good('I knelt before the emperor in the Senate house, and he named me his son. When he dies, the empire is mine. 👑'); } },
+      { label: 'Refuse the honor', run: function () { E.karma(4); E.fame(3); return 'I said Rome deserved a better man than me. Some called it modesty; the emperor called it wisdom.'; } }
+    ] };
+  } });
   def('r_crassus', { notRuler: true, min: 25, w: 2, cond: function () { return S().money > den(5000) && st().cls !== 'slave'; }, build: function () {
     var price = den(U.rand(800, 2000));
     return { icon: '🔥', title: 'A burning house', text: 'A neighbor\'s house is on fire. He is begging anyone to buy it before it burns down, for ' + E.fmt(price) + '. My own slaves could put the fire out.', choices: [
@@ -898,7 +915,7 @@ TL.eras.rome = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics in the Senate', [], true], ['the gods', [], true], ['the weather', []]];
   var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
   // Achievements that fit a Roman life.
-  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor', 'vestal', 'usurper', 'rebel', 'long_reign', 'conqueror'];
+  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor', 'vestal', 'usurper', 'rebel', 'long_reign', 'conqueror', 'royal'];
   // What a Roman would call each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Head Cold', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Sore Throat', 'Asthma': 'Breathlessness',
     'Acne': 'Spots', 'Migraine': 'Headaches', 'PTSD': 'War Terrors', 'Depression': 'Melancholia', 'Anxiety': 'Nervous Dread', 'Insomnia': 'Sleeplessness',
@@ -948,10 +965,30 @@ TL.eras.rome = (function () {
         { id: 'war', icon: '🦅', label: 'Lead a campaign', sub: 'Glory and plunder, or disaster', cost: den(30000), war: true, win: 'My legions crushed the barbarians. Rome gave me a triumph through the streets!', lose: 'The campaign was a disaster. Whole legions were lost in the forests.', death: 'a barbarian spear on campaign' }],
         threat: { icon: '🗡️', title: 'Assassins!', text: 'Men with daggers are waiting in a dark corridor of the palace.', fight: 'Call the guard and fight', won: 'My guards cut them down. Their patrons were executed by morning.', cause: 'assassination in the palace', died: 'There were too many of them.', flee: 'Flee the palace', fled: 'I escaped Rome in disguise. Someone else wears the purple now.', caught: 'They caught me at the city gate.' } } };
   }
+  // Born to the emperor (js/eras.js, TL.dynasty): the words of a Roman heir's life.
+  function royalCfg() {
+    return { ruler: ['Emperor', 'Empress'], consort: ['Imperial Consort', 'Empress'], heir: ['Caesar', 'Caesar'], deposed: ['Deposed Emperor', 'Deposed Empress'], retired: ['Retired Emperor', 'Retired Empress'],
+      usurper: function (first) { return first + ' ' + D.gentile(U.pick(D.country('Roman Empire').last), 'M'); },
+      allowance: den(6000), treasury: 'the imperial treasury', edu: 'letters',
+      cls: 'patrician', city: 'Rome', realm: 'the empire', section: 'Heir to the empire', greatName: 'The Senate', peopleName: 'The people', regent: 'the Praetorian prefect',
+      born: '👑 I was born in the imperial palace on the Palatine. My {kin} is {ruler}, and one day the empire will be mine.',
+      succeed: '👑 {ruler}, my {kin}, is dead. The Senate proclaimed me {title} the same day.',
+      adoptedTake: '👑 Emperor {old} is dead. As his adopted son, I was proclaimed {title} by the Senate and the Praetorians.',
+      deaths: ['a fever', 'a sudden illness after dinner (poison, people whispered)', 'a fall from a horse', 'a fever on campaign', 'a stroke at the games'],
+      killed: 'a dagger in the palace', depose: null,
+      learn: ['📜', 'Sit in on the imperial council', 'Learn how an empire is run', ['The emperor\'s advisers argued about grain ships and frontier forts while I listened.', 'I learned to read a governor\'s report, and to tell when it lies.', 'I watched a case judged in the Senate house and wrote down every argument.', 'The old freedman who keeps the imperial accounts showed me where the money really goes.']],
+      show: ['🏟️', 'Pay for games in my own name', 'Let the crowd learn to love me', den(2500), ['The crowd chanted my name between the races.', 'Thirty pairs of gladiators fought in my name. The people loved it.', 'I paid for a day of beast hunts in the arena. Rome cheered for me.']],
+      great: ['🍷', 'Dine with the senators', 'The men who will have to accept me', den(1500), ['Senators who never looked at me before now laugh at my jokes.', 'Over dinner an old consul promised me his support "when the time comes".', 'I gave a famous senator a fine Greek statue. He will remember it.']],
+      command: ['🦅', 'Command a legion on the frontier', 'Soldiers follow emperors who fought beside them', ['My legion threw the Germans back across the Rhine. The soldiers hailed me on the field.', 'I held the Danube frontier through a hard winter. The legions trust me now.', 'We stormed a Dacian hill fort. The soldiers carried me on their shields.'],
+        ['A German ambush cost us an eagle. The soldiers grumble about the pampered heir.', 'The campaign went nowhere. Rome laughed at the heir who came home with nothing.'], 'a Germanic spear on the frontier'],
+      step: ['🏛️', 'Ask to be made co-emperor', 'An old emperor may share the burden', 'My {kin} made me co-emperor and left the empire to me, then retired to the gardens at Tibur.',
+        ['My {kin} laughed. "When I am dead, not before."', 'My {kin} went pale and asked who had put the idea in my head.', '"Patience," my {kin} said. "Rome was not built in a day, and neither is an emperor."']],
+      news: ['🏛️ {ruler} dedicated a new temple in the Forum.', '🦅 The legions of {ruler} won a victory on the Danube.', '🏟️ {ruler} gave a hundred days of games.', '🌾 {ruler} doubled the grain dole after a bad harvest.', '🗡️ A plot against {ruler} was uncovered. The senators involved were executed.', '🛁 {ruler} built new baths for the people of Rome.'] };
+  }
   // Continuing as my heir: the family keeps its standing (engine.continueAs).
   // Who keeps a roof without parents: the enslaved live in their master's house, patricians in the family domus.
   function housed() { var c = st().cls; return c === 'slave' || c === 'patrician'; }
-  function heir(old) {
+  function heir(old, prev) {
     var a = st(), o = old || {};
     a.cls = o.cls === 'freed' ? 'plebeian' : o.cls || 'plebeian'; // a freedperson's children are born free
     if (a.cls === 'slave') a.master = o.master;
@@ -961,6 +998,7 @@ TL.eras.rome = (function () {
     S().log[0].entries.forEach(function (e) { e.t = e.t.replace(was, me().first + ' ' + me().last); });
     if (o.patron) a.patron = o.patron;
     if (o.rule && TL.coup.inherits(o.rule)) { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.emp = emperor(y()); E.log('👑 I inherited the throne. I am ' + (me().gender === 'F' ? 'Empress' : 'Emperor') + ' of Rome.', 'good'); return; }
+    if (TL.dynasty.inherit(o, prev)) { a.emp = emperor(y()); return; }
     if ((a.cls === 'patrician' || a.cls === 'equestrian') && me().age >= 14) a.edu = 'letters'; // tutored at home
     if (a.cls === 'slave') E.log('⛓️ Like my parent, I belong to the household of ' + a.master + '.', 'bad');
     else E.log('🏛️ I am ' + E.an(CLASS_NAME[a.cls].toLowerCase()) + ', like my family before me.');
@@ -985,5 +1023,5 @@ TL.eras.rome = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, ad: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
+    emperor: emperor, birthOptions: birthOptions, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, royalCfg: royalCfg, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, ad: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();

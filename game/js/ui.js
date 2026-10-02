@@ -197,7 +197,9 @@ TL.ui = (function () {
     var era = TL.ancient && TL.ancient.byOption(yv);
     if (era) {
       var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country(era.land), ln = D.surname(rl, 'M', era.id);
-      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(era.years[0], era.years[1]) });
+      // Born to the ruler: the family's throne passes to me (js/eras.js, TL.dynasty). Norway had no king of all the land before 872.
+      var royal = $('#c-royal').checked, yrs = royal && era.royalYears ? era.royalYears : era.years;
+      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, royal: royal, wealth: royal ? 'rich' : $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(yrs[0], yrs[1]) });
       E.save(); return startGame();
     }
     if (yv === 'random') year = U.rand(1900, now - 20);
@@ -244,7 +246,7 @@ TL.ui = (function () {
   function obituary() {
     var s = S(), m = s.me, they = m.gender === 'M' ? 'He' : 'She', their = m.gender === 'M' ? 'his' : 'her';
     var parts = [];
-    var rt = TL.features.royalTitle();
+    var rt = TL.features.royalTitle() || (TL.dynasty && TL.dynasty.title());
     parts.push((rt ? rt + ' ' : '') + m.first + ' ' + m.last + ' died at the age of ' + m.age + ' from ' + s.cause + ' in ' + E.countryName(s.country) + '.');
     var careers = s.jobHistory.map(function (h) { return h.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
     if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? E.an(careers[careers.length - 2]) + ' and later ' : '') + E.an(careers[careers.length - 1]) + '.');
@@ -276,12 +278,12 @@ TL.ui = (function () {
     if (s.dead) return 'Deceased';
     if (s.prison) return '⛓️ Inmate at ' + s.prison.name;
     var parts = [];
-    var rt = TL.features.royalTitle();
+    var rt = TL.features.royalTitle() || (TL.dynasty && TL.dynasty.title());
     if (rt) parts.push('👑 ' + rt);
     if (s.job) parts.push(E.jobTitle(s.job));
     else if (TL.creator && TL.creator.title()) parts.push(TL.creator.title());
     if (s.edu) parts.push(s.edu.stage === 'uni' ? s.edu.major + ' student' : s.edu.stage === 'grad' ? 'Grad student' : s.edu.school);
-    if (parts.length === (rt ? 1 : 0)) parts.push(s.me.age < 5 ? 'Baby' : s.retired ? 'Retired' : s.me.age < 18 ? 'Kid' : 'Unemployed');
+    if (parts.length === (rt ? 1 : 0) && !(rt && s.me.age >= 18)) parts.push(s.me.age < 5 ? 'Baby' : s.retired ? 'Retired' : s.me.age < 18 ? 'Kid' : 'Unemployed'); // a prince isn't "unemployed"
     return parts.join(' · ');
   }
   function renderHeader() {
@@ -776,7 +778,12 @@ TL.ui = (function () {
     $('#h-menu').onclick = function () { E.save(); home(); };
     $('#c-random').onclick = randomName;
     $('#c-country').onchange = randomName;
-    if ($('#c-year')) $('#c-year').onchange = function () { var r = !!TL.ancient.byOption($('#c-year').value); $('#c-country').parentNode.style.display = r ? 'none' : ''; $('#c-royal').parentNode.style.display = r ? 'none' : ''; randomName(); };
+    if ($('#c-year')) $('#c-year').onchange = function () {
+      var era = TL.ancient.byOption($('#c-year').value);
+      $('#c-country').parentNode.style.display = era ? 'none' : '';
+      $('#c-royal-t').textContent = era ? (era.id === 'rome' ? '👑 Born the emperor\'s firstborn' : '👑 Born the king\'s firstborn') : '👑 Born into the royal family';
+      randomName();
+    };
     $('#c-gender').onchange = randomName;
     $('#c-start').onclick = createLife;
     $('#c-reroll').onclick = rerollStats;

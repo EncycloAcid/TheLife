@@ -54,6 +54,8 @@ TL.eras.viking = (function () {
   // The ruler as people say it: "King Harald Fairhair", "Haakon Jarl", or the petty kings.
   function king(yr) {
     if (TL.S && on() && S().anc && S().anc.rule) return (male() ? 'King ' : 'Queen ') + me().first + ' ' + me().last;
+    var dn = TL.S && on() && TL.dynasty && TL.dynasty.reigning();
+    if (dn) return (dn.gender === 'M' ? 'King ' : 'Queen ') + dn.name;
     var k = KINGS[0]; KINGS.forEach(function (x) { if (yr >= x[0]) k = x; });
     return !k[1] ? 'the petty kings and jarls' : k[2] === 'Jarl' ? k[1] + ' Jarl' : 'King ' + k[1];
   }
@@ -130,7 +132,7 @@ TL.eras.viking = (function () {
   // ------------------------------------------------------------ birth
   function setup(s, opts) {
     var a = st(), w = s.flags.wealth, c = D.country(s.country);
-    a.cls = opts.cls || (w === 'rich' ? 'jarl' : w === 'upper' ? 'hersir' : w === 'poor' && U.chance(0.4) ? 'thrall' : 'karl');
+    a.cls = opts.royal ? 'jarl' : opts.cls || (w === 'rich' ? 'jarl' : w === 'upper' ? 'hersir' : w === 'poor' && U.chance(0.4) ? 'thrall' : 'karl');
     if (TOWNS.indexOf(s.city) < 0 || U.chance(0.7)) s.city = U.pick(REGIONS);
     var mom = E.people('mother')[0], dad = E.people('father')[0];
     var par = { jarl: ['Jarl', 'Lady of the Hall'], hersir: ['Chieftain', 'Lady of the Farm'], karl: [U.pick(['Farmer', 'Fisherman', 'Blacksmith', 'Shipwright', 'Trader']), U.pick(['Homemaker', 'Weaver', 'Brewer', 'Dairymaid'])], thrall: ['Thrall', 'Thrall'] }[a.cls];
@@ -146,6 +148,7 @@ TL.eras.viking = (function () {
     if (mom) mom.last = patronym(U.pick(c.male), 'F');
     s.log.forEach(function (yy) { yy.entries.forEach(function (e) { e.t = e.t.replace(was, me().first + ' ' + me().last); }); });
     fixParentLines(s, mom, dad);
+    if (opts.royal && TL.dynasty.born(s, royalCfg())) { a.king = king(s.year); return; }
     if (a.cls === 'thrall') {
       a.master = U.pick(c.male) + ' ' + patronym(U.pick(c.male), 'M');
       [mom, dad].forEach(function (p) { if (p) p.money = 0; });
@@ -166,11 +169,14 @@ TL.eras.viking = (function () {
   // ------------------------------------------------------------ the year
   function yearly() {
     var s = S(), a = st(), age = me().age, yr = s.year, j = s.job;
+    TL.dynasty.yearly(); // my family's throne (js/eras.js)
+    if (s.dead) return;
+    j = s.job;
     var k = king(yr);
     if (k !== a.king) { a.king = k; if (age >= 5 && k.indexOf('petty') < 0 && !a.rule) E.log('👑 ' + k + ' now rules Norway.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
-      if (a.rule && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // I rule Norway now: history went another way
+      if (TL.dynasty.altered() && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // my family rules Norway now: history went another way
       E.log(mo[1] + ' ' + mo[2]); see(mo[3], mo[1]);
     });
     if (a.plot) { TL.coup.yearly(coupCfg(a.plot.kind)); if (s.dead) return; }
@@ -284,6 +290,7 @@ TL.eras.viking = (function () {
       items.push({ info: true, html: card() });
       if (age < 7) { items.push({ info: true, html: '<p class="muted">I\'m too young to work. Childhood comes first.</p>' }); return items; }
       if (j && j.career === 'v_king') { items.push({ section: 'The realm' }); return items.concat(TL.coup.reignItems(coupCfg('throne'))); }
+      items = items.concat(TL.dynasty.items());
       if (thrall()) {
         items.push({ section: 'Servitude' });
         if (j) items.push({ icon: '💪', label: 'Work hard for my master', sub: 'Trust leads to an easier life', onClick: function () { if (count('v_work')) return done(nope('I already worked myself ragged this year.')); bump('v_work'); j.workHard = (j.workHard || 0) + 1; E.stat('health', -1); done('I cut peat and hauled water from before dawn until after dark.'); } });
@@ -308,9 +315,10 @@ TL.eras.viking = (function () {
         if (/v_(farm|fish|smith|ship|weave|hunt|trade|heal|skald|hird|thrall)/.test(j.career)) items.push({ icon: '💪', label: 'Work harder', onClick: function () { if (count('v_work') >= 2) return done(nope('I\'m exhausted.')); bump('v_work'); j.workHard = (j.workHard || 0) + 1; j.perf = Math.min(100, (j.perf || 50) + 5); E.stat('happy', -1); done('I put in extra effort.'); } });
         items.push({ icon: '🚪', label: 'Quit', danger: true, onClick: function () { E.quitJob(); done('I left my work.'); } });
       }
-      items.push({ section: 'Find work' });
+      // The ruler's family doesn't hire out as farmhands (js/eras.js, TL.dynasty).
+      if (!TL.dynasty.royal()) items.push({ section: 'Find work' });
       CAREERS.forEach(function (c) {
-        if (j && j.career === c.id) return;
+        if ((j && j.career === c.id) || TL.dynasty.royal()) return;
         var why = age < c.min ? 'Must be ' + c.min + '+' : c.need ? c.need() : null;
         items.push({ icon: c.icon, label: c.levels[0][0], sub: c.name + ' · ' + E.fmt(sil(c.levels[0][1])) + '/yr' + (why ? ' · ' + why : ''), disabled: !!why, onClick: function () { apply(c); } });
       });
@@ -319,9 +327,12 @@ TL.eras.viking = (function () {
       items.push({ icon: '🛡️', label: 'Join a jarl\'s hird', sub: age < 17 ? 'Ages 17 and up' : me().athl < 50 ? 'Only strong fighters are taken' : 'Feast in the hall, fight in the shield wall', disabled: age < 17 || me().athl < 50 || (j && j.career === 'v_hird'), onClick: function () { E.quitJob(true); hire('v_hird'); S().job.company = 'the hird of ' + (king(y()).indexOf('petty') >= 0 ? 'the jarl' : king(y())); done(good('I knelt, put my hands on the hilt of my lord\'s sword, and swore to serve him. 🛡️')); } });
       var canSee = !male() && me().smarts >= 50 && age >= 20;
       items.push({ icon: '🔮', label: 'Become a völva', sub: male() ? 'Seeresses are women' : !canSee ? 'Needs to be 20+ with a sharp mind' : christian() ? 'The Church calls it witchcraft' : 'Travel from hall to hall seeing the future', disabled: !canSee || (j && j.career === 'v_volva'), onClick: function () { E.quitJob(true); hire('v_volva'); S().job.company = 'the halls of ' + S().city; done(good('I took a staff, a cloak of black lamb and a hood of white cat fur. People will come to me now to learn their fate. 🔮')); } });
-      var canThrone = age >= 21 && (great() || S().fame >= 40 || (j && ((j.career === 'v_hird' && j.level >= 1) || (j.career === 'v_raid' && j.level >= 3))));
+      var canThrone = (age >= 21 && (great() || S().fame >= 40 || (j && ((j.career === 'v_hird' && j.level >= 1) || (j.career === 'v_raid' && j.level >= 3))))) || (age >= 16 && TL.dynasty.royal() && !(a.dyn && a.dyn.regent));
       var pre = y() < 872;
       items.push({ icon: '👑', label: a.plot ? 'The rebellion' : pre ? 'Make myself king of all Norway' : 'Seize the crown of Norway', sub: a.plot ? 'Strength ' + Math.round(a.plot.power) + ' · suspicion ' + Math.round(a.plot.heat) : canThrone ? 'Win the jarls, then strike' : 'Needs to be 21+ and a jarl\'s family, a hirdman, a sea-king or famous', danger: true, disabled: !canThrone && !a.plot, onClick: function () { TL.coup.menu(coupCfg(a.plot ? a.plot.kind : 'throne')); } });
+      // The lawful road: the free farmers at the Thing choose their king, as they chose Haakon the Good in 934.
+      var canThing = age >= 25 && !a.plot && !TL.dynasty.royal() && !pre && (great() || S().fame >= 45 || (j && ((j.career === 'v_hird' && j.level >= 2) || (j.career === 'v_raid' && j.level >= 3))));
+      items.push({ icon: '⚖️', label: 'Ask the Thing to make me ' + (male() ? 'king' : 'queen'), sub: pre ? 'Norway has no single king yet' : canThing ? 'The farmers choose their king · about ' + Math.round(thingOdds(0) * 100) + '% chance' : 'Needs to be 25+ and a jarl\'s family, a famous warrior or a sea-king', disabled: !canThing, onClick: thingClaim });
       if (j && j.years >= 15 && age >= 55) items.push({ section: ' ' }, { icon: '🏡', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
       return items;
     });
@@ -654,6 +665,54 @@ TL.eras.viking = (function () {
     ] };
   } });
 
+  // ------------------------------------------------------------ the Thing chooses a king
+  function thingOdds(bonus) {
+    var k = king(y());
+    return U.clamp(0.06 + S().fame / 300 + (great() ? 0.06 : 0) + (S().karma - 50) / 400 + (/Jarl$|Cnut/.test(k) ? 0.08 : 0) + (bonus || 0), 0.03, 0.6);
+  }
+  function thingClaim() {
+    if (count('v_thing')) return done(nope('The Thing meets once a year, and it has heard me already.'));
+    var old = king(y()), gold = sil(3000), j = S().job, boast = (S().fame >= 60 ? 0.06 : 0.02) + (j && j.career === 'v_raid' && j.level >= 3 ? 0.08 : 0) + me().athl / 1000;
+    ui().choose('The Thing', 'The free farmers of every district have gathered. ' + U.cap(old) + ' rules today. How will I win them?', [
+      { label: 'Swear to keep the old laws (' + Math.round(thingOdds(0) * 100) + '%)', fn: function () { claim(thingOdds(0)); } },
+      { label: 'Give silver to every chieftain, ' + E.fmt(gold) + ' (' + Math.round(thingOdds(0.12) * 100) + '%)', fn: function () { if (S().money < gold) return done(nope('I need ' + E.fmt(gold) + ' in silver.')); E.addMoney(-gold); claim(thingOdds(0.12)); } },
+      { label: 'Boast of my deeds (' + Math.round(thingOdds(boast) * 100) + '%)', fn: function () { claim(thingOdds(boast)); } }
+    ]);
+    function claim(odds) {
+      var a = st();
+      bump('v_thing');
+      if (U.chance(odds)) {
+        TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); see('Chosen king at the Thing', '⚖️');
+        E.log('👑 The Thing took me as ' + (male() ? 'king' : 'queen') + ' of Norway.', 'good');
+        ui().closeAll && ui().closeAll();
+        return done(good('The farmers clashed their weapons on their shields. They took me as their ' + (male() ? 'king' : 'queen') + ', and ' + old + ' fled across the sea. 👑'));
+      }
+      if (U.chance(0.12)) { E.die('the king\'s men, after I claimed his crown at the Thing'); return done(bad('The farmers would not have me, and ' + old + ' did not forgive me. His men caught me on the road home.')); }
+      if (U.chance(0.3)) { E.addMoney(-Math.round(Math.max(0, S().money) * 0.4)); E.quitJob(true); S().city = U.pick(['Iceland', 'Orkney', 'Dublin']); E.fame(3); return done(bad('The farmers would not have me, and ' + old + ' had me outlawed. I fled to ' + S().city + ' with what I could carry.')); }
+      E.fame(-2);
+      done(bad('The farmers listened politely and went home. Not this year.'));
+    }
+  }
+  // Born to the king (js/eras.js, TL.dynasty): the words of a royal heir's life.
+  function royalCfg() {
+    return { ruler: ['King', 'Queen'], consort: ['King Consort', 'Queen'], heir: ['King\'s son', 'King\'s daughter'], deposed: ['Deposed King', 'Deposed Queen'], retired: ['Old King', 'Old Queen'],
+      usurper: function (first) { return first + ' ' + patronym(U.pick(D.country('Viking Norway').male), 'M'); },
+      allowance: sil(5000), treasury: 'the king\'s hoard', edu: 'runes',
+      cls: 'jarl', city: 'Vestfold', realm: 'Norway', section: 'Heir to the crown', greatName: 'The jarls', peopleName: 'The farmers', regent: 'the jarls of the royal hall',
+      born: '👑 I was born in the royal hall, the firstborn of {ruler}. One day all Norway will be mine.',
+      succeed: '👑 {ruler}, my {kin}, is dead. At the Thing the farmers clashed their weapons on their shields and took me as their {titlel}.',
+      deaths: ['battle', 'a storm at sea', 'a fever', 'a blood feud', 'an ambush in the mountains'],
+      killed: 'battle', depose: null,
+      learn: ['ᚱ', 'Sit beside the king at the Thing', 'Learn the law and how to speak to free men', ['I sat beside the king while the lawspeaker recited the law. I learned it by heart.', 'I watched the king settle a blood feud with silver instead of axes.', 'The king\'s steward taught me who owes what, and who hates whom.']],
+      show: ['🍖', 'Feast the farmers of the district', 'Free men choose their kings', sil(1500), ['Oxen roasted all night. The farmers drank to my health.', 'I judged a quarrel between two farmers fairly. Word spread up and down the fjords.', 'I gave a midwinter feast. Nobody went home hungry or sober.']],
+      great: ['💍', 'Give gold rings to the jarls', 'The men who will have to bend the knee', sil(1200), ['The jarl of Lade put my ring on his arm and swore to follow me.', 'Two jarls drank from my horn and called me their future king.', 'I gave a famous warrior a sword with a gold hilt. He will remember it.']],
+      command: ['⛵', 'Lead the king\'s ships on a raid', 'Warriors follow kings who fought beside them', ['We came home with three ships heavy with silver. The skalds made a verse about me.', 'We beat a Danish fleet off Jutland. The warriors already call me ring-giver.'],
+        ['The raid went badly and good men died. Some blame the king\'s young pup.', 'Storms drove us home with nothing. The warriors grumble.'], 'a spear on a raid'],
+      step: ['👑', 'Ask my father for the crown', 'Old kings sometimes stepped aside', 'My {kin} gave me the crown before the Thing and sailed south on pilgrimage to Rome.',
+        ['My {kin} laughed and said the crown would come with the funeral ale.', 'My {kin} asked if I wanted to fight for it. I said no. Not yet.', '"Patience," my {kin} said. "Wolves who wait eat best."']],
+      news: ['⛵ {ruler} came home from a raid with ships full of silver.', '⚖️ {ruler} spoke at the Thing, and the farmers agreed.', '🔥 {ruler} burned the hall of a rebel jarl.', '🍖 {ruler} held a great midwinter feast.', 'ᚱ {ruler} raised a runestone for our forefathers.', '🌊 {ruler} lost two ships in a storm.'] };
+  }
+
   // ------------------------------------------------------------ plots, revolts and reigns (js/eras.js)
   function coupCfg(kind) {
     var j = S().job, fem = !male(), a = st();
@@ -715,7 +774,7 @@ TL.eras.viking = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['the jarls and the king', [], true], ['the old gods and the new', [], true], ['the weather', []]];
   var KID_TOPICS = [['trolls and giants', []], ['games in the snow', ['Lazy']], ['animals', ['Kind']], ['runes', ['Nerdy']], ['Thor and his hammer', ['Athletic']], ['their carvings', ['Artsy']]];
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff',
-    'valhalla', 'vinland', 'sea_king', 'skald', 'settler', 'usurper', 'rebel', 'long_reign', 'conqueror'];
+    'valhalla', 'vinland', 'sea_king', 'skald', 'settler', 'usurper', 'rebel', 'long_reign', 'conqueror', 'royal'];
   var ILL = { 'Common Cold': 'A Chill', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Sore Throat', 'Asthma': 'Short Breath',
     'Acne': 'Spots', 'Migraine': 'Head Pains', 'PTSD': 'Battle Dread', 'Depression': 'A Heavy Mood', 'Anxiety': 'A Troubled Mind', 'Insomnia': 'Sleeplessness',
     'Food Poisoning': 'Bad-Meat Sickness', 'Kidney Stones': 'The Stone', 'Pneumonia': 'The Lung Sickness', 'High Blood Pressure': 'Hot Blood',
@@ -742,12 +801,13 @@ TL.eras.viking = (function () {
   // Jarls and chieftains keep the family hall; thralls stay on their master's farm.
   function housed() { var c = st().cls; return c === 'jarl' || c === 'hersir' || c === 'thrall'; }
   // Continuing as my heir: the family keeps its standing (engine.continueAs).
-  function heir(old) {
+  function heir(old, prev) {
     var a = st(), o = old || {};
     a.cls = o.cls === 'freed' ? 'karl' : o.cls || 'karl';
     if (a.cls === 'thrall') a.master = o.master;
     a.faith = o.faith || 'old';
     if (o.rule && TL.coup.inherits(o.rule)) { a.cls = 'jarl'; TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); E.log('👑 I inherited the crown. I am ' + (male() ? 'King' : 'Queen') + ' of Norway.', 'good'); return; }
+    if (TL.dynasty.inherit(o, prev)) { a.king = king(y()); return; }
     a.king = king(y());
     if (great() && me().age >= 12) a.edu = 'runes';
     E.log(a.cls === 'thrall' ? '⛓️ Like my parent, I am a thrall on the farm of ' + a.master + '.' : '🪓 I am ' + E.an(CLASS_NAME[a.cls].toLowerCase()) + ', like my family before me.', a.cls === 'thrall' ? 'bad' : '');
@@ -755,6 +815,6 @@ TL.eras.viking = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
-    id: 'viking', land: 'Viking Norway', years: [770, 1030], gentile: false, ad: true };
+    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, royalCfg: royalCfg, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
+    id: 'viking', land: 'Viking Norway', years: [770, 1030], royalYears: [872, 1030], gentile: false, ad: true };
 })();

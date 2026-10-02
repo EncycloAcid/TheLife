@@ -236,6 +236,18 @@ TL.features = (function () {
         duty('⚔️', 'Knight a friend', 'knight', function () { var f = E.people(['friend', 'best friend'])[0]; if (!f) return done('I don\'t have any friends to knight.'); E.rel(f, 25); done(good('I knighted ' + f.first + '. Arise, ' + (f.gender === 'M' ? 'Sir ' : 'Dame ') + f.first + '!')); });
         duty('🎙️', 'Address the nation', 'address', function () { if (U.chance(0.4 + me().smarts / 200)) { r.popularity = Math.min(100, r.popularity + 8); done(good('My address to the nation was moving and widely praised.')); } else { r.popularity = Math.max(0, r.popularity - 4); done(bad('My speech was called "out of touch".')); } });
       }
+      // The heir can ask an aging monarch to step down, as Beatrix of the Netherlands and Juan Carlos of Spain did.
+      var mon = !r.monarch && lineOf() === 1 && me().age >= 21 ? E.person(r.monarchId) : null;
+      if (mon && mon.alive) {
+        var who = 'my ' + ({ father: 'father', mother: 'mother', sibling: mon.gender === 'M' ? 'brother' : 'sister' }[mon.role] || 'monarch');
+        var odds = U.clamp(0.04 + Math.max(0, mon.age - 60) * 0.025 + (mon.rel - 50) / 200 + (r.popularity - 50) / 400, 0.02, 0.8);
+        items.push({ icon: '🤝', label: 'Ask ' + who + ' to step down', sub: mon.age < 60 ? 'Not while ' + E.he(mon) + '\'s in ' + E.his(mon) + ' prime' : 'Monarchs do abdicate for their heirs · about ' + Math.round(odds * 100) + '% chance', disabled: mon.age < 60 || used('abdicate_ask') > 0, onClick: function () {
+          use('abdicate_ask');
+          if (U.chance(odds)) { mon.job = 'Retired'; crown(); return done(good(U.cap(who) + ' abdicated in my favor and retired to the country. 👑')); }
+          E.rel(mon, -U.rand(4, 9));
+          done(bad(U.pick([U.cap(who) + ' said a monarch reigns until the last breath.', U.cap(who) + ' asked if I was in a hurry to see the funeral.', 'There was a long silence. Then ' + who + ' changed the subject.'])));
+        } });
+      }
       duty('🍾', 'Party with celebrities', 'royalparty', function () { E.stat('happy', 8); E.fame(3); if (U.chance(0.35)) { r.popularity = Math.max(0, r.popularity - U.rand(5, 12)); return done(bad('Tabloids got photos of me partying. Scandal!')); } done('I partied at an exclusive club with celebrities.'); });
       items.push({ icon: '🚪', label: r.monarch ? 'Abdicate the throne' : 'Renounce my title', danger: true, onClick: function () {
         ui().confirm(r.monarch ? 'Abdicate?' : 'Renounce your title?', 'You will lose your royal allowance forever.', function () {

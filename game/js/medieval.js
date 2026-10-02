@@ -43,7 +43,10 @@ TL.eras.medieval = (function () {
   // ------------------------------------------------------------ history
   var KINGS = [[1154, 'Henry II'], [1189, 'Richard the Lionheart'], [1199, 'John'], [1216, 'Henry III'], [1272, 'Edward I'], [1307, 'Edward II'], [1327, 'Edward III'], [1377, 'Richard II'],
     [1399, 'Henry IV'], [1413, 'Henry V'], [1422, 'Henry VI'], [1461, 'Edward IV'], [1470, 'Henry VI'], [1471, 'Edward IV'], [1483, 'Richard III'], [1485, 'Henry VII'], [1509, 'Henry VIII'], [1547, 'Edward VI']];
-  function king(yr) { if (TL.S && on() && S().anc && S().anc.rule) return me().first + ' ' + me().last; var k = KINGS[0][1]; KINGS.forEach(function (x) { if (yr >= x[0]) k = x[1]; }); return k; }
+  function king(yr) { if (TL.S && on() && S().anc && S().anc.rule) return me().first + ' ' + me().last; var dn = TL.S && on() && TL.dynasty && TL.dynasty.reigning(); if (dn) return dn.name; var k = KINGS[0][1]; KINGS.forEach(function (x) { if (yr >= x[0]) k = x[1]; }); return k; }
+  // Kings who died (or fell) leaving a boy on the throne, who grew up to rule: [what happened, the boy].
+  var MINORS = { 1216: ['King John is dead of dysentery, and his son Henry is only nine.', 'Henry'], 1327: ['King Edward II has been deposed, and his son Edward is only fourteen.', 'Edward'],
+    1377: ['Old King Edward III is dead, and his grandson Richard is only ten.', 'Richard'], 1422: ['King Henry V is dead of a fever in France, and his son Henry is not even a year old.', 'Henry'] };
   // [year, icon, what happened, short label, only in these towns]
   var MOMENTS = [
     [1170, '🗡️', 'Four knights murdered Archbishop Thomas Becket in Canterbury Cathedral.', 'The murder of Becket'],
@@ -165,13 +168,14 @@ TL.eras.medieval = (function () {
   // ------------------------------------------------------------ birth
   function setup(s, opts) {
     var a = st(), w = s.flags.wealth, c = D.country(s.country);
-    a.cls = opts.cls || (w === 'rich' ? 'noble' : w === 'upper' ? 'gentry' : w === 'poor' ? (U.chance(0.65) ? 'villein' : 'free') : (U.chance(0.5) ? 'burgher' : 'free'));
+    a.cls = opts.royal ? 'noble' : opts.cls || (w === 'rich' ? 'noble' : w === 'upper' ? 'gentry' : w === 'poor' ? (U.chance(0.65) ? 'villein' : 'free') : (U.chance(0.5) ? 'burgher' : 'free'));
     if (a.cls === 'villein' || a.cls === 'free') s.city = U.pick(VILLAGES);
     else if (a.cls === 'burgher' && TOWNS.indexOf(s.city) < 0) s.city = U.pick(TOWNS);
     var mom = E.people('mother')[0], dad = E.people('father')[0];
     var par = { noble: ['Baron', 'Baroness'], gentry: ['Knight', 'Lady of the Manor'], burgher: [U.pick(['Master Weaver', 'Merchant', 'Master Baker', 'Master Smith', 'Innkeeper']), U.pick(['Alewife', 'Silkwoman', 'Homemaker', 'Shopkeeper'])],
       free: ['Yeoman Farmer', U.pick(['Farmwife', 'Alewife', 'Spinster'])], villein: ['Villein', 'Villein'] }[a.cls];
     if (dad) dad.job = par[0]; if (mom) mom.job = par[1];
+    if (opts.royal && TL.dynasty.born(s, royalCfg())) { a.king = king(s.year); return; }
     if (a.cls === 'villein') {
       a.lord = 'Sir ' + U.pick(c.male) + ' of ' + s.city;
       E.log('🌾 I was born a serf on the manor of ' + a.lord + '. My family works his land and may not leave without his leave.', 'bad');
@@ -179,18 +183,24 @@ TL.eras.medieval = (function () {
     a.king = king(s.year);
     E.log('👑 ' + royal(a.king) + ' rules England.');
   }
-  function royal(k) { return (S().anc && S().anc.rule && k === me().first + ' ' + me().last && !male() ? 'Queen ' : 'King ') + k; }
+  function royal(k) {
+    var dn = TL.dynasty && TL.dynasty.reigning(), queen = (S().anc && S().anc.rule && k === me().first + ' ' + me().last && !male()) || (dn && dn.name === k && dn.gender === 'F');
+    return (queen ? 'Queen ' : 'King ') + k;
+  }
 
   // ------------------------------------------------------------ the year
   function yearly() {
     var s = S(), a = st(), age = me().age, yr = s.year, j = s.job;
+    TL.dynasty.yearly(); // my family's throne (js/eras.js)
+    if (s.dead) return;
+    j = s.job;
     var k = king(yr);
     // Left the cloister some other way (fired, retired): find a roof.
     if (s.home.type === 'cloister' && !(j && (j.career === 'm_monk' || j.career === 'm_anchor'))) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
     if (k !== a.king) { a.king = k; if (age >= 5 && !a.rule) E.log('👑 ' + royal(k) + ' was crowned.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
-      if (a.rule && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // I wear the crown now: history went another way
+      if (TL.dynasty.altered() && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // my family wears the crown now: history went another way
       E.log(mo[1] + ' ' + mo[2]); see(mo[3], mo[1]);
     });
     if (COMETS.indexOf(yr) >= 0 && age >= 5) E.log('☄️ A comet with a fiery tail hung in the sky for weeks. Everyone says it is an omen.');
@@ -217,7 +227,10 @@ TL.eras.medieval = (function () {
     if (a.plot) { TL.coup.yearly(coupCfg(a.plot.kind)); if (s.dead) return; }
     if (a.rule && !(j && j.career === 'm_king')) TL.coup.lostThrone();
     // The Wars of the Roses: whoever wins, the other side pays.
-    if (ROSES[yr] && a.rose && !a.rule) roseTurn(ROSES[yr]);
+    if (ROSES[yr] && a.rose && !TL.dynasty.altered()) roseTurn(ROSES[yr]);
+    // A king dies leaving a boy on the throne: someone must rule for him.
+    var mn = MINORS[yr];
+    if (mn && age >= 21 && age <= 65 && !a.plot && !a.dyn && !TL.dynasty.altered() && ((j && j.career === 'm_court') || (a.cls === 'noble' && s.fame >= 25) || s.fame >= 55 || (j && j.career === 'm_knight' && j.level >= 3)) && U.chance(0.45)) s.pending.push({ id: 'm_protector' });
     if (s.dead) return;
     if (age === 14 && male() && !serf()) E.log('🏹 By law, every man must practice with the longbow on Sundays. I got my first bow.');
     // Serfs: work the lord's land; freedom becomes easier after the Black Death.
@@ -387,6 +400,7 @@ TL.eras.medieval = (function () {
       items.push({ info: true, html: card() });
       if (age < 7) { items.push({ info: true, html: '<p class="muted">I\'m too young to work. Childhood comes first.</p>' }); return items; }
       if (j && j.career === 'm_king') { items.push({ section: 'The realm' }); return items.concat(TL.coup.reignItems(coupCfg('throne'))); }
+      items = items.concat(TL.dynasty.items());
       if (j) {
         items.push({ section: 'My work' });
         var c = career(j.career);
@@ -427,9 +441,10 @@ TL.eras.medieval = (function () {
         items.push({ icon: '🕊️', label: 'Buy my freedom', sub: 'My lord will sell me a charter of freedom', right: E.fmt(price), onClick: function () { if (s.money < price) return done(nope('I need ' + E.fmt(price) + ' to buy my freedom.')); E.addMoney(-price); freeMe('money'); ui().back(); done(good('I paid ' + a.lord + ' and he sealed my charter of freedom.')); } });
         if (age >= 16) items.push({ icon: '🏃', label: 'Flee to a town', sub: a.watch > y() ? 'The bailiff watches me until ' + a.watch : 'A year and a day in a town makes a serf free', danger: true, disabled: a.watch > y(), onClick: flee });
       }
-      items.push({ section: 'Find work' });
+      // The ruler's family doesn't hire out as farmhands (js/eras.js, TL.dynasty).
+      if (!TL.dynasty.royal()) items.push({ section: 'Find work' });
       CAREERS.forEach(function (c) {
-        if (j && j.career === c.id) return;
+        if ((j && j.career === c.id) || TL.dynasty.royal()) return;
         var why = age < c.min ? 'Must be ' + c.min + '+' : c.need ? c.need() : null;
         items.push({ icon: c.icon, label: c.levels[0][0], sub: c.name + ' · ' + E.fmt(Math.round(pen(c.levels[0][1]) * wageBoost(c.id))) + '/yr' + (why ? ' · ' + why : ''), disabled: !!why, onClick: function () { apply(c); } });
       });
@@ -444,7 +459,7 @@ TL.eras.medieval = (function () {
       items.push({ icon: '🕯️', label: male() ? 'Become an anchorite' : 'Become an anchoress', sub: !single ? 'Not while I\'m married' : serf() ? 'Serfs need their lord\'s leave' : age < 25 ? 'The bishop only encloses those 25 or older' : S().karma < 50 ? 'The bishop doubts my holiness' : 'Walled into a cell for life, to pray and counsel', disabled: anch || !single || serf() || age < 25 || S().karma < 50, onClick: enclose });
       var canCourt = gentle() && a.edu && age >= 17;
       items.push({ icon: '👑', label: 'Seek a place at court', sub: canCourt ? 'Power, riches and danger' : 'Needs a noble or knightly family and letters', disabled: !canCourt || (j && j.career === 'm_court'), onClick: function () { if (!U.chance(0.4 + S().fame / 100 + (a.cls === 'noble' ? 0.3 : 0))) return done(bad('Nobody at court would see me. Perhaps with more friends in high places.')); E.quitJob(true); hire('m_court'); S().job.company = 'the court of ' + royal(king(y())); done(good('I was given a place at ' + S().job.company + '. 👑')); } });
-      var throne = gentle() && age >= 21, revolt = !gentle() && age >= 16, kind = a.plot ? a.plot.kind : throne ? 'throne' : 'revolt';
+      var throne = (gentle() && age >= 21) || (age >= 16 && TL.dynasty.royal() && !(a.dyn && a.dyn.regent)), revolt = !gentle() && age >= 16, kind = a.plot ? a.plot.kind : throne ? 'throne' : 'revolt';
       if (j && j.career === 'm_anchor') { /* walled in */ } else items.push({ icon: kind === 'throne' ? '⚔️' : '🔥', label: a.plot ? (kind === 'throne' ? 'The rebellion' : 'The uprising') : kind === 'throne' ? 'Rebel against the king' : 'Lead a peasant uprising', sub: a.plot ? 'Strength ' + Math.round(a.plot.power) + ' · suspicion ' + Math.round(a.plot.heat) : kind === 'throne' ? (throne ? 'Take the crown, or die a traitor' : 'Needs a noble or knightly family, 21+') : (revolt ? 'Free the serfs, or hang' : 'Ages 16 and up'), danger: true, disabled: !a.plot && !throne && !revolt, onClick: function () { TL.coup.menu(coupCfg(kind)); } });
       if (j && j.years >= 15 && age >= 55 && j.career !== 'm_villein' && j.career !== 'm_anchor') items.push({ section: ' ' }, { icon: '🏡', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
       return items;
@@ -793,7 +808,25 @@ TL.eras.medieval = (function () {
       { label: 'Refuse', run: function () { E.people(['mother', 'father']).forEach(function (p) { E.rel(p, -15); }); return 'My family is furious with me.'; } }
     ] };
   } });
-  def('m_roses_side', { min: 18, w: 30, cond: function () { var j = S().job; return y() >= 1455 && y() <= 1484 && !st().rose && j && (j.career === 'm_court' || (j.career === 'm_knight' && j.level >= 2)); }, build: function () {
+  // A king leaves a boy on the throne, and the council names me Lord Protector (MINORS).
+  sdef('m_protector', { build: function () {
+    var mn = MINORS[y()], a = st();
+    if (!mn || a.rule || a.dyn) return null;
+    return { icon: '🛡️', title: 'Lord Protector of England', text: mn[0] + ' The great council has named me Lord Protector, to rule the kingdom until the boy comes of age.', choices: [
+      { label: 'Guard the boy king faithfully', run: function () { E.fame(10); E.karma(8); E.addMoney(pen(15000)); see('Lord Protector of England', '🛡️'); return good('For years I ruled England in young ' + mn[1] + '\'s name, and when he came of age I knelt and gave him his kingdom. Even my enemies called me honest.'); } },
+      { label: 'Take the crown for myself', run: function () {
+        if (U.chance(0.55 + S().fame / 300 + (S().job && S().job.career === 'm_court' ? 0.1 : 0))) {
+          TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); a.rule.guard = 40; E.karma(-15); E.achieve('usurper'); see('Took the crown from a boy king', '👑');
+          E.log('👑 I was crowned ' + (male() ? 'King' : 'Queen') + ' of England at Westminster Abbey.', 'good');
+          return good('Young ' + mn[1] + ' went into the Tower "for his own safety" and was never seen again. I was crowned at Westminster Abbey. 👑');
+        }
+        if (U.chance(0.6)) { E.die('the axe on Tower Hill, for trying to steal a boy\'s crown'); return bad('The barons rose for the boy king. I was taken and beheaded on Tower Hill.'); }
+        E.addMoney(-Math.round(Math.max(0, S().money) * 0.6)); E.quitJob(true); E.fame(5);
+        return bad('The barons rose for the boy king. I lost my lands and fled to France.');
+      } }
+    ] };
+  } });
+  def('m_roses_side', { min: 18, w: 30, cond: function () { var j = S().job; return y() >= 1455 && y() <= 1484 && !st().rose && !TL.dynasty.altered() && j && (j.career === 'm_court' || (j.career === 'm_knight' && j.level >= 2)); }, build: function () {
     return { icon: '🌹', title: 'York or Lancaster?', text: 'The great lords are choosing sides. Everyone at court and every knight must choose too.', choices: [
       { label: '🤍 The white rose of York', run: function () { st().rose = 'york'; if (S().job) S().job.rose = 'york'; return 'I wear the white rose now.'; } },
       { label: '❤️ The red rose of Lancaster', run: function () { st().rose = 'lancaster'; if (S().job) S().job.rose = 'lancaster'; return 'I wear the red rose now.'; } }
@@ -903,7 +936,7 @@ TL.eras.medieval = (function () {
   } });
 
   // ------------------------------------------------------------ about & recap
-  function aboutRows() { return [['🏰 Class', CLASS_NAME[st().cls]], ['👑 King', royal(king(S().year))]]; }
+  function aboutRows() { return [['🏰 Class', CLASS_NAME[st().cls]], ['👑 Ruler', royal(king(S().year))]]; }
   function recapRow() {
     var a = st(), s = S(), out = [], hist = (s.jobHistory || []).concat(s.job ? [{ career: s.job.career, title: E.jobTitle(s.job) }] : []);
     var had = function (id) { return hist.some(function (h) { return h.career === id; }); };
@@ -930,7 +963,7 @@ TL.eras.medieval = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['the king and his barons', [], true], ['God and the Church', [], true], ['the weather', []]];
   var KID_TOPICS = [['dragons and giants', []], ['games of hoodman blind', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['knights and their deeds', ['Athletic']], ['their drawings', ['Artsy']]];
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff',
-    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic', 'usurper', 'rebel', 'long_reign', 'conqueror'];
+    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic', 'usurper', 'rebel', 'long_reign', 'conqueror', 'royal'];
   // What medieval English people called each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Rheum', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Quinsy', 'Asthma': 'Tightness of the Chest',
     'Acne': 'Pimples', 'Migraine': 'The Megrim', 'PTSD': 'Battle Terrors', 'Depression': 'Melancholy', 'Anxiety': 'Troubled Spirits', 'Insomnia': 'Sleeplessness',
@@ -980,14 +1013,34 @@ TL.eras.medieval = (function () {
         { id: 'war', icon: '⚔️', label: 'Invade France', sub: 'Glory and plunder, or disaster', cost: pen(20000), war: true, win: 'We crushed the French. I rode through London in triumph and the bells rang all day.', lose: 'The campaign was a disaster. We came home with nothing but dysentery.', death: 'a French lance in battle' }],
         threat: { icon: '⚔️', title: 'The barons rebel', text: 'A rival lord has raised an army and claims my crown.', fight: 'Meet them in battle', won: 'We won. The rebel lord\'s head is on a spike on London Bridge.', cause: 'battle against rebel barons', died: 'I was cut down in the battle, like Richard at Bosworth.', flee: 'Flee across the sea to France', fled: 'I fled to France. Someone else sits on my throne now.', caught: 'My ship was caught in the Channel.' } } };
   }
+  // Born to the king (js/eras.js, TL.dynasty): the words of a royal heir's life.
+  function royalCfg() {
+    return { ruler: ['King', 'Queen'], consort: ['Prince Consort', 'Queen'], heir: ['Prince', 'Princess'], deposed: ['Deposed King', 'Deposed Queen'], retired: ['Old King', 'Old Queen'],
+      usurper: function (first) { return first + ' of ' + U.pick(['Lancaster', 'York', 'Gloucester', 'Warwick', 'Norfolk', 'Clarence', 'Bedford', 'Somerset']); },
+      allowance: pen(5000), treasury: 'the royal Exchequer', edu: 'letters',
+      cls: 'noble', city: 'London', realm: 'England', section: 'Heir to the crown', greatName: 'The barons', peopleName: 'The people', regent: 'a council of barons',
+      born: '👑 I was born at the Palace of Westminster, the firstborn of {ruler}. One day the crown of England will be mine.',
+      succeed: '👑 {ruler}, my {kin}, is dead. I was crowned {title} at Westminster Abbey.',
+      deaths: ['a fever', 'a fever', 'dysentery on campaign', 'dysentery on campaign', 'a crossbow bolt at a siege', 'a hunting accident', 'a hunting accident', 'a surfeit of lampreys'],
+      killed: null, depose: '⛓️ My {kin} was made to give up the crown and was locked away in Berkeley Castle.',
+      learn: ['📜', 'Learn statecraft at court', 'Sit with the king\'s council', ['I listened to the council argue about wool taxes and Scottish raids.', 'The Lord Chancellor showed me how a writ is drawn up and sealed.', 'I sat beside the king at a hearing of petitions and learned to tell liars from honest men.', 'An old clerk of the Exchequer taught me to count the realm\'s money on the chequered cloth.']],
+      show: ['🪙', 'Give alms and ride among the people', 'Let England learn to love me', pen(1500), ['I gave bread and silver at the gates of Westminster. The crowd blessed me.', 'I rode through Cheapside and threw pennies to the crowd.', 'I washed the feet of the poor on Maundy Thursday. People wept.']],
+      great: ['🍗', 'Feast the barons', 'The lords who will have to kneel to me', pen(1200), ['The Earl of Pembroke drank to my health and swore to stand by me.', 'Three barons promised me their knights "when the day comes".', 'I gave a great lord a fine hawk. He will remember it.']],
+      command: ['⚔️', 'Lead the king\'s army', 'Fight the Scots, the Welsh or the French', ['We beat the Scots at the border. The soldiers call me the lion cub.', 'I took a French castle after a long siege. All England heard of it.', 'I chased Welsh raiders back into the hills and hanged their leader.'],
+        ['The Welsh ambushed us in the mountains. We came home with nothing.', 'The French campaign ended in a muddy retreat. The barons are muttering.'], 'an arrow in a skirmish with the Scots'],
+      step: ['👑', 'Ask to be crowned beside my father', 'Henry II had his son crowned while he lived', 'My {kin} had me crowned at Westminster, as Henry II did for his son, and left the ruling of England to me.',
+        ['My {kin} said there is room for only one king in England.', 'My {kin} looked at me coldly and asked if I was counting the days.', '"When I am in my grave," my {kin} said.']],
+      news: ['⚔️ {ruler} won a victory against the Scots.', '⛪ {ruler} laid the first stone of a new abbey.', '📜 {ruler} summoned Parliament to Westminster.', '🏹 {ruler} went to war in France.', '🍗 {ruler} held a great Christmas court at Winchester.', '⚖️ {ruler} hanged a rebel baron.'] };
+  }
   // Continuing as my heir: the family keeps its standing (engine.continueAs).
   // Lords and knights keep the family seat when their parents die; serfs hold their cottage from the lord.
   function housed() { return gentle() || serf(); }
-  function heir(old) {
+  function heir(old, prev) {
     var a = st(), o = old || {};
     a.cls = o.cls || 'free';
     if (a.cls === 'villein') { a.lord = o.lord; if (o.fled) { a.fled = o.fled; a.village = o.village; a.fledTo = o.fledTo; } }
     if (o.rule && TL.coup.inherits(o.rule)) { a.cls = 'noble'; TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); E.log('👑 I inherited the crown. I am ' + (male() ? 'King' : 'Queen') + ' of England.', 'good'); return; }
+    if (TL.dynasty.inherit(o, prev)) { a.king = king(y()); return; }
     a.king = king(y());
     if ((a.cls === 'noble' || a.cls === 'gentry') && me().age >= 14) a.edu = 'letters'; // tutored at home
     var lines = { noble: '🏰 I am heir to my family\'s lands and titles.', gentry: '🛡️ The family manor passes to my generation.', burgher: '🏘️ I carry on my family\'s place among the townsfolk.', free: '🌾 Like my parents, I am a free peasant.', villein: '🌾 Like my parents, I am a serf on the manor of ' + a.lord + '.' };
@@ -1012,6 +1065,6 @@ TL.eras.medieval = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
+    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, royalCfg: royalCfg, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
     id: 'medieval', land: 'Kingdom of England', years: [1150, 1420], gentile: false };
 })();

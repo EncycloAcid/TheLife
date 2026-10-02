@@ -27,6 +27,7 @@ TL.engine = (function () {
   function jobPhrase(job) {
     var j = job.toLowerCase();
     if (j === 'unemployed' || j === 'retired') return j;
+    if (/^(emperor|empress|king|queen)$/.test(j)) return 'the ' + job;
     return (/^[aeiou]/.test(j) ? 'an ' : 'a ') + j;
   }
   function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
@@ -236,7 +237,7 @@ TL.engine = (function () {
       if (gp.age > 88) gp.age = 88;
     }
 
-    if (opts.royal && TL.features) TL.features.makeRoyal(st);
+    if (opts.royal && TL.features && !ctry.ancient) TL.features.makeRoyal(st); // earlier eras crown their own (TL.dynasty)
     var m = st.me;
     log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + (st.city ? st.city + ', ' : '') + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + yearLabel(startYear) + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
@@ -826,7 +827,7 @@ TL.engine = (function () {
   function validateHome() {
     var s = S(), h = home(), why = null;
     if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
-    else if (h.type === 'palace' && !s.royal && !(ancient() && TL.ancient && TL.ancient.st().rule)) why = 'I left the palace and moved into a studio apartment.';
+    else if (h.type === 'palace' && !s.royal && !(ancient() && TL.ancient && (TL.ancient.st().rule || (TL.dynasty && TL.dynasty.royal())))) why = 'I left the palace and moved into a studio apartment.';
     else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length && !(ancient() && TL.ancient.housed())) why = ancient() ? TL.ancient.txt('parentsGone') : 'With my parents gone, I moved into a studio apartment.';
     if (why && ancient()) why = why.replace('a studio apartment', TL.ancient.txt('moveOut'));
     if (why) { s.home = ancient() ? JSON.parse(JSON.stringify(TL.ancient.txt('rentHome'))) : { type: 'rent', tier: 1 }; log(why); }
@@ -940,6 +941,7 @@ TL.engine = (function () {
     log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
     if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
     if (TL.features) TL.features.onDeath(p);
+    if (TL.dynasty) TL.dynasty.onDeath(p); // the crown may pass (js/eras.js)
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
   }
   function yearlyPeople() {
@@ -970,6 +972,7 @@ TL.engine = (function () {
         var cause = nd ? U.pick(p.age > 60 ? nd.old : p.age < 18 ? nd.young : nd.adult) : p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia'].concat(old ? ['tuberculosis'] : []))
           : p.age < 18 ? U.pick(old ? ['scarlet fever', 'polio', 'pneumonia', 'an accident', 'diphtheria'] : ['an accident', 'a rare illness', 'cancer', 'a car accident'])
           : U.pick((old ? ['tuberculosis', 'pneumonia', 'an accident at work'] : ['an overdose', 'a boating accident']).concat(['cancer', 'a heart attack', yr >= 1915 ? 'a car accident' : 'a riding accident']).concat(yr === 1918 || yr === 1919 ? ['the Spanish flu', 'the Spanish flu'] : []));
+        if (TL.dynasty && ancient()) cause = TL.dynasty.deathCause(p) || cause; // a reigning king doesn't die of "an accident at work"
         npcDies(p, cause);
       }
     });
@@ -1225,7 +1228,7 @@ TL.engine = (function () {
     log('My ' + (viaGrandchild ? 'grand' : '') + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');
     if (inheritance > 0) log('📜 I inherited ' + fmt(inheritance) + ' from ' + his(dead) + ' estate.', 'good');
     // Earlier eras have no schools to enroll in; the family's standing carries on (js/eras.js).
-    if (ancient() && TL.ancient) TL.ancient.heir(s.anc);
+    if (ancient() && TL.ancient) TL.ancient.heir(s.anc, s);
     else {
       if (c.age >= 6 && c.age < 18) { st.edu = null; enroll(c.age < 11 ? 'elementary' : c.age < 14 ? 'middle' : 'high'); st.edu.year = c.age - (c.age < 11 ? 5 : c.age < 14 ? 10 : 13); }
       if (c.age >= 18) st.degrees.push({ type: 'hs' });
