@@ -880,15 +880,21 @@ TL.events = (function () {
     if (def.cond && !def.cond()) return false;
     return true;
   }
+  // Variety: an event can't come back within 5 years of its last showing,
+  // and each repeat makes it less likely (seen = {id: [lastAge, times]}).
+  var COOLDOWN = 5;
   function roll() {
-    var s = S();
-    var pool = Object.keys(defs).map(function (k) { return defs[k]; }).filter(eligible);
+    var s = S(), age = me().age, seen = s.evSeen || (s.evSeen = {});
+    var pool = Object.keys(defs).map(function (k) { return defs[k]; }).filter(eligible)
+      .filter(function (d) { var h = seen[d.id]; return !h || age - h[0] >= COOLDOWN || age < h[0]; })
+      .map(function (d) { var h = seen[d.id]; return { d: d, w: d.w / (1 + (h ? h[1] : 0) * 0.6) }; });
     var n = U.weighted([{ w: 25, n: 0 }, { w: 50, n: 1 }, { w: 25, n: 2 }]).n;
-    if (me().age < 2) n = Math.min(n, 1);
+    if (age < 2) n = Math.min(n, 1);
     for (var i = 0; i < n && pool.length; i++) {
-      var d = U.weighted(pool);
-      pool = pool.filter(function (x) { return x !== d; });
+      var pick = U.weighted(pool), d = pick.d;
+      pool = pool.filter(function (x) { return x !== pick; });
       s.pending.push({ id: d.id, data: {} });
+      seen[d.id] = [age, ((seen[d.id] || [0, 0])[1]) + 1];
       if (d.once) s.flags['ev_' + d.id] = true;
     }
   }
