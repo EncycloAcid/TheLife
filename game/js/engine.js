@@ -876,8 +876,11 @@ TL.engine = (function () {
       }
     });
     // happiness drift
-    var target = 55 + (s.money > $(100000) ? 5 : 0) + (partner() ? 7 : 0) + (s.job || s.edu || a < 18 || s.retired ? 3 : -8) - (s.prison ? 25 : 0) - s.conditions.length * 3;
-    stat('happy', (target - m.happy) / 6 + U.rand(-4, 4));
+    // Happiness settles toward a baseline set by your life (people adapt), so
+    // bad years hurt but don't pin you near zero forever.
+    var friends = s.people.some(function (p) { return p.alive && /friend/.test(p.role) && p.rel >= 50; });
+    var target = 55 + (s.money > $(100000) ? 5 : 0) + (partner() ? 7 : 0) + (s.job || s.edu || a < 18 || s.retired ? 3 : -8) - (s.prison ? 25 : 0) - s.conditions.length * 3 + (friends ? 3 : 0) + (s.pets.length ? 3 : 0);
+    stat('happy', (target - m.happy) / 4 + U.rand(-4, 4));
     if (s.fame > 60 && U.chance(0.3)) stat('happy', U.rand(-6, 6));
   }
   function deathCheck() {

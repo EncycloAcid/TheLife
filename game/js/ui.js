@@ -219,8 +219,8 @@ TL.ui = (function () {
     var happy = pts(function (h) { return H - P - h[2] / 100 * (H - 2 * P); });
     var zero = H - P - (0 - lo) / (hi - lo) * (H - 2 * P);
     return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Net worth and happiness over my life">' +
-      '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + zero.toFixed(1) + '" y2="' + zero.toFixed(1) + '" stroke="var(--line)" stroke-width="1"/>' +
-      '<polyline points="' + happy + '" fill="none" stroke="var(--mid)" stroke-width="1.6" stroke-linejoin="round" opacity=".8"/>' +
+      '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + zero.toFixed(1) + '" y2="' + zero.toFixed(1) + '" stroke="var(--sep)" stroke-width="1"/>' +
+      '<polyline points="' + happy + '" fill="none" stroke="var(--orange)" stroke-width="1.6" stroke-linejoin="round" opacity=".85"/>' +
       '<polyline points="' + money + '" fill="none" stroke="var(--money)" stroke-width="2.4" stroke-linejoin="round"/></svg>' +
       '<div class="legend"><span class="lg-money">Net worth</span><span class="lg-happy">Happiness</span><em>Peak ' + E.fmt(hi) + ' · age ' + a0 + '–' + a1 + '</em></div></div>';
   }
