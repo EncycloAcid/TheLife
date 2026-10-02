@@ -722,6 +722,44 @@ TL.events = (function () {
       { label: 'Ignore it', run: function () { S().royal.popularity = Math.max(0, S().royal.popularity - 4); return 'I never complain, never explain.'; } }
     ] };
   } });
+  // Modern royal life (v1.39): the crown is a job with its own crises.
+  function pop(d) { var r = S().royal; r.popularity = U.clamp(r.popularity + d, 0, 100); }
+  function monarch() { return S().royal && S().royal.monarch; }
+  def('royal_state_visit', { min: 18, w: 5, cond: function () { return !!S().royal; }, build: function () {
+    var where = U.pick(['Japan', 'India', 'Canada', 'Kenya', 'Brazil', 'Australia', 'Germany', 'Mexico']);
+    return { icon: '🎖️', title: 'A state visit to ' + where, text: 'The government has asked me to lead a state visit to ' + where + '. Every word I say will be in the papers.', choices: [
+      { label: 'Learn a few phrases and charm everyone', run: function () { if (U.chance(0.45 + me().smarts / 250)) { pop(U.rand(5, 10)); E.fame(3); return good('My little speech in the local language went viral. ' + where + ' loved me.'); } pop(-3); return bad('I mispronounced the president\'s name at the state banquet. Twice.'); } },
+      { label: 'Stick to the script', run: function () { pop(2); return 'Handshakes, wreaths, a banquet. Nothing went wrong, and nobody will remember it.'; } },
+      { label: 'Ask to skip it', run: function () { pop(-6); E.stat('happy', 3); return 'The papers called me lazy. I spent the week at home.'; } }
+    ] };
+  } });
+  def('royal_crisis', { min: 18, w: 4, cond: monarch, build: function () {
+    return { icon: '📜', title: 'A constitutional crisis', text: 'Parliament has passed a law half the country hates. Tradition says I sign it. Some people are begging me to refuse.', choices: [
+      { label: 'Sign it: the monarch stays above politics', run: function () { pop(-2); E.karma(1); return 'I signed. Commentators praised my restraint; the protesters booed my car.'; } },
+      { label: 'Refuse to sign', run: function () { if (U.chance(0.4)) { pop(12); E.fame(6); return good('I refused. Half the country cheered, and the government backed down.'); } pop(-15); E.fame(6); return bad('I refused, and a crisis followed. There is talk of abolishing the monarchy.'); } }
+    ] };
+  } });
+  def('royal_memoir', { min: 25, w: 3, cond: function () { return !!S().royal; }, build: function () {
+    return { icon: '📕', title: 'A tell-all memoir', text: 'A former palace aide is publishing a memoir full of stories about me.', choices: [
+      { label: 'Try to block it in court', run: function () { E.addMoney(-E.$(400000)); if (U.chance(0.4)) return good('The judge blocked publication. My lawyers cost a fortune.'); pop(-6); return bad('The court refused, and the publicity made it a bestseller.'); } },
+      { label: 'Publish my own side of the story', run: function () { var w = E.$(U.rand(2, 8) * 1000000); E.addMoney(w); pop(U.chance(0.5) ? 5 : -8); E.fame(5); return 'My own book earned ' + E.fmt(w) + '. Not everyone at the palace is speaking to me.'; } },
+      { label: 'Stay silent', run: function () { pop(-2); return 'I said nothing. The story was forgotten in a month.'; } }
+    ] };
+  } });
+  def('royal_service', { min: 18, max: 30, w: 4, cond: function () { return !!S().royal && !monarch() && !S().mil; }, build: function () {
+    return { icon: '🪖', title: 'Serve in the armed forces?', text: 'Royals have long served in the military. The palace thinks a few years in uniform would be good for my image.', choices: [
+      { label: 'Serve as a helicopter pilot', run: function () { pop(10); E.stat('health', 3); me().athl = Math.min(100, me().athl + 6); E.fame(4); return good('I flew search-and-rescue missions for three years. The people saw a royal who did real work.'); } },
+      { label: 'Decline politely', run: function () { pop(-3); return 'I said I would serve the nation in other ways.'; } }
+    ] };
+  } });
+  def('royal_charity', { min: 16, w: 5, cond: function () { return !!S().royal; }, build: function () {
+    var cause = U.pick(['mental health', 'veterans', 'children\'s hospitals', 'wildlife', 'homelessness', 'clean oceans']);
+    return { icon: '🎗️', title: 'Become a patron?', text: 'A charity for ' + cause + ' has asked me to become its royal patron.', choices: [
+      { label: 'Accept and get involved', run: function () { pop(6); E.karma(6); E.stat('happy', 4); return good('I visited every project and raised millions for ' + cause + '.'); } },
+      { label: 'Lend my name only', run: function () { pop(1); return 'My name is on their letterhead now.'; } }
+    ] };
+  } });
+
   def('mob_favor', { min: 18, max: 100, w: 6, cond: function () { return S().mob && !S().prison; }, build: function () {
     var mob = S().mob;
     return { icon: '🕴️', title: 'A favor', text: 'The ' + mob.family + ' family needs me to hide a package for a few weeks. No questions asked.', choices: [

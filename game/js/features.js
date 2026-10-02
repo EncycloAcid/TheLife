@@ -184,7 +184,7 @@ TL.features = (function () {
   }
   function crown() {
     var s = S();
-    s.royal.monarch = true; s.royal.monarchId = null;
+    s.royal.monarch = true; s.royal.monarchId = null; s.royal.since = s.year;
     s.royal.popularity = U.clamp(s.royal.popularity + 15, 0, 100);
     E.fame(25);
     E.stat('happy', 20);
@@ -213,6 +213,12 @@ TL.features = (function () {
     E.log('🏰 Royal allowance: ' + E.fmt(allowance), 'money');
     r.popularity = U.clamp(Math.round(r.popularity + U.rand(-5, 3) + (s.karma - 50) / 15 + (s.record.length ? -5 : 0)), 0, 100);
     if (r.monarch) E.fame(Math.max(0, 70 - s.fame) / 5);
+    // Jubilees: the whole country celebrates a long reign.
+    var reign = r.monarch && r.since ? s.year - r.since : 0;
+    if (reign === 25 || reign === 50 || reign === 70) {
+      r.popularity = Math.min(100, r.popularity + 15); E.fame(5); E.stat('happy', 10);
+      E.log('🎉 My ' + { 25: 'Silver', 50: 'Golden', 70: 'Platinum' }[reign] + ' Jubilee! ' + reign + ' years on the throne. Street parties filled the country.', 'good');
+    }
     if (r.monarch && r.popularity < 12 && U.chance(0.4)) {
       E.log('🔥 A revolution overthrew the monarchy! I fled into exile with half my fortune.', 'bad');
       s.royal = null; s.money = Math.round(s.money / 2); s.flags.exiled = true;
