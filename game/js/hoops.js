@@ -244,9 +244,11 @@ TL.hoops = (function () {
     ] };
   } });
   def('hoops_retire', { build: function () {
+    var x0 = h();
+    if (!x0 || x0.stage !== 'pro' || !x0.contract) return null; // already out of the league (quit, cut or another job)
     return { icon: '🏀', title: 'Time to retire?', text: 'My body is telling me something. At ' + me().age + ', my rating has slipped to ' + h().ovr + '.', choices: [
       { label: 'Retire', run: function () { return retire(); } },
-      { label: 'One more year', run: function () { var x = h(); x.contract.years = 1; S().job.salary = E.$(salaryFor(x.ovr)); return 'I\'m giving it one more season.'; } }
+      { label: 'One more year', run: function () { var x = h(); if (!x || !x.contract) return 'My playing days were already over.'; x.contract.years = 1; S().job.salary = E.$(salaryFor(x.ovr)); return 'I\'m giving it one more season.'; } }
     ] };
   } });
   function retire() {
