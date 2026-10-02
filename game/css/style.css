@@ -534,3 +534,9 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .bz-spark i { flex: 1; border-radius: 3px 3px 0 0; background: var(--green); opacity: .85; }
 .bz-spark i.neg { background: var(--red); }
 .bz-cap { font-size: .75rem; color: var(--muted); margin-top: 6px; }
+/* health card */
+.hc-ins { font-size: .875rem; margin: 10px 0 2px; }
+.hc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.hc-chip { background: var(--fill); border-radius: 999px; padding: 5px 11px; font-size: .8125rem; font-weight: 500; }
+.hc-chip small { color: var(--muted); font-weight: 400; margin-left: 2px; }
+.hc-chip.bad { background: rgba(255, 59, 48, .12); color: var(--red); }

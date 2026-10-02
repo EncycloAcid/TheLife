@@ -727,6 +727,8 @@ TL.engine = (function () {
     s.assets = s.assets.filter(function (a) { return !a.bankrupt; });
     // pets
     expense += s.pets.length * $(700);
+    // health insurance premiums and prescriptions
+    if (TL.health) expense += TL.health.costs();
 
     addMoney(income - expense);
     if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
@@ -831,11 +833,12 @@ TL.engine = (function () {
     if (a < 18 && U.chance(0.5)) m.athl = U.clamp(m.athl + U.rand(0, 2), 0, 100);
     if (a < 16 && U.chance(0.3)) stat('looks', U.rand(-3, 4));
     if (a >= 12 && a <= 18 && U.chance(0.25)) stat('looks', U.rand(-4, 6));
-    // existing conditions
+    // existing conditions (js/health.js handles hidden illnesses, cancer stages and medication)
+    if (TL.health) TL.health.year();
     s.conditions.slice().forEach(function (n) {
       var ill = D.illness(n);
       if (!ill) return;
-      stat('health', -ill.dmg * (a > 70 && ill.oldRisk ? 1.5 : a < 40 ? 0.6 : 1));
+      stat('health', -ill.dmg * (a > 70 && ill.oldRisk ? 1.5 : a < 40 ? 0.6 : 1) * (TL.health ? TL.health.mult(n) : 1));
       if (ill.happy) stat('happy', ill.happy / 2);
       if (ill.looks) stat('looks', ill.looks / 2);
       if (ill.smarts) stat('smarts', ill.smarts / 2);
@@ -844,9 +847,10 @@ TL.engine = (function () {
     });
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
-      if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name)) return;
+      if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name) || (TL.health && TL.health.has(ill.name))) return;
       var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1);
       if (U.chance(p)) {
+        if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
         log('🤒 I was diagnosed with ' + ill.name.toLowerCase() + '.', 'bad');
       }
@@ -860,7 +864,8 @@ TL.engine = (function () {
     var s = S(), m = me(), a = m.age, life = country().life + (s.karma - 50) / 10;
     if (m.health <= 0) {
       var c = s.conditions.filter(function (n) { var i = D.illness(n); return i && i.dmg >= 8; })[0];
-      return die(c ? 'complications from ' + c.toLowerCase() : 'poor health');
+      var hid = !c && TL.health && TL.health.deathCause();
+      return die(c ? 'complications from ' + c.toLowerCase() : hid || 'poor health');
     }
     var hazard;
     if (a < 5) hazard = 0.001;

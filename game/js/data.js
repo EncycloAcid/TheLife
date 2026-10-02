@@ -382,6 +382,8 @@ TL.data = (function () {
     { id: 'five_stars', name: 'Five Stars', desc: 'Earn a 5-star rating for your business', icon: '⭐' },
     { id: 'unicorn', name: 'Unicorn', desc: 'Build a startup valued at $1 billion', icon: '🦄' },
     { id: 'ipo', name: 'Ring the Bell', desc: 'Take a company public', icon: '🔔' },
+    { id: 'caught_early', name: 'Caught It Early', desc: 'Get diagnosed with stage 1 cancer', icon: '🔬' },
+    { id: 'second_chance', name: 'Second Chance', desc: 'Survive a heart attack', icon: '🚑' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },

@@ -1139,7 +1139,7 @@ TL.actions = (function () {
       if (S().royal && a >= 6) items.push({ icon: '👑', label: 'Royal duties', sub: TL.features.royalTitle() + ' · popularity ' + S().royal.popularity + '%', onClick: TL.features.royalMenu });
 
       items.push({ section: 'Health' });
-      items.push({ icon: '🩺', label: 'Doctor', sub: S().conditions.length ? S().conditions.join(', ') : 'No known conditions', onClick: doctorMenu });
+      items.push({ icon: '🩺', label: 'Doctor', sub: TL.health ? TL.health.summary() : S().conditions.length ? S().conditions.join(', ') : 'No known conditions', onClick: TL.health ? TL.health.menu : doctorMenu });
       if (a >= 12) items.push({ icon: '🛋️', label: 'Therapist', right: E.fmt(E.$(200)), onClick: therapy });
       if (a >= 18) items.push({ icon: '💉', label: 'Plastic surgery', onClick: surgeryMenu });
       if (S().conditions.some(function (n) { var i = D.illness(n); return i && i.rehab; })) items.push({ icon: '🏥', label: 'Rehab', onClick: rehab });
