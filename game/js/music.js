@@ -368,7 +368,7 @@ TL.music = (function () {
     var a = x.albums.filter(function (q) { return q.nom; }).pop(); if (a && /Album/.test(cat || '')) a.grammy = true;
   }
 
-  def('mu_festival', { build: function () {
+  def('mu_festival', { cond: function () { return !!st(); }, build: function () {
     var x = st(), fest = U.pick(['Coachella', 'Lollapalooza', 'Glastonbury', 'Bonnaroo', 'Austin City Limits', 'Rolling Loud', 'Tomorrowland']);
     var slot = x.fans >= 1e7 ? 'headline' : x.fans >= 2e6 ? 'a prime evening slot at' : 'an afternoon slot at';
     return { icon: '🎪', title: fest, text: fest + ' offered me ' + (slot === 'headline' ? 'a headline slot' : slot + ' the festival') + '.', choices: [
@@ -376,14 +376,14 @@ TL.music = (function () {
       { label: 'Turn it down', run: function () { return 'I passed on ' + fest + ' this year.'; } }
     ] };
   } });
-  def('mu_beef', { build: function () {
+  def('mu_beef', { cond: function () { return !!st(); }, build: function () {
     var x = st(), rival = U.pick(['a rival ' + GENRES[x.genre].noun[0].toLowerCase(), 'an old collaborator', 'a chart rival']);
     return { icon: '🥊', title: 'Beef', text: rival.charAt(0).toUpperCase() + rival.slice(1) + ' took shots at me in a new song.', choices: [
       { label: 'Drop a diss track', run: function () { var w = U.chance(0.45 + (x.skill - 60) / 100); if (w) { addFans(x, x.fans * 0.15); return good('My diss track was brutal. The internet declared me the winner. 🔥'); } addFans(x, -x.fans * 0.05); E.stat('happy', -8); return bad('My diss track flopped. I got roasted worse.'); } },
       { label: 'Take the high road', run: function () { E.karma(3); return 'I stayed above it. Some fans called me soft; most respected it.'; } }
     ] };
   } });
-  def('mu_leak', { build: function () {
+  def('mu_leak', { cond: function () { var x = st(); return !!(x && x.vault && x.vault.length); }, build: function () {
     var x = st();
     return { icon: '💧', title: 'Leak', text: 'Some of my unreleased songs leaked online.', choices: [
       { label: 'Release them officially', run: function () { var lost = x.vault.splice(0, 2); lost.forEach(function (sg) { x.songs.push({ title: sg.title, year: S().year, q: sg.q, streams: Math.round(x.fans * 2), peak: 0, kind: 'single' }); }); addFans(x, x.fans * 0.03); return 'I put the leaked songs out officially. Fans loved getting them early.'; } },

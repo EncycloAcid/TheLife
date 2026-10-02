@@ -230,7 +230,7 @@ TL.sports = (function () {
       if ((e && e.stage === 'uni' && e.year >= 3 && x.skill >= 93) || (!e && x.skill >= 88 && me().age <= 25)) { x.drafted = true; s.pending.push({ id: 'sp_draft', data: {} }); }
     }
   }
-  def('sp_recruit', { cond: function () { return !S().edu; }, build: function () {
+  def('sp_recruit', { cond: function () { var x = st(); return !S().edu && !!(x && SPORTS[x.sport]); }, build: function () {
     var x = st(), sp = SPORTS[x.sport], unis = TL.real ? TL.real.universities(S().country) : [{ name: 'State University', tier: 1 }];
     var womens = /Spelman|Wellesley|Barnard|Smith College|Bryn Mawr|Mount Holyoke|Ochanomizu|Ewha/;
     var good3 = x.skill >= 82, pool = U.shuffle(unis.filter(function (u) { return (good3 ? u.tier >= 2 : u.tier <= 2) && !(me().gender === 'M' && womens.test(u.name)); })).slice(0, x.skill >= 82 ? 3 : x.skill >= 72 ? 2 : 1);
@@ -243,7 +243,7 @@ TL.sports = (function () {
     ch.push({ label: 'Hang it up and move on', run: function () { return 'I decided my ' + sp.name.toLowerCase() + ' days are behind me.'; } });
     return { icon: sp.icon, title: 'College recruiting', text: 'College coaches have been watching my ' + sp.name.toLowerCase() + ' games. ' + pool.length + ' school' + (pool.length > 1 ? 's' : '') + ' offered me an athletic scholarship.', choices: ch };
   } });
-  def('sp_draft', { build: function () {
+  def('sp_draft', { cond: function () { var x = st(); return !!(x && SPORTS[x.sport]); }, build: function () {
     var x = st(), sp = SPORTS[x.sport], team = TL.real && TL.real.team(sp.pro, S().country, me().gender) || 'a pro team';
     var round = x.skill >= 95 ? 'the first round' : x.skill >= 91 ? 'the second round' : x.skill >= 87 ? 'a late round' : 'as an undrafted free agent';
     var tour = /Tour$/.test(team);

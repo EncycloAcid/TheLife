@@ -135,6 +135,7 @@ app/                   Android wrapper (Kotlin, WebView + WebViewAssetLoader)
 tools/build_maps.py    Rebuilds js/mapdata.js from Natural Earth (public domain) via world-atlas
 tools/fetch_logos.py   Refreshes the bundled logos
 tests/simulate.js      Headless fuzz test that plays hundreds of random lives
+tests/events.js        Event sweep: every event and choice in many random states
 ```
 
 ## Tests
@@ -144,3 +145,9 @@ node tests/simulate.js 200
 ```
 
 This plays 200 families (plus their heirs) by tapping random menu items and choices every year. It fails on any exception or corrupted state, such as NaN money or stats out of range. Each family runs on its own seed, so a failure prints a command that replays it exactly, e.g. `node tests/simulate.js 1 123456`. Pass a second number to choose the starting seed.
+
+```bash
+node tests/events.js 120
+```
+
+The event sweep builds every event in the game and runs every choice across 120 random lives (modern, Rome, medieval England and the Viking Age, royal or not), both as-is and right after quitting the current job, so an event can never crash when the career or person it was about is gone.

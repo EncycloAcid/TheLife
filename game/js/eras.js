@@ -242,6 +242,7 @@ TL.coup = (function () {
   }
   function see(title, icon) { var s = S(), h = s.era || (s.era = { seen: [], served: [] }); if (h.seen.length < 40) h.seen.push({ year: s.year, age: me().age, icon: icon, title: title }); }
   TL.events.defs.coup_threat = { id: 'coup_threat', scripted: true, build: function () {
+    if (!TL.ancient.on()) return null;
     var c = TL.ancient.on() && TL.ancient.era().coupCfg && TL.ancient.era().coupCfg('throne'), r = st().rule;
     if (!c || !r) return null;
     var t = c.rule.threat;

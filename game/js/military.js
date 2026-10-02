@@ -329,7 +329,7 @@ TL.military = (function () {
   def('mil_conscript_done', { cond: function () { return m() && m().active; }, build: function () {
     return { icon: '🎖️', title: 'Discharged', text: 'My mandatory service is complete.', choices: [{ label: 'Head home', run: function () { var t = rankTitle(); discharge('Honorable'); E.stat('happy', 12); return good('I completed my military service as ' + E.an(t) + '. Freedom! 🎉'); } }] };
   } });
-  def('mil_sf', { build: function () {
+  def('mil_sf', { cond: function () { var x = m(); return !!(x && x.active); }, build: function () {
     var x = m(), names = { army: ['Ranger Assessment and Selection', 'the 75th Ranger Regiment', 'Green Beret (Special Forces)'], marines: ['MARSOC Assessment and Selection', 'Marine Raiders', 'Marine Raider'], navy: ['BUD/S', 'the Navy SEALs', 'Navy SEAL'], airforce: ['Pararescue Indoctrination', 'Pararescue', 'Pararescueman (PJ)'] }[x.branch] || ['special forces selection', 'the special forces', 'Special Forces Operator'];
     var p = U.clamp(0.08 + (me().athl - 70) / 80 + (me().health - 70) / 200 + (me().happy - 50) / 300, 0.03, 0.55);
     return { icon: '🪖', title: names[0], text: 'Weeks of no sleep, cold water and endless miles. Most candidates quit. My odds: about ' + Math.round(p * 100) + '%.', choices: [

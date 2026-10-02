@@ -9,7 +9,10 @@ var rng = 1;
 function seed(x) { rng = x >>> 0; }
 function rand() { rng = (rng + 0x6D2B79F5) >>> 0; var t = rng; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
 var SMath = Object.create(Math); SMath.random = rand;
-var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON };
+// In-memory storage, wiped before each family so a failing seed replays exactly on its own.
+var mem = {};
+var storage = { getItem: function (k) { return k in mem ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };
+var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON, localStorage: storage };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 ['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'history', 'ancient', 'medieval', 'viking', 'eras', 'mapdata', 'maps', 'recap'].forEach(function (f) {
@@ -78,6 +81,7 @@ for (var n = 0; n < N; n++) {
   }
 }
 function playFamily() {
+  mem = {}; menus = []; dialogs = [];
   // Half of families start somewhere in history (js/history.js, js/ancient.js, js/medieval.js, js/viking.js).
   var era = rand();
   if (era < 0.13) TL.engine.newLife({ country: 'Roman Empire', year: 40 + Math.floor(rand() * 120), royal: rand() < 0.25 }); // js/ancient.js

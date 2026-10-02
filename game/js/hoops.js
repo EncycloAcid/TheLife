@@ -176,7 +176,7 @@ TL.hoops = (function () {
 
   // ---------------------------------------------------------------- events
   function def(id, o) { o.id = id; o.scripted = true; TL.events.defs[id] = o; }
-  def('hoops_recruit', { build: function () {
+  def('hoops_recruit', { cond: function () { return !!h(); }, build: function () {
     var x = h(), st = x.stars || stars(x.ovr);
     var offers = st >= 2 ? U.shuffle(COLLEGES.slice()).slice(0, st >= 4 ? 4 : st >= 3 ? 3 : 1) : [];
     var ch = offers.map(function (c) { return { label: '🎓 ' + c + (st >= 4 && c === offers[0] ? ' (full ride)' : ''), run: function () {
@@ -190,14 +190,14 @@ TL.hoops = (function () {
     ch.push({ label: 'Hang up my sneakers', run: function () { x.stage = null; return 'I decided basketball isn\'t my future.'; } });
     return { icon: '🏀', title: 'College recruiting', text: (offers.length ? 'I\'m a ' + st + '-star recruit (' + cm2ft(x.cm) + ' ' + POS[x.pos] + '). ' + offers.length + ' program' + (offers.length > 1 ? 's' : '') + ' offered me a scholarship.' : 'No college programs offered me a scholarship.'), choices: ch };
   } });
-  def('hoops_declare', { build: function () {
+  def('hoops_declare', { cond: function () { return !!h(); }, build: function () {
     var x = h();
     return { icon: '🏀', title: 'The ' + league() + ' Draft', text: 'Scouts are talking. Draft experts project me as ' + projection(x.ovr) + '. Should I declare?', choices: [
       { label: 'Declare for the draft', run: function () { S().edu = null; return draft(); } },
       { label: 'Stay in school another year', run: function () { E.stat('smarts', 2); return 'I\'m staying in school to develop my game.'; } }
     ] };
   } });
-  def('hoops_draft', { build: function () {
+  def('hoops_draft', { cond: function () { return !!h(); }, build: function () {
     return { icon: '🏀', title: 'Draft night', text: 'My college career is over. Time to see where I land.', choices: [{ label: 'Watch the draft', run: function () { return draft(); } }] };
   } });
   function projection(o) { return o >= 80 ? 'a lottery pick' : o >= 74 ? 'a first-round pick' : o >= 68 ? 'a second-round pick' : 'undrafted'; }
@@ -222,7 +222,7 @@ TL.hoops = (function () {
     E.achieve('ceo');
     return good('With the ' + U.ordinal(pick) + ' pick in the ' + yr + ' ' + league() + ' Draft, the ' + team + ' selected me! 🧢');
   }
-  def('hoops_fa', { build: function () {
+  def('hoops_fa', { cond: function () { var x = h(); return !!(x && x.stage === 'pro'); }, build: function () {
     var x = h(), o = x.ovr, ch = [], lg = x.league;
     // Teams only want players good enough for the league.
     var interest = o >= 76 ? U.rand(2, 3) : o >= 71 ? U.rand(1, 2) : o >= 67 && U.chance(0.4) ? 1 : 0;
@@ -236,7 +236,7 @@ TL.hoops = (function () {
     ch.push({ label: '🧓 Retire', run: function () { return retire(); } });
     return { icon: '✍️', title: 'Free agency', text: 'My contract with the ' + x.team + ' is up. I\'m ' + me().age + ' and rated ' + o + '. Here are my options:', choices: ch };
   } });
-  def('hoops_shoe', { build: function () {
+  def('hoops_shoe', { cond: function () { var x = h(); return !!(x && x.stage === 'pro'); }, build: function () {
     var x = h(), b = U.pick(SHOES), pay = Math.round(salaryFor(x.ovr) * U.randf(0.15, 0.5) + 200000 * (S().fame / 50));
     return { icon: '👟', title: 'Shoe deal', text: b + ' wants to sign me to a signature sneaker deal worth ' + E.fmt(E.$(pay)) + ' a year.', choices: [
       { label: 'Sign with ' + b, run: function () { x.shoe = { brand: b, pay: pay }; E.fame(6); return good('I signed a shoe deal with ' + b + '! My first signature sneaker drops next year. 👟'); } },
