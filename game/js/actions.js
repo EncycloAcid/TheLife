@@ -1472,7 +1472,7 @@ TL.actions = (function () {
       if (me().age >= 16) items.push({ icon: '🕴️', label: 'Organized crime', sub: S().mob ? TL.features.mobTitle() : 'Join a crime family', onClick: TL.features.mobMenu });
       D.CRIMES.forEach(function (c) {
         var dis = me().age < c.minAge || (c.needsJob && !(S().job && !S().job.partTime && !S().job.fame));
-        items.push({ icon: '🦹', label: c.name, sub: c.desc + (me().age < c.minAge ? ' · age ' + c.minAge + '+' : c.needsJob && dis ? ' · needs a job' : ''), disabled: dis, onClick: function () { commitCrime(c); } });
+        items.push({ icon: c.icon || '🦹', label: c.name, sub: c.desc + (me().age < c.minAge ? ' · age ' + c.minAge + '+' : c.needsJob && dis ? ' · needs a job' : ''), disabled: dis, onClick: function () { commitCrime(c); } });
       });
       return items;
     });

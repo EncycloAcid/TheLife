@@ -274,15 +274,15 @@ TL.data = (function () {
 
   // Crimes: p = success chance baseline, reward range, sentence years if caught.
   var CRIMES = [
-    { id: 'shoplift', name: 'Shoplift', minAge: 8, p: 0.7, reward: [20, 400], jail: [0, 1], karma: -3, desc: 'Swipe something from a store' },
-    { id: 'pickpocket', name: 'Pickpocket', minAge: 10, p: 0.6, reward: [10, 900], jail: [0, 1], karma: -4, desc: 'Lift a wallet from a stranger' },
-    { id: 'vandalism', name: 'Vandalism', minAge: 10, p: 0.7, reward: [0, 0], jail: [0, 1], karma: -3, desc: 'Spray-paint a building' },
-    { id: 'burglary', name: 'Burglary', minAge: 14, p: 0.5, reward: [300, 18000], jail: [1, 4], karma: -8, desc: 'Break into a house' },
-    { id: 'gta', name: 'Grand Theft Auto', minAge: 14, p: 0.45, reward: [2000, 60000], jail: [2, 6], karma: -9, desc: 'Steal a car and fence it' },
-    { id: 'fraud', name: 'Credit Card Fraud', minAge: 16, p: 0.5, reward: [1000, 30000], jail: [2, 7], karma: -8, desc: 'Run stolen card numbers', stat: 'smarts' },
-    { id: 'embezzle', name: 'Embezzle from Employer', minAge: 18, p: 0.55, reward: [5000, 250000], jail: [3, 12], karma: -10, desc: 'Skim from your company', needsJob: true, stat: 'smarts' },
-    { id: 'bank', name: 'Bank Robbery', minAge: 18, p: 0.3, reward: [20000, 900000], jail: [8, 25], karma: -15, desc: 'Rob a bank' },
-    { id: 'heist', name: 'Jewelry Heist', minAge: 20, p: 0.2, reward: [100000, 5000000], jail: [10, 30], karma: -15, desc: 'Pull off a high-end heist', stat: 'smarts' }
+    { id: 'shoplift', icon: '🛍️', name: 'Shoplift', minAge: 8, p: 0.7, reward: [20, 400], jail: [0, 1], karma: -3, desc: 'Swipe something from a store' },
+    { id: 'pickpocket', icon: '👛', name: 'Pickpocket', minAge: 10, p: 0.6, reward: [10, 900], jail: [0, 1], karma: -4, desc: 'Lift a wallet from a stranger' },
+    { id: 'vandalism', icon: '🎨', name: 'Vandalism', minAge: 10, p: 0.7, reward: [0, 0], jail: [0, 1], karma: -3, desc: 'Spray-paint a building' },
+    { id: 'burglary', icon: '🏚️', name: 'Burglary', minAge: 14, p: 0.5, reward: [300, 18000], jail: [1, 4], karma: -8, desc: 'Break into a house' },
+    { id: 'gta', icon: '🚗', name: 'Grand Theft Auto', minAge: 14, p: 0.45, reward: [2000, 60000], jail: [2, 6], karma: -9, desc: 'Steal a car and fence it' },
+    { id: 'fraud', icon: '💳', name: 'Credit Card Fraud', minAge: 16, p: 0.5, reward: [1000, 30000], jail: [2, 7], karma: -8, desc: 'Run stolen card numbers', stat: 'smarts' },
+    { id: 'embezzle', icon: '💼', name: 'Embezzle from Employer', minAge: 18, p: 0.55, reward: [5000, 250000], jail: [3, 12], karma: -10, desc: 'Skim from your company', needsJob: true, stat: 'smarts' },
+    { id: 'bank', icon: '🏦', name: 'Bank Robbery', minAge: 18, p: 0.3, reward: [20000, 900000], jail: [8, 25], karma: -15, desc: 'Rob a bank' },
+    { id: 'heist', icon: '💎', name: 'Jewelry Heist', minAge: 20, p: 0.2, reward: [100000, 5000000], jail: [10, 30], karma: -15, desc: 'Pull off a high-end heist', stat: 'smarts' }
   ];
 
   var CLUBS = ['Chess Club', 'Drama Club', 'Debate Team', 'Robotics Club', 'Student Council', 'Band', 'Choir', 'Art Club', 'Yearbook', 'Science Olympiad'];
