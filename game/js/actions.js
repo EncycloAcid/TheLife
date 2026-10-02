@@ -130,13 +130,13 @@ TL.actions = (function () {
       if (me().age >= 5) items.push({ icon: '😜', label: 'Prank', onClick: function () { prank(p); } });
       if (me().age >= 4) items.push({ icon: '😠', label: 'Argue', onClick: function () { argue(p); } });
       if (me().age >= 6) items.push({ icon: '🤬', label: 'Insult', onClick: function () { insult(p); } });
-      if (me().age >= 18 && p.age >= 18) items.push({ icon: '⚖️', label: 'Sue', sub: 'Lawyer fee ' + E.fmt(E.$(5000)), onClick: function () { TL.world.sue(p); } });
+      if (me().age >= 18 && p.age >= 18) items.push({ icon: '⚖️', label: 'Sue', sub: (TL.ancient && TL.ancient.on() ? 'Advocate fee ' : 'Lawyer fee ') + E.fmt(E.$(5000)), onClick: function () { TL.world.sue(p); } });
 
       if (['partner', 'fiance', 'spouse'].indexOf(r) >= 0) {
         items.push({ section: 'Romance' });
         items.push({ icon: '🍷', label: 'Date night', onClick: function () { dateNight(p); } });
         if (me().age >= 16) items.push({ icon: '👶', label: 'Try for a baby', onClick: function () { tryBaby(p); } });
-        if (me().age >= 21) items.push({ icon: '🧬', label: 'Fertility options', sub: 'IVF, surrogacy, adoption', onClick: function () { fertility(p); } });
+        if (me().age >= 21) items.push({ icon: TL.ancient && TL.ancient.on() ? '🙏' : '🧬', label: 'Fertility options', sub: TL.ancient && TL.ancient.on() ? 'Prayers, remedies, adoption' : 'IVF, surrogacy, adoption', onClick: function () { fertility(p); } });
         if (r === 'partner' && me().age >= 18) items.push({ icon: '💍', label: 'Propose', onClick: function () { propose(p); } });
         if (r === 'fiance') items.push({ icon: '💒', label: 'Plan the wedding', onClick: function () { wedding(p); } });
         if (r === 'spouse') items.push({ icon: '🧾', label: 'Divorce', danger: true, onClick: function () { ui().confirm('Divorce ' + p.first + '?', 'You may lose half your money and property.', function () { done(divorce(p)); }); } });
@@ -220,7 +220,8 @@ TL.actions = (function () {
   ];
   var KID_TOPICS = [['dinosaurs', []], ['cartoons', ['Lazy']], ['animals', ['Kind']], ['school', ['Nerdy']], ['superheroes', ['Athletic']], ['their drawings', ['Artsy']]];
   function conversation(p) {
-    var kid = p.age < 10 || me().age < 10, picks = U.shuffle((kid ? KID_TOPICS : TOPICS).slice()).slice(0, 4);
+    var anc = TL.ancient && TL.ancient.on(), T = anc ? TL.ancient.TOPICS : TOPICS, KT = anc ? TL.ancient.KID_TOPICS : KID_TOPICS;
+    var kid = p.age < 10 || me().age < 10, picks = U.shuffle((kid ? KT : T).slice()).slice(0, 4);
     ui().choose('💬 Talk to ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What do we talk about?', picks.map(function (t) {
       return { label: U.cap(t[0]), fn: function () {
         var f = diminish('talk' + p.id), sc = likeScore(p, t[1]), risky = !!t[2], stub = (p.traits || []).indexOf('Stubborn') >= 0;
@@ -358,6 +359,7 @@ TL.actions = (function () {
   function tryBaby(p) {
     var m = me();
     if (S().flags.pregnant) return done(nope('We\'re already expecting!'));
+    if (m.gender === p.gender && TL.ancient && TL.ancient.on()) return done(nope('We\'ll need to adopt. See "Fertility options".'));
     if (m.gender === p.gender && m.gender === 'M') return done(nope('We\'ll need a surrogate or adoption. See "Fertility options".'));
     if (m.gender === p.gender) return done(nope('We\'ll need IVF, a surrogate or adoption. See "Fertility options".'));
     if (used('baby')) return done(nope('We should wait until next year to try again.'));
@@ -378,6 +380,13 @@ TL.actions = (function () {
     if (s.flags.pregnant) return done(nope('We\'re already expecting!'));
     var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
     var ivf = E.$(15000), surro = E.$(80000), opts = [];
+    // Ancient Rome: prayers and remedies instead of clinics.
+    if (TL.ancient && TL.ancient.on()) {
+      if (mom) opts.push({ label: '🙏 Pray to Juno Lucina', fn: function () { if (used('ivf')) return done(nope('I\'ve already prayed to Juno this year.')); use('ivf'); E.addMoney(-E.$(500)); if (U.chance(mom.age < 35 ? 0.25 : 0.08)) { S().flags.pregnant = { with: p.id }; return done(good('Juno heard our prayers! ' + (mom === m ? 'I\'m' : p.first + ' is') + ' pregnant! 🤰')); } done('We left offerings at the temple of Juno Lucina.'); } });
+      if (mom) opts.push({ label: '🌿 Fertility remedies', fn: function () { if (used('remedy')) return done(nope('Enough remedies for one year.')); use('remedy'); E.addMoney(-E.$(300)); E.stat('health', -U.rand(0, 4)); if (U.chance(0.1)) { S().flags.pregnant = { with: p.id }; return done(good('The midwife\'s remedy worked! A baby is on the way. 🤰')); } done('The midwife\'s potions tasted awful and did nothing.'); } });
+      opts.push({ label: '🏛️ Adopt a child', fn: adopt });
+      return ui().choose('Fertility options', 'How do we want to grow our family with ' + p.first + '?', opts);
+    }
     if (mom) opts.push({ label: '🧪 IVF (' + E.fmt(ivf) + ')', fn: function () {
       if (used('ivf')) return done(nope('The clinic says we need to wait until next year for another round.'));
       if (!afford(ivf)) return done(noMoney(ivf));
@@ -1423,7 +1432,7 @@ TL.actions = (function () {
   function adopt() {
     var cost = E.$(25000);
     if (!afford(cost)) return done(noMoney(cost));
-    ui().choose('Adoption', 'Adopting a child costs ' + E.fmt(cost) + ' in agency fees.', [
+    ui().choose('Adoption', 'Adopting a child costs ' + E.fmt(cost) + (TL.ancient && TL.ancient.on() ? ' in legal fees and gifts to the birth family.' : ' in agency fees.'), [
       { label: 'Adopt a baby', fn: function () { doAdopt(0, cost); } },
       { label: 'Adopt a young child', fn: function () { doAdopt(U.rand(3, 10), cost); } },
       { label: 'Not now', fn: function () { } }
@@ -1537,7 +1546,9 @@ TL.actions = (function () {
   function achievementsMenu() {
     ui().menu('Achievements', function () {
       var mine = S().ach, g = E.loadGlobal().ach;
-      return [{ info: true, html: '<p class="muted">' + mine.length + ' this life · ' + g.length + '/' + D.ACHIEVEMENTS.length + ' all-time</p>' }].concat(D.ACHIEVEMENTS.map(function (a) {
+      // Roman lives only list achievements that make sense there.
+      var list = TL.ancient && TL.ancient.on() ? D.ACHIEVEMENTS.filter(function (a) { return TL.ancient.ACH.indexOf(a.id) >= 0; }) : D.ACHIEVEMENTS;
+      return [{ info: true, html: '<p class="muted">' + mine.length + ' this life · ' + g.length + '/' + D.ACHIEVEMENTS.length + ' all-time</p>' }].concat(list.map(function (a) {
         var got = mine.indexOf(a.id) >= 0, ever = g.indexOf(a.id) >= 0;
         return { icon: got || ever ? a.icon : '🔒', label: a.name, sub: a.desc, right: got ? '✔' : ever ? '☆' : '' };
       }));

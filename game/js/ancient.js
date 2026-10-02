@@ -102,7 +102,7 @@ TL.ancient = (function () {
     if (j.career === 'r_charioteer') return 'Charioteer of the ' + (j.faction || 'Greens');
     return lvlName(c, j.level);
   }
-  var NPC_JOBS = ['Farmer', 'Laborer', 'Baker', 'Blacksmith', 'Merchant', 'Fisherman', 'Innkeeper', 'Potter', 'Weaver', 'Scribe', 'Legionary', 'Shopkeeper', 'Fuller', 'Homemaker', 'Homemaker', 'Midwife', 'Shepherd'];
+  var NPC_JOBS = ['Farmer', 'Laborer', 'Baker', 'Blacksmith', 'Merchant', 'Fisherman', 'Innkeeper', 'Potter', 'Weaver', 'Scribe', 'Legionary', 'Shopkeeper', 'Fuller', 'Homemaker', 'Shepherd'];
   function npcJob(age) { return age < 15 ? 'Child' : age >= 62 && U.chance(0.6) ? 'Elder' : U.pick(NPC_JOBS); }
   var STREETS = ['in the Subura', 'on the Via Sacra', 'near the Forum', 'on the Aventine', 'across the Tiber', 'by the Circus Maximus', 'on the Esquiline'];
   function place() { var c = S().city; return c === 'Rome' ? U.pick(STREETS) : 'in ' + c; }
@@ -674,9 +674,17 @@ TL.ancient = (function () {
     if (a.cls === 'freed') out.push(['🕊️', 'Freedom', 'Born into slavery, died free']);
     return out;
   }
+  // Conversation topics for Roman lives (actions.conversation).
+  var TOPICS = [['the chariot races', ['Athletic', 'Outgoing']], ['the gladiator games', ['Athletic']], ['philosophy', ['Nerdy']], ['poetry and music', ['Artsy']],
+    ['money and trade', ['Greedy', 'Ambitious']], ['their dreams and goals', ['Ambitious', 'Romantic']], ['love and marriage', ['Romantic', 'Jealous']],
+    ['jokes and gossip', ['Funny', 'Cheerful']], ['charity for the poor', ['Kind', 'Generous']], ['old memories', ['Loyal', 'Kind']],
+    ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics in the Senate', [], true], ['the gods', [], true], ['the weather', []]];
+  var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
+  // Achievements that fit a Roman life.
+  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius'];
   function birthOptions() { return [['rome', '🏛️ Ancient Rome · AD 40–160']]; }
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, CLASS_NAME: CLASS_NAME };
+    emperor: emperor, birthOptions: birthOptions, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();
