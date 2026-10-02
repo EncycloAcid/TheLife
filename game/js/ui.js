@@ -248,6 +248,9 @@ TL.ui = (function () {
     var parts = [];
     var rt = TL.features.royalTitle() || (TL.dynasty && TL.dynasty.title());
     parts.push((rt ? rt + ' ' : '') + m.first + ' ' + m.last + ' died at the age of ' + m.age + ' from ' + s.cause + ' in ' + E.countryName(s.country) + '.');
+    // A ruler of an earlier era is remembered by an epithet (js/eras.js).
+    var lg = TL.ancient && TL.ancient.on() && TL.coup && TL.coup.legacy('the realm');
+    if (lg) parts.push('History remembers ' + (m.gender === 'M' ? 'him' : 'her') + ' as ' + (S().job && TL.ancient.st().rule ? E.jobTitle(S().job).split(' ')[0] + ' ' : '') + lg.name + '.');
     var careers = s.jobHistory.map(function (h) { return h.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
     if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? E.an(careers[careers.length - 2]) + ' and later ' : '') + E.an(careers[careers.length - 1]) + '.');
     var deg = E.highestDegree();

@@ -903,7 +903,8 @@ TL.eras.rome = (function () {
       out.push(['🦉', SCHOOLS[a.philo.school][0] + ' philosopher', U.plural(a.philo.works.length, 'treatise') + (best ? ', best known for "' + best.title + '"' : '') + (a.philo.tutor ? ' · tutored the imperial heir' : '')]);
     }
     if (a.decorations || a.veteran) out.push(['🦅', 'Legions', (a.veteran ? 'Served 25 years' : 'Served') + (a.decorations ? ', ' + U.plural(a.decorations, 'decoration') : '')]);
-    if (a.ruled) out.push(['👑', me().gender === 'F' ? 'Empress' : 'Emperor', 'Ruled Rome for ' + U.plural(a.ruled.years, 'year')]);
+    var lg = TL.coup.legacy('Rome');
+    if (lg) out.push(['👑', (me().gender === 'F' ? 'Empress ' : 'Emperor ') + lg.name, lg.text]);
     if (a.cls === 'freed') out.push(['🕊️', 'Freedom', a.freedHow === 'revolt' ? 'Won freedom by leading a revolt' : 'Born into slavery, died free']);
     if ((S().jobHistory || []).concat(S().job ? [S().job] : []).some(function (h) { return h.career === 'r_vestal'; })) out.push(['🔥', 'Vestal Virgin', S().ach.indexOf('vestal') >= 0 ? 'Kept the sacred fire for thirty years' : 'Served the goddess Vesta']);
     return out;

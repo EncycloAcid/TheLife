@@ -943,7 +943,8 @@ TL.eras.medieval = (function () {
     if (s.ach.indexOf('knighted') >= 0 || a.tourney) out.push(['🛡️', 'Knighthood', (s.ach.indexOf('knighted') >= 0 ? 'Knighted' : 'Squire') + (a.tourney ? ', ' + U.plural(a.tourney, 'tournament') + ' won' : '') + (a.ransoms ? ', ' + U.plural(a.ransoms, 'prisoner') + ' ransomed' : '')]);
     if (a.campaigns.length) out.push(['⚔️', 'At war', a.campaigns.slice(0, 3).join(', ') + (a.campaigns.length > 3 ? ' and more' : '')]);
     if (a.crusader) out.push(['✝️', 'Crusader', 'Took the cross']);
-    if (a.ruled) out.push(['👑', male() ? 'King' : 'Queen', 'Ruled England for ' + U.plural(a.ruled.years, 'year')]);
+    var lg = TL.coup.legacy('England');
+    if (lg) out.push(['👑', (male() ? 'King ' : 'Queen ') + lg.name, lg.text]);
     if (a.revoltWon) out.push(['🔥', 'Rebel', 'Led the rising that freed the serfs']);
     var court = hist.filter(function (h) { return h.career === 'm_court'; });
     if (court.length) out.push(['👑', 'At court', court.map(function (h) { return h.title; }).filter(Boolean).pop() || 'Served the king']);

@@ -759,7 +759,8 @@ TL.eras.viking = (function () {
   function recapRow() {
     var a = st(), s = S(), out = [], hist = (s.jobHistory || []).concat(s.job ? [{ career: s.job.career }] : []);
     var had = function (id) { return hist.some(function (h) { return h.career === id; }); };
-    if (a.ruled) out.push(['👑', male() ? 'King' : 'Queen', 'Ruled Norway for ' + U.plural(a.ruled.years, 'year')]);
+    var lg = TL.coup.legacy('Norway');
+    if (lg) out.push(['👑', (male() ? 'King ' : 'Queen ') + lg.name, lg.text]);
     if (a.raids.length) out.push(['⛵', 'Viking', 'Raided ' + a.raids.slice(0, 3).join(', ') + (a.raids.length > 3 ? ' and more' : '')]);
     if (a.voyages.length) out.push(['🧭', 'Explorer', 'Sailed to ' + a.voyages.filter(function (v, i, arr) { return arr.indexOf(v) === i; }).join(', ')]);
     if (had('v_volva')) out.push(['🔮', 'Völva', 'Saw the fates of many']);

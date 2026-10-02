@@ -193,6 +193,7 @@ TL.coup = (function () {
         if (count('rule_' + x.id)) return done(nope('Once a year is enough for that.'));
         if (cost && S().money < cost) return done(nope('The treasury can\'t afford ' + E.fmt(cost) + '.'));
         bump('rule_' + x.id); if (cost) E.addMoney(-cost);
+        r.done = r.done || {}; r.done[x.id] = (r.done[x.id] || 0) + 1; // for the reign's epithet
         if (x.war) {
           var w = U.chance(0.45 + r.guard / 400);
           if (!w && U.chance(0.08)) { E.die(x.death); return done(bad(x.lose)); }
@@ -241,6 +242,32 @@ TL.coup = (function () {
     return items;
   }
   function see(title, icon) { var s = S(), h = s.era || (s.era = { seen: [], served: [] }); if (h.seen.length < 40) h.seen.push({ year: s.year, age: me().age, icon: icon, title: title }); }
+  // How history remembers a reign: an epithet earned by what the ruler did (v1.41).
+  function epithet(r) {
+    var d = r.done || {}, s = S(), won = (st().map && st().map.won) || 0, laws = (r.laws || []).length;
+    if (won >= 5) return 'the Conqueror';
+    if ((d.purge || 0) >= 3 || s.karma <= 15) return 'the Cruel';
+    if (r.years >= 25) return r.pop >= 55 ? 'the Great' : 'the Old';
+    if ((d.build || 0) + (d.stone || 0) >= 3) return 'the Builder';
+    if (laws >= 3 && s.karma >= 55) return 'the Lawgiver';
+    if (s.karma >= 80) return 'the Good';
+    if (r.pop >= 75) return 'the Beloved';
+    if (r.pop <= 20) return 'the Hated';
+    if ((d.war || 0) + won >= 3) return 'the Warlike';
+    if ((d.games || 0) + (d.feast || 0) + (d.rings || 0) >= 4) return 'the Generous';
+    if (r.years <= 1) return 'the Brief';
+    if (s.karma >= 60) return 'the Just';
+    return 'the Steady';
+  }
+  // One recap line for a reign: years, conquests, laws and the epithet.
+  function legacy(realm) {
+    var a = st(), r = a.ruled;
+    if (!r) return null;
+    var won = (a.map && a.map.won) || 0, laws = (r.laws || []).length, bits = ['Ruled ' + realm + ' for ' + U.plural(r.years, 'year')];
+    if (won) bits.push(U.plural(won, 'conquest'));
+    if (laws) bits.push(U.plural(laws, 'new law'));
+    return { name: me().first + ' ' + epithet(r), text: bits.join(' · ') };
+  }
   TL.events.defs.coup_threat = { id: 'coup_threat', scripted: true, build: function () {
     if (!TL.ancient.on()) return null;
     var c = TL.ancient.on() && TL.ancient.era().coupCfg && TL.ancient.era().coupCfg('throne'), r = st().rule;
@@ -288,7 +315,7 @@ TL.coup = (function () {
     if (TL.dynasty) TL.dynasty.sibling(rule.heirName); // the family keeps the throne; it may still come to me
     return false;
   }
-  return { menu: menu, yearly: yearly, crown: crown, reignYear: reignYear, reignItems: reignItems, inherits: inherits, lostThrone: lostThrone, endRule: endRule, danger: danger };
+  return { menu: menu, yearly: yearly, crown: crown, reignYear: reignYear, reignItems: reignItems, inherits: inherits, lostThrone: lostThrone, endRule: endRule, danger: danger, epithet: epithet, legacy: legacy };
 })();
 
 /* v1.37: born to rule. In every early era a life can start as the ruler's
