@@ -81,9 +81,9 @@ TL.health = (function () {
     var m = st();
     delete m.hidden[name];
     E.addCondition(name);
-    var stg = name === 'Cancer' ? ' (stage ' + m.stage.Cancer + ')' : '';
+    var stg = name === 'Cancer' && !E.ancient() ? ' (stage ' + m.stage.Cancer + ')' : '';
     if (name === 'Cancer' && m.stage.Cancer === 1) E.achieve('caught_early');
-    E.log('🩺 ' + how + ' I was diagnosed with ' + name.toLowerCase() + stg + '.', 'bad');
+    E.log('🩺 ' + how + ' I was diagnosed with ' + E.illName(name).toLowerCase() + stg + '.', 'bad');
   }
   // Runs once a year from engine.yearlyHealth, before conditions do damage.
   function year() {
@@ -102,7 +102,7 @@ TL.health = (function () {
     // Untreated cancer spreads.
     if (m.stage.Cancer && has('Cancer') && m.stage.Cancer < 4 && U.chance(0.5)) {
       m.stage.Cancer++;
-      if (E.hasCondition('Cancer')) E.log('📈 My cancer has progressed to stage ' + m.stage.Cancer + '.', 'bad');
+      if (E.hasCondition('Cancer')) E.log(E.ancient() ? '📈 The tumor has grown worse.' : '📈 My cancer has progressed to stage ' + m.stage.Cancer + '.', 'bad');
     }
     if (!has('Cancer')) delete m.stage.Cancer;
     // Untreated heart disease can mean a heart attack.
@@ -120,7 +120,7 @@ TL.health = (function () {
   }
   function deathCause() {
     var m = st(), n = Object.keys(m.hidden)[0];
-    return n ? 'undiagnosed ' + n.toLowerCase() : null;
+    return n ? (E.ancient() ? 'a hidden illness' : 'undiagnosed ' + n.toLowerCase()) : null;
   }
 
   // ------------------------------------------------------------ events

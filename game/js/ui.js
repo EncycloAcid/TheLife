@@ -424,7 +424,7 @@ TL.ui = (function () {
       ['📱 Followers', s.followers.toLocaleString()], ['💰 Net worth', E.fmt(E.netWorth())],
       ['🎓 Education', E.degreeName(deg)], ['🎂 Birthday', D.MONTHS[m.month - 1] + ' ' + m.day + ' (' + m.zodiac + ')'],
       ['🌍 Country', E.country().flag + ' ' + s.country], ['🏙️ City', s.city || '—'], ['🏡 Home', E.homeLabel()], ['📝 Bucket list', TL.features.bucketCount()], ['👑 Generation', s.gen], ['🦹 Criminal record', s.record.length ? s.record.map(function (r) { return r.crime; }).join(', ') : 'Clean'],
-      ['🩺 Conditions', s.conditions.length ? s.conditions.join(', ') : 'None'], ['🏅 Achievements', s.ach.length]
+      ['🩺 Conditions', s.conditions.length ? s.conditions.map(E.illName).join(', ') : 'None'], ['🏅 Achievements', s.ach.length]
     ];
     if (s.royal) rows.splice(3, 0, ['👑 Royalty', TL.features.royalTitle() + ' · ' + s.royal.house + ' · popularity ' + s.royal.popularity + '%']);
     if (s.mob) rows.push(['🕴️ Crime family', TL.features.mobTitle()]);

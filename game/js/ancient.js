@@ -546,7 +546,7 @@ TL.ancient = (function () {
       if (age >= 14 && age <= 20 && free && a.edu) items.push({ icon: '🎙️', label: a.edu === 'rhetoric' ? 'Practice oratory' : 'Study rhetoric', sub: 'Opens law and politics', right: E.fmt(den(150)), onClick: function () { var c = den(150); if (s.money < c && a.cls !== 'patrician') return done(nope('Rhetoric teachers cost ' + E.fmt(c) + '.')); if (count('r_rhet')) return done(nope('Enough speeches for one year.')); bump('r_rhet'); if (a.cls !== 'patrician') E.addMoney(-c); E.stat('smarts', 4); if (a.edu !== 'rhetoric' && U.chance(0.4)) { a.edu = 'rhetoric'; return done(good('My teacher says I\'m ready to speak in the Forum. 🎙️')); } done('I practiced speeches until my voice gave out.'); } });
       if (age < 6 || (!(age >= 6 && age <= 13 && free) && !(age >= 14 && age <= 20 && free && a.edu))) items.push({ info: true, html: '<p class="muted">' + (a.edu === 'rhetoric' ? 'Trained in rhetoric.' : a.edu ? 'I can read and write.' : free ? 'School is for children from 6 to 13.' : 'Enslaved children aren\'t sent to school.') + '</p>' });
       items.push({ section: 'Health' });
-      items.push({ icon: '⚕️', label: 'Visit a physician', sub: s.conditions.length ? s.conditions.join(', ') : 'Herbs, bloodletting and Greek medicine', onClick: physician });
+      items.push({ icon: '⚕️', label: 'Visit a physician', sub: s.conditions.length ? s.conditions.map(illName).join(', ') : 'Herbs, bloodletting and Greek medicine', onClick: physician });
       items.push({ section: 'Fun & Social' });
       if (age >= 6) items.push({ icon: '⚔️', label: y() >= 80 && s.city === 'Rome' ? 'Watch the games at the Colosseum' : 'Watch the gladiator games', onClick: function () { var f = 1 / (1 + count('r_games')); bump('r_games'); E.stat('happy', 7 * f); done(U.pick(['A retiarius netted his opponent and the crowd went wild.', 'There were lions, a mock sea battle and fifty pairs of gladiators.', 'My favorite gladiator won again! The crowd chanted his name.'])); } });
       if (age >= 8) items.push({ icon: '🐎', label: 'Go to the chariot races', sub: 'Bet on a faction', onClick: races });
@@ -577,10 +577,18 @@ TL.ancient = (function () {
       items.push({ icon: '🩸', label: 'Bloodletting', sub: 'Balance the four humors', onClick: function () { if (count('r_blood')) return done(nope('I\'ve been bled enough for one year.')); bump('r_blood'); E.stat('health', -U.rand(2, 8)); E.stat('happy', 2); done('They opened a vein and drained a cup of blood. I felt faint but strangely better.'); } });
       s.conditions.forEach(function (n) {
         var ill = D.illness(n) || { cure: 0.4 };
-        items.push({ icon: '🌿', label: 'Treat ' + n.toLowerCase(), sub: Math.round(ill.cure * 55) + '% chance it works', right: E.fmt(den(15)), onClick: function () {
+        if (ill.incurable || !ill.cure) {
+          items.push({ icon: '🌿', label: 'Ease ' + illName(n).toLowerCase(), sub: 'No cure, but remedies help', right: E.fmt(den(10)), onClick: function () {
+            if (count('r_treat' + n)) return done(nope('That has to wait until next year.'));
+            bump('r_treat' + n); E.addMoney(-den(10)); E.stat('health', U.rand(3, 7));
+            done('The physician\'s herbs and diet eased my ' + illName(n).toLowerCase().replace(/^(an?|the) /, '') + ' for a while.');
+          } });
+          return;
+        }
+        items.push({ icon: '🌿', label: 'Treat ' + illName(n).toLowerCase(), sub: Math.round(ill.cure * 55) + '% chance it works', right: E.fmt(den(15)), onClick: function () {
           if (count('r_treat' + n)) return done(nope('That has to wait until next year.'));
           bump('r_treat' + n); E.addMoney(-den(15));
-          if (U.chance(ill.cure * 0.55)) { E.removeCondition(n); E.stat('health', 6); return done(good('The physician\'s remedy worked. I\'m over my ' + n.toLowerCase() + '.')); }
+          if (U.chance(ill.cure * 0.55)) { E.removeCondition(n); E.stat('health', 6); return done(good('The physician\'s remedy worked. I\'m over my ' + illName(n).toLowerCase().replace(/^(an?|the) /, '') + '.')); }
           done(bad('The remedy did nothing.'));
         } });
       });
@@ -618,7 +626,7 @@ TL.ancient = (function () {
     if (count('r_god')) return done(nope('I\'ve already made my offering this year.'));
     bump('r_god'); E.addMoney(-den(2)); E.karma(2);
     var lucky = U.chance(0.35);
-    if (g[1] === 'Asclepius' && lucky && s.conditions.length) { var n = s.conditions[0]; if (U.chance(0.3)) { E.removeCondition(n); return done(good('I slept in the temple of Asclepius and dreamed of a snake. When I woke, my ' + n.toLowerCase() + ' was gone.')); } }
+    if (g[1] === 'Asclepius' && lucky && s.conditions.length) { var n = s.conditions[0]; if (U.chance(0.3)) { E.removeCondition(n); return done(good('I slept in the temple of Asclepius and dreamed of a snake. When I woke, my ' + illName(n).toLowerCase().replace(/^(an?|the) /, '') + ' was gone.')); } }
     if (g[1] === 'Fortuna' && lucky) { E.addMoney(den(U.rand(10, 60))); return done(good('Fortuna smiled on me. I found a purse of coins on my way home. 🎡')); }
     if (g[1] === 'Venus' && lucky) { E.stat('looks', 3); E.stat('happy', 5); return done(good('Venus blessed me. I feel radiant. ❤️')); }
     if (g[1] === 'Mars' && lucky) { me().athl = Math.min(100, me().athl + 3); return done(good('Mars filled me with strength. ⚔️')); }
@@ -796,9 +804,17 @@ TL.ancient = (function () {
   var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
   // Achievements that fit a Roman life.
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor'];
+  // What a Roman would call each condition (the game still tracks the modern one).
+  var ILL = { 'Common Cold': 'A Head Cold', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Sore Throat', 'Asthma': 'Breathlessness',
+    'Acne': 'Spots', 'Migraine': 'Headaches', 'PTSD': 'War Terrors', 'Depression': 'Melancholia', 'Anxiety': 'Nervous Dread', 'Insomnia': 'Sleeplessness',
+    'Food Poisoning': 'A Stomach Sickness', 'Kidney Stones': 'Bladder Stones', 'Pneumonia': 'A Lung Fever', 'High Blood Pressure': 'An Excess of Blood',
+    'Type 2 Diabetes': 'The Wasting Thirst', 'Arthritis': 'Aching Joints', 'Heart Disease': 'A Weak Heart', 'Cancer': 'A Cancer', 'Dementia': 'Senility',
+    'Osteoporosis': 'Brittle Bones', 'Chlamydia': 'A Shameful Disease', 'Herpes': 'Sores', 'Broken Arm': 'A Broken Arm', 'Broken Leg': 'A Broken Leg',
+    'Concussion': 'A Blow to the Head', 'Alcoholism': 'Drunkenness', 'Gambling Addiction': 'A Gambling Habit', 'Nicotine Addiction': 'A Bad Habit' };
+  function illName(n) { return ILL[n] || n; }
   function birthOptions() { return [['rome', '🏛️ Ancient Rome · AD 40–160']]; }
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
+    emperor: emperor, birthOptions: birthOptions, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();

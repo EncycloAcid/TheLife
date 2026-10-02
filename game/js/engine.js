@@ -11,6 +11,8 @@ TL.engine = (function () {
   function k() { var c = country(); return c.ancient ? c.k : c.k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
   function ancient() { return TL.S && country().ancient ? country().ancient : null; }
   // "AD 79" for ancient lives, "1979" otherwise.
+  // A condition's name as people of the time would say it (js/ancient.js).
+  function illName(n) { return TL.S && country().ancient && TL.ancient ? TL.ancient.illName(n) : n; }
   function yearLabel(y) { return TL.S && country().ancient ? 'AD ' + y : String(y); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
@@ -880,7 +882,7 @@ TL.engine = (function () {
       if (ill.looks) stat('looks', ill.looks / 2);
       if (ill.smarts) stat('smarts', ill.smarts / 2);
       var heal = ill.selfHeal != null ? ill.selfHeal : (ill.incurable || ill.addiction ? 0 : 0.2);
-      if (heal && U.chance(heal)) { removeCondition(n); log('I recovered from ' + n.toLowerCase() + '.'); }
+      if (heal && U.chance(heal)) { removeCondition(n); log('I recovered from ' + illName(n).toLowerCase() + '.'); }
     });
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
@@ -889,7 +891,7 @@ TL.engine = (function () {
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
-        log('🤒 I was diagnosed with ' + ill.name.toLowerCase() + '.', 'bad');
+        log('🤒 ' + (ancient() ? 'I fell ill with ' : 'I was diagnosed with ') + illName(ill.name).toLowerCase() + '.', 'bad');
       }
     });
     // happiness drift
@@ -905,7 +907,7 @@ TL.engine = (function () {
     if (m.health <= 0) {
       var c = s.conditions.filter(function (n) { var i = D.illness(n); return i && i.dmg >= 8; })[0];
       var hid = !c && TL.health && TL.health.deathCause();
-      return die(c ? 'complications from ' + c.toLowerCase() : hid || 'poor health');
+      return die(c ? 'complications from ' + illName(c).toLowerCase() : hid || 'poor health');
     }
     var hazard;
     // Earlier eras: far more children died young.
@@ -1394,7 +1396,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel,
+    ancient: ancient, yearLabel: yearLabel, illName: illName,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
