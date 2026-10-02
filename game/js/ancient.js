@@ -84,6 +84,7 @@ TL.ancient = (function () {
     r_gladiator: { id: 'r_gladiator', icon: '⚔️', name: 'Gladiator', levels: [['Tiro (Novice Gladiator)', 0], ['Gladiator', 0], ['Champion of the Arena', 0]] },
     r_charioteer: { id: 'r_charioteer', icon: '🐎', name: 'Chariot Racing', levels: [['Charioteer', 0]] },
     r_cursus: { id: 'r_cursus', icon: '🏛️', name: 'Politics', levels: [['Senator', 0]] },
+    r_philo: { id: 'r_philo', icon: '🦉', name: 'Philosophy', levels: [['Student of Philosophy', 0], ['Philosopher', 150], ['Teacher of Philosophy', 600], ['Head of the School', 2500]] },
     r_servus: { id: 'r_servus', icon: '⛓️', name: 'Servitude', levels: [['Household Slave', 40], ['Trusted Steward', 120]] }
   };
   function career(id) { return CAREERS.filter(function (c) { return c.id === id; })[0] || SPECIAL[id] || null; }
@@ -93,6 +94,7 @@ TL.ancient = (function () {
     var c = career(j.career); if (!c) return 0;
     if (j.career === 'r_cursus') return j.governor ? den(9000) : 0;
     if (j.career === 'r_gladiator' || j.career === 'r_charioteer') return 0; // they earn prize money
+    if (j.career === 'r_philo') return den((c.levels[Math.min(j.level, c.levels.length - 1)][1] + (st().philo && st().philo.pupils || 0) * 15) * (j.tutor ? 2 : 1));
     return Math.round(den(c.levels[Math.min(j.level, c.levels.length - 1)][1]) * (j.mult || 1));
   }
   function title(j) {
@@ -100,6 +102,7 @@ TL.ancient = (function () {
     if (j.career === 'r_cursus') return j.office ? j.office : j.governor ? 'Provincial Governor' : 'Senator';
     if (j.career === 'r_gladiator') return (j.style || 'Gladiator') + (j.level ? ' (' + lvlName(c, j.level).replace(/ \(.*\)/, '') + ')' : '');
     if (j.career === 'r_charioteer') return 'Charioteer of the ' + (j.faction || 'Greens');
+    if (j.career === 'r_philo') return j.tutor ? 'Imperial Tutor' : (st().philo ? SCHOOLS[st().philo.school][0] + ' ' : '') + lvlName(c, j.level);
     return lvlName(c, j.level);
   }
   var NPC_JOBS = ['Farmer', 'Laborer', 'Baker', 'Blacksmith', 'Merchant', 'Fisherman', 'Innkeeper', 'Potter', 'Weaver', 'Scribe', 'Legionary', 'Shopkeeper', 'Fuller', 'Homemaker', 'Shepherd'];
@@ -177,6 +180,7 @@ TL.ancient = (function () {
     if (j.career === 'r_gladiator') return gladiatorYear(j, c);
     if (j.career === 'r_charioteer') return charioteerYear(j);
     if (j.career === 'r_cursus') return cursusYear(j);
+    if (j.career === 'r_philo') return philoYear(j, c);
     var sv = j.career === 'r_servus' ? me().smarts : E.statValue(c.stat || 'smarts');
     j.perf = U.clamp(Math.round((j.perf || 50) + U.rand(-9, 8) + (sv - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0)), 0, 100);
     j.workHard = 0;
@@ -271,6 +275,83 @@ TL.ancient = (function () {
     E.achieve('freedom'); E.stat('happy', 30); see('Won my freedom', '🕊️');
   }
 
+  // ------------------------------------------------------------ philosophy
+  // [adjective, founder, what it teaches]
+  var SCHOOLS = {
+    stoic: ['Stoic', 'Zeno', 'Virtue is the only good. Accept what you cannot change.'],
+    epicurean: ['Epicurean', 'Epicurus', 'Seek quiet pleasures, friendship and freedom from fear.'],
+    cynic: ['Cynic', 'Diogenes', 'Reject wealth and convention. Live simply, like a dog.'],
+    platonist: ['Platonist', 'Plato', 'True reality is the world of ideas, beyond the senses.']
+  };
+  var WORK_TOPICS = ['Anger', 'Providence', 'the Happy Life', 'Friendship', 'Death', 'the Gods', 'Virtue', 'the Tranquility of the Mind', 'Duty', 'Nature', 'Pleasure', 'the Soul', 'Fate', 'the Shortness of Life', 'Clemency', 'Grief', 'Wealth', 'the Good Life'];
+  function ph() { var a = st(); return a.philo || (a.philo = { school: 'stoic', wisdom: 0, works: [], pupils: 0 }); }
+  function philoYear(j, c) {
+    var p = ph(), sc = p.school, s = S();
+    p.wisdom = Math.min(100, p.wisdom + U.rand(2, 5) + Math.round((me().smarts - 50) / 25) + (j.workHard || 0) * 2); j.workHard = 0;
+    // Each school shapes a life.
+    if (sc === 'stoic' && me().happy < 45) E.stat('happy', 5);
+    if (sc === 'epicurean') E.stat('happy', 3);
+    if (sc === 'platonist') E.stat('smarts', 1);
+    if (sc === 'cynic') { E.fame(1); if (s.money > den(100)) { E.addMoney(-Math.round(s.money * 0.2)); E.log('🛢️ True to my Cynic teaching, I gave away much of what I owned.'); } }
+    var need = [0, 20, 45, 75][j.level + 1];
+    if (j.level < c.levels.length - 1 && p.wisdom >= need && (j.level < 2 || p.works.length >= 3) && U.chance(0.6)) {
+      j.level++; E.log('🦉 I am now ' + E.an(title(j)) + '.', 'good'); E.stat('happy', 8); E.fame(3);
+      if (j.level === 3) { E.achieve('sage'); see('Led a school of philosophy', '🦉'); }
+    }
+    // Pupils drift away; how many a teacher can keep depends on rank.
+    p.pupils = U.clamp(p.pupils - (U.chance(0.4) ? 1 : 0), 0, 3 + j.level * 6);
+    // Domitian banished philosophers from Rome (AD 89 and 93-95).
+    if ((y() === 89 || y() === 93) && s.city === 'Rome' && !j.tutor) s.pending.push({ id: 'r_expelled' });
+    // Famous teachers get asked to tutor the emperor's heir.
+    if (!j.tutor && !p.askedTutor && j.level >= 3 && s.fame >= 40 && me().age >= 30 && U.chance(0.025)) { p.askedTutor = true; s.pending.push({ id: 'r_tutor' }); }
+    // Nero turned on his old tutor Seneca in AD 65.
+    if (j.tutor && emperor(y()) === 'Nero' && y() >= 62 && U.chance(0.35)) s.pending.push({ id: 'r_nero' });
+    return salary(j);
+  }
+  function becomePhilosopher() {
+    ui().choose('Choose a school', 'Which philosophy will guide my life?', Object.keys(SCHOOLS).map(function (k) {
+      var x = SCHOOLS[k];
+      return { label: x[0] + ' (' + x[1] + ')', fn: function () {
+        E.quitJob(true); hire('r_philo'); S().job.company = k === 'stoic' ? 'the Stoa' : k === 'platonist' ? 'the Academy' : k === 'epicurean' ? 'the Garden' : 'the streets';
+        var p = ph(); p.school = k; if (p.wisdom >= 20) S().job.level = 1;
+        done(good('I became a student of ' + x[0] + ' philosophy. "' + x[2] + '" 🦉'));
+      } };
+    }));
+  }
+  function writeTreatise() {
+    var p = ph(), j = S().job;
+    if (count('r_write')) return done(nope('One treatise a year is all the muses allow.'));
+    bump('r_write');
+    var t = 'On ' + U.pick(WORK_TOPICS.filter(function (w) { return p.works.every(function (x) { return x.title !== 'On ' + w; }); }).concat(['Virtue']));
+    var q = U.clamp(Math.round(p.wisdom * 0.6 + me().smarts * 0.3 + U.rand(-15, 20)), 1, 100);
+    p.works.push({ title: t, year: y(), q: q });
+    if (p.works.length >= 5) E.achieve('magnum_opus');
+    if (q >= 75) { E.fame(6); var g = den(U.rand(40, 200)); E.addMoney(g); see('Wrote "' + t + '"', '📜'); return done(good('My treatise "' + t + '" is being copied all over the empire. A patron sent me ' + E.fmt(g) + '. 📜')); }
+    if (q >= 45) { E.fame(2); return done('I finished "' + t + '". A few scholars admired it.'); }
+    done(bad('I finished "' + t + '". Even my pupils fell asleep reading it.'));
+  }
+  function debate() {
+    var p = ph();
+    if (count('r_debate')) return done(nope('I\'ve argued enough for one year.'));
+    bump('r_debate');
+    var foe = U.pick(['a famous Sophist', 'an arrogant Epicurean', 'a Stoic from Athens', 'a Cynic who barked at me', 'a senator who thinks philosophy is useless']);
+    if (U.chance(0.35 + p.wisdom / 200 + (me().smarts - 50) / 200)) { E.fame(4); p.pupils += U.rand(1, 3); return done(good('I debated ' + foe + ' in the Forum and won the crowd. New pupils followed me home.')); }
+    E.stat('happy', -5); done(bad('I debated ' + foe + ' and was humiliated in front of everyone.'));
+  }
+  function teach() {
+    var p = ph();
+    if (count('r_teach')) return done(nope('My pupils need time to think.'));
+    bump('r_teach');
+    p.pupils += U.rand(0, 2); p.wisdom = Math.min(100, p.wisdom + 1);
+    done('I taught ' + U.plural(Math.max(1, p.pupils), 'pupil') + ' under the colonnade. Teaching made my own thinking clearer.');
+  }
+  function meditate() {
+    var p = ph(), sc = p.school;
+    if (count('r_med')) return done(nope('I already spent a long time in thought this year.'));
+    bump('r_med'); p.wisdom = Math.min(100, p.wisdom + 2); E.stat('happy', 4); E.stat('health', 1);
+    done({ stoic: 'I wrote in my journal at dawn: "You have power over your mind, not outside events."', epicurean: 'I shared bread, olives and conversation with friends in my garden. Nothing more is needed.', cynic: 'I sat in the sun and asked passersby what they really needed. Most had no answer.', platonist: 'I contemplated the Forms until the shadows on the wall seemed less real.' }[sc]);
+  }
+
   // ------------------------------------------------------------ menus
   function hire(id) {
     var c = career(id);
@@ -288,6 +369,7 @@ TL.ancient = (function () {
         if (j) items.push({ icon: '💪', label: 'Work hard for my master', sub: 'Trust leads to responsibility', onClick: function () { if (count('r_work')) return done(nope('I already worked myself ragged this year.')); bump('r_work'); j.workHard = (j.workHard || 0) + 1; E.stat('health', -1); done('I worked from dawn to dusk.'); } });
         var price = den(1500);
         items.push({ icon: '🕊️', label: 'Buy my freedom', sub: 'My savings (peculium) can buy my manumission', right: E.fmt(price), onClick: function () { if (s.money < price) return done(nope('I need ' + E.fmt(price) + ' saved to buy my freedom.')); E.addMoney(-price); freeMe('my savings'); ui().back(); done(good('I paid ' + a.master + ' and walked out a free person.')); } });
+        if (age >= 14 && me().smarts >= 45) items.push({ icon: '🦉', label: 'Listen to the philosophers', sub: 'Epictetus was born a slave too', onClick: function () { if (count('r_listen')) return done(nope('I can only slip away once a year.')); bump('r_listen'); var p = ph(); p.wisdom = Math.min(100, p.wisdom + U.rand(3, 6)); E.stat('smarts', 2); done('While running errands I lingered by a philosopher teaching in the street. "Some things are up to us, and some are not." (wisdom ' + p.wisdom + ')'); } });
         items.push({ icon: '🏃', label: 'Run away', sub: 'Runaways are hunted and branded', danger: true, onClick: runaway });
         return items;
       }
@@ -299,6 +381,13 @@ TL.ancient = (function () {
           else if (!next) items.push({ info: true, html: '<p class="muted">I have held every office of the cursus honorum.</p>' });
         } else if (j.career === 'r_gladiator') {
           items.push({ icon: '🏋️', label: 'Train at the ludus', sub: 'Get stronger and faster', onClick: function () { if (count('r_train')) return done(nope('I already trained hard this year.')); bump('r_train'); me().athl = Math.min(100, me().athl + U.rand(2, 5)); done('I trained with the doctores until I could barely stand. 💪'); } });
+        } else if (j.career === 'r_philo') {
+          var p = ph();
+          items.push({ info: true, html: '<p class="muted">' + U.esc(SCHOOLS[p.school][0]) + ' · wisdom ' + p.wisdom + '/100 · ' + U.plural(p.works.length, 'treatise') + ' · ' + U.plural(p.pupils, 'pupil') + '</p>' });
+          items.push({ icon: '📜', label: 'Write a treatise', sub: p.works.length ? 'Latest: "' + p.works[p.works.length - 1].title + '"' : 'Put my ideas on papyrus', onClick: writeTreatise });
+          items.push({ icon: '🗣️', label: 'Debate in the Forum', sub: 'Win fame and pupils, or be humiliated', onClick: debate });
+          items.push({ icon: '🏛️', label: 'Teach my pupils', onClick: teach });
+          items.push({ icon: '🧘', label: { stoic: 'Morning reflection', epicurean: 'Dine with friends in the garden', cynic: 'Live in a barrel like Diogenes', platonist: 'Contemplate the Forms' }[p.school], onClick: meditate });
         } else if (j.career === 'r_charioteer') {
           items.push({ icon: '🐎', label: 'Train with my horses', onClick: function () { if (count('r_train')) return done(nope('My horses need rest.')); bump('r_train'); j.skill = Math.min(100, (j.skill || 20) + 4); done('I drove practice laps until the horses and I moved as one.'); } });
         } else {
@@ -320,6 +409,8 @@ TL.ancient = (function () {
       items.push({ icon: '🦅', label: 'Join the legions', sub: !male ? 'Only men may serve' : age < 17 || age > 35 ? 'Ages 17 to 35' : '25 years of service · pay ' + E.fmt(den(225)) + '/yr', disabled: !male || age < 17 || age > 35 || (j && j.career === 'r_legion'), onClick: enlist });
       items.push({ icon: '⚔️', label: 'Become a gladiator', sub: 'Glory, prize money, and death', disabled: age < 17 || (j && j.career === 'r_gladiator') || (y() >= 200 && !male), onClick: function () { pickStyle(); } });
       items.push({ icon: '🐎', label: 'Race chariots', sub: 'The Greens, the Blues, the Reds or the Whites', disabled: age < 15 || (j && j.career === 'r_charioteer'), onClick: pickFaction });
+      var canPhil = (a.edu || (a.philo && a.philo.wisdom >= 15)) && me().smarts >= 50;
+      items.push({ icon: '🦉', label: 'Become a philosopher', sub: canPhil ? 'Stoic, Epicurean, Cynic or Platonist' : 'Needs schooling and a sharp mind', disabled: !canPhil || age < 16 || (j && j.career === 'r_philo'), onClick: becomePhilosopher });
       var canPol = (a.cls === 'patrician' || a.cls === 'equestrian') && a.edu === 'rhetoric';
       items.push({ icon: '🏛️', label: 'Enter politics', sub: canPol ? 'The cursus honorum, from quaestor to consul' : 'Needs a patrician or equestrian family and rhetoric school', disabled: !canPol || age < 28 || (j && j.career === 'r_cursus'), onClick: function () { E.quitJob(true); hire('r_cursus'); done(good('I entered public life. My first goal: quaestor at 30.')); } });
       if (j && j.years >= 15 && age >= 50) items.push({ section: ' ' }, { icon: '🏖️', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
@@ -329,7 +420,7 @@ TL.ancient = (function () {
   function card() {
     var s = S(), a = st(), j = s.job;
     var line = j ? E.jobTitle(j) + (j.company && !/r_(cursus|gladiator|charioteer|legion)/.test(j.career) ? ' · ' + j.company : '') : s.retired ? 'Retired' : 'Not working';
-    var extra = j && j.career === 'r_gladiator' ? a.wins + ' wins · ' + a.losses + ' losses' : j && j.career === 'r_charioteer' ? a.raceWins + ' wins in ' + a.races + ' races' : j && j.career === 'r_legion' ? U.plural(j.years, 'year') + ' served' + (a.decorations ? ' · ' + U.plural(a.decorations, 'decoration') : '') : j && j.career === 'r_cursus' ? (a.offices.length ? 'Held: ' + a.offices.join(', ') : 'No offices yet') : j ? 'Pay ' + E.fmt(E.jobSalary(j)) + '/yr' : '';
+    var extra = j && j.career === 'r_gladiator' ? a.wins + ' wins · ' + a.losses + ' losses' : j && j.career === 'r_charioteer' ? a.raceWins + ' wins in ' + a.races + ' races' : j && j.career === 'r_legion' ? U.plural(j.years, 'year') + ' served' + (a.decorations ? ' · ' + U.plural(a.decorations, 'decoration') : '') : j && j.career === 'r_cursus' ? (a.offices.length ? 'Held: ' + a.offices.join(', ') : 'No offices yet') : j && j.career === 'r_philo' ? 'Wisdom ' + ph().wisdom + ' · ' + U.plural(ph().works.length, 'treatise') + ' · ' + U.plural(ph().pupils, 'pupil') : j ? 'Pay ' + E.fmt(E.jobSalary(j)) + '/yr' : '';
     return '<div class="kv"><b>' + U.esc(line) + '</b>' + (extra ? '<br><span class="muted">' + U.esc(extra) + '</span>' : '') + '<br><span class="muted">' + CLASS_NAME[a.cls] + ' · Emperor ' + emperor(s.year) + '</span></div>';
   }
   function apply(c) {
@@ -652,6 +743,25 @@ TL.ancient = (function () {
   sdef('r_condemned', { build: function () {
     return { icon: '⚖️', title: 'Condemned', text: 'The magistrate sentenced me to fight in the arena.', choices: [{ label: 'Face the arena', run: function () { E.quitJob(true); hire('r_gladiator'); S().job.style = 'Murmillo'; S().job.company = 'the Ludus Magnus'; var b = bout(S().job); return b.dead ? bad(b.text) : b.win ? good('I survived my first fight. ' + b.text) : b.text; } }] };
   } });
+  sdef('r_expelled', { build: function () {
+    return { icon: '📜', title: 'Philosophers banished', text: 'Emperor Domitian has expelled all philosophers from Rome. They call us troublemakers.', choices: [
+      { label: 'Move to Athens', run: function () { S().city = 'Athens'; ph().pupils = Math.max(0, ph().pupils - 2); return 'I sailed for Athens, where philosophy is still welcome. Some pupils followed me.'; } },
+      { label: 'Keep teaching in secret', run: function () { if (U.chance(0.35)) { E.stat('health', -15); E.addMoney(-Math.round(Math.max(0, S().money) * 0.3)); return bad('I was caught teaching, beaten and fined.'); } E.fame(3); return good('I taught in back rooms and gardens. Forbidden ideas spread faster.'); } }
+    ] };
+  } });
+  sdef('r_tutor', { build: function () {
+    var em = emperor(y());
+    return { icon: '👑', title: 'A summons to the palace', text: 'Emperor ' + em + ' wants me to tutor the imperial heir in philosophy.', choices: [
+      { label: 'Accept', run: function () { var j = S().job; if (!j) return 'The offer was withdrawn.'; j.tutor = true; ph().tutor = true; E.fame(12); E.achieve('imperial_tutor'); see('Tutored the imperial heir', '👑'); return good('I moved into the palace on the Palatine Hill. The future of the empire is in my hands.'); } },
+      { label: 'Decline politely', run: function () { E.karma(2); return 'A philosopher should keep his distance from power. Seneca learned that the hard way.'; } }
+    ] };
+  } });
+  sdef('r_nero', { build: function () {
+    return { icon: '🗡️', title: 'Nero\'s suspicion', text: 'Nero accuses me of plotting against him. Soldiers are at my door with an order to take my own life, as Seneca did.', choices: [
+      { label: 'Face death calmly, like a philosopher', run: function () { E.die('the order of Emperor Nero'); return 'I spoke to my friends of the soul until the end.'; } },
+      { label: 'Flee Rome in the night', run: function () { if (U.chance(0.5)) { var j = S().job; if (j) j.tutor = false; S().city = 'Athens'; return good('I escaped to Athens with nothing but my scrolls.'); } E.die('the soldiers of Emperor Nero'); return bad('They caught me at the city gate.'); } }
+    ] };
+  } });
   sdef('r_governor', { build: function () {
     var j = S().job; if (!j || !j.governor) return null;
     return { icon: '🗺️', title: 'Governor of ' + j.governor, text: 'Governors grow rich. Some honestly, some by squeezing the provincials.', choices: [
@@ -670,6 +780,10 @@ TL.ancient = (function () {
     if (a.offices.length) out.push(['🏛️', 'Public life', 'Held ' + a.offices.join(', ')]);
     if (a.wins || a.losses) out.push(['⚔️', 'Gladiator', a.wins + ' wins, ' + a.losses + ' losses']);
     if (a.races) out.push(['🐎', 'Charioteer', a.raceWins + ' wins in ' + a.races + ' races']);
+    if (a.philo && (a.philo.works.length || (S().jobHistory || []).some(function (h) { return h.career === 'r_philo'; }) || (S().job && S().job.career === 'r_philo'))) {
+      var best = a.philo.works.slice().sort(function (x, z) { return z.q - x.q; })[0];
+      out.push(['🦉', SCHOOLS[a.philo.school][0] + ' philosopher', U.plural(a.philo.works.length, 'treatise') + (best ? ', best known for "' + best.title + '"' : '') + (a.philo.tutor ? ' · tutored the imperial heir' : '')]);
+    }
     if (a.decorations || a.veteran) out.push(['🦅', 'Legions', (a.veteran ? 'Served 25 years' : 'Served') + (a.decorations ? ', ' + U.plural(a.decorations, 'decoration') : '')]);
     if (a.cls === 'freed') out.push(['🕊️', 'Freedom', 'Born into slavery, died free']);
     return out;
@@ -681,7 +795,7 @@ TL.ancient = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics in the Senate', [], true], ['the gods', [], true], ['the weather', []]];
   var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
   // Achievements that fit a Roman life.
-  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius'];
+  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor'];
   function birthOptions() { return [['rome', '🏛️ Ancient Rome · AD 40–160']]; }
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
