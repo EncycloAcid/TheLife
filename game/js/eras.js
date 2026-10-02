@@ -581,6 +581,55 @@ TL.dynasty = (function () {
     return [y.how === 'adopted' ? ['👑', 'Caesar', 'Adopted heir of Emperor ' + y.hist] : ['👑', c.heir[gi(me())], y.heir ? 'Born heir to ' + c.realm + ', but never crowned' : 'Born to the royal family, passed over for the crown']];
   }
 
+  // ---- an heir's life has its own events (v1.38), in every early era
+  function hdef(id, o) {
+    ['rome', 'medieval', 'viking'].forEach(function (eid) {
+      var d = {}; Object.keys(o).forEach(function (k) { d[k] = o[k]; });
+      d.id = id + '_' + eid; d.ancient = eid; d.w = o.w || 6;
+      var cond = o.cond;
+      d.cond = function () { var y = dyn(); return !!(y && royal() && !y.regent && cfg() && (!cond || cond(y))); };
+      TL.events.defs[d.id] = d;
+    });
+  }
+  hdef('dy_ill', { min: 10, w: 4, cond: function (y) { var p = ruler(); return !!(p && y.heir && parentLike(p) && p.age >= 40); }, build: function () {
+    var p = ruler(), c = cfg(), y = dyn();
+    return { icon: '🤒', title: fill('{ruler} is ill', p, c), text: fill('My {kin} has a fever and has not left bed for a week. The court is whispering about what comes next.', p, c), choices: [
+      { label: 'Stay at ' + E.his(p) + ' bedside', run: function () { E.rel(p, 12); grow('craft', 3); return good(fill('I sat with my {kin} day and night. ' + U.cap(E.he(p)) + ' squeezed my hand and called me ' + (me().gender === 'M' ? 'a good son' : 'a good daughter') + '.', p, c)); } },
+      { label: 'Quietly gather support, just in case', run: function () { grow('support', 12); if (U.chance(0.35)) { E.rel(p, -20); return bad(fill('My {kin} recovered, and heard who I had been meeting while ' + E.he(p) + ' lay sick. ' + U.cap(E.he(p)) + ' has not forgotten.', p, c)); } return fill('A few great men promised me their loyalty "if the worst happens". My {kin} pulled through without hearing of it.', p, c); } },
+      { label: 'Pay for the best physicians (' + E.fmt(c.great[3]) + ')', run: function () { if (S().money < c.great[3]) return 'I didn\'t have the money. The court physicians did their best.'; E.addMoney(-c.great[3]); p.health = Math.min(100, (p.health || 50) + 25); E.rel(p, 6); return good(fill('The physicians bled, purged and prayed, and my {kin} got better. ' + U.cap(E.he(p)) + ' knows who paid for them.', p, c)); } }
+    ] };
+  } });
+  hdef('dy_tutor', { min: 8, max: 15, w: 5, build: function () {
+    var c = cfg(), cost = c.show[3];
+    return { icon: '🧑‍🏫', title: 'A famous teacher', text: 'The most learned teacher in ' + c.realm + ' has offered to take charge of my education. Everyone at court says a future ruler needs one.', choices: [
+      { label: 'Study with the master (' + E.fmt(cost) + ')', run: function () { if (S().money < cost) { grow('craft', 3); return 'The treasury refused to pay. I learned what I could from the old court clerks.'; } E.addMoney(-cost); grow('craft', 12); E.stat('smarts', U.rand(4, 8)); if (!st().edu && c.edu) st().edu = c.edu; return good('Years of lessons in law, history and how men really think. I see the realm differently now.'); } },
+      { label: 'Spend my days riding and hunting', run: function () { E.stat('happy', 6); me().athl = Math.min(100, me().athl + 4); return 'Books can wait. I rode until the horses were tired.'; } }
+    ] };
+  } });
+  hdef('dy_match', { min: 13, max: 24, w: 5, cond: function () { return !E.partner(); }, build: function () {
+    var c = cfg(), R = era().coupCfg('throne').rule, g = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(g === 'F' ? R.brides : R.grooms);
+    return { icon: '💌', title: 'A royal match', text: 'Envoys have come to propose a marriage between me and ' + who + '. An alliance would make my claim much stronger.', choices: [
+      { label: 'Agree to the match', run: function () { var cty = TL.data.country(S().country), sp = E.addPerson({ role: me().age >= 16 ? 'spouse' : 'fiance', gender: g, age: me().age + U.rand(-3, 3), rel: U.rand(30, 60) }); sp.first = U.pick(g === 'F' ? cty.female : cty.male); sp.job = 'Royal consort'; grow('support', 12); if (me().age >= 16) E.achieve('married'); return good((me().age >= 16 ? 'I married ' : 'I was betrothed to ') + sp.first + ', ' + who + '. Their family\'s swords stand behind me now. 💍'); } },
+      { label: 'Refuse: I will choose for myself', run: function () { grow('love', 5); grow('support', -6); E.stat('happy', 3); return 'The envoys went home offended. The people liked my spirit; the great men of ' + c.realm + ' did not.'; } }
+    ] };
+  } });
+  hdef('dy_rival', { min: 15, w: 5, cond: function (y) { return y.heir && E.people('sibling').some(function (q) { return q.age >= 13; }); }, build: function () {
+    var c = cfg(), sib = E.people('sibling').filter(function (q) { return q.age >= 13; }).sort(function (a, b) { return b.age - a.age; })[0];
+    return { icon: '🗡️', title: 'A rival at court', text: 'My ' + kin(sib) + ' ' + sib.first + ' has been feasting with the great men of ' + c.realm + ' and saying ' + E.he(sib) + ' would make a better ruler than me.', choices: [
+      { label: 'Make peace with ' + E.him(sib), run: function () { E.rel(sib, 15); E.karma(3); return good('We talked late into the night. ' + sib.first + ' swore to stand behind me.'); } },
+      { label: 'Have ' + E.him(sib) + ' sent far away', run: function () { E.rel(sib, -30); grow('support', 6); E.karma(-5); return sib.first + ' was given a post at the far edge of ' + c.realm + '. ' + U.cap(E.he(sib)) + ' left without saying goodbye.'; } },
+      { label: 'Ignore it', run: function () { grow('support', -6); return 'The whispering went on. Some of the great men are listening to ' + E.him(sib) + ' now.'; } }
+    ] };
+  } });
+  hdef('dy_rumor', { min: 17, w: 4, cond: function (y) { var p = ruler(); return !!(p && y.heir && parentLike(p)); }, build: function () {
+    var p = ruler(), c = cfg();
+    return { icon: '👂', title: 'Dangerous rumors', text: fill('Someone told my {kin} that I am plotting to take the throne early. ' + U.cap(E.he(p)) + ' looked at me strangely at dinner.', p, c), choices: [
+      { label: 'Swear loyalty before the whole court', run: function () { E.rel(p, 12); grow('support', -3); return good(fill('I knelt before my {kin} in front of everyone. The rumors died that day.', p, c)); } },
+      { label: 'Find out who started it', run: function () { if (U.chance(0.5)) { E.rel(p, 8); grow('support', 5); return good('It was a jealous courtier. My ' + kin(p) + ' sent him away, and trusts me more than ever.'); } E.rel(p, -8); return bad('I never found out. My ' + kin(p) + ' still watches me.'); } },
+      { label: 'Laugh it off', run: function () { E.rel(p, -6); return 'I laughed. My ' + kin(p) + ' did not.'; } }
+    ] };
+  } });
+
   return { reigning: reigning, fallen: fallen, sibling: sibling, deathCause: deathCause, royal: royal, altered: altered, title: title, born: born, adopt: adopt, yearly: yearly, onDeath: onDeath, crowned: crowned,
     items: items, inherit: inherit, about: about, recap: recap };
 })();
