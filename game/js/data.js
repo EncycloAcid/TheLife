@@ -397,6 +397,15 @@ TL.data = (function () {
     { id: 'sage', name: 'The Sage', desc: 'Become head of a school of philosophy', icon: '🦉' },
     { id: 'magnum_opus', name: 'Magnum Opus', desc: 'Write five philosophical treatises', icon: '📜' },
     { id: 'imperial_tutor', name: 'Tutor to an Emperor', desc: 'Teach philosophy to the imperial heir', icon: '👑' },
+    { id: 'knighted', name: 'Arise, Sir Knight', desc: 'Be knighted in medieval England', icon: '🗡️' },
+    { id: 'crusader', name: 'Crusader', desc: 'Take the cross and come home alive', icon: '✝️' },
+    { id: 'black_death', name: 'The Great Mortality', desc: 'Survive the Black Death', icon: '💀' },
+    { id: 'master_craftsman', name: 'Masterpiece', desc: 'Become a guild master', icon: '🏆' },
+    { id: 'abbot', name: 'Prince of the Church', desc: 'Become an abbot, abbess or bishop', icon: '⛪' },
+    { id: 'town_air', name: 'Town Air Makes You Free', desc: 'Escape serfdom by living a year and a day in a town', icon: '🕊️' },
+    { id: 'tourney_champ', name: 'Champion of the Lists', desc: 'Win five tournaments', icon: '🐎' },
+    { id: 'neck_verse', name: 'The Neck Verse', desc: 'Escape the gallows by reading Latin', icon: '📖' },
+    { id: 'agincourt', name: 'We Happy Few', desc: 'Fight at Agincourt', icon: '🏹' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
@@ -440,7 +449,12 @@ TL.data = (function () {
       male: ['Gaius', 'Lucius', 'Marcus', 'Publius', 'Quintus', 'Titus', 'Gnaeus', 'Sextus', 'Aulus', 'Decimus', 'Tiberius', 'Servius', 'Manius', 'Appius', 'Numerius', 'Spurius'],
       female: ['Julia', 'Cornelia', 'Claudia', 'Livia', 'Aurelia', 'Valeria', 'Octavia', 'Antonia', 'Flavia', 'Caecilia', 'Sulpicia', 'Tullia', 'Junia', 'Fabia', 'Domitia', 'Lucilla', 'Agrippina', 'Faustina'],
       last: ['Aurelius', 'Cornelius', 'Valerius', 'Claudius', 'Fabius', 'Flavius', 'Junius', 'Antonius', 'Caecilius', 'Domitius', 'Sulpicius', 'Tullius', 'Livius', 'Octavius', 'Aemilius', 'Licinius', 'Pompeius', 'Sempronius', 'Calpurnius', 'Plautius', 'Vibius', 'Terentius'],
-      cities: ['Rome', 'Rome', 'Rome', 'Ostia', 'Pompeii', 'Neapolis', 'Capua', 'Mediolanum', 'Londinium', 'Lugdunum', 'Carthage', 'Alexandria', 'Antioch', 'Athens', 'Ephesus', 'Corinth', 'Herculaneum'] }
+      cities: ['Rome', 'Rome', 'Rome', 'Ostia', 'Pompeii', 'Neapolis', 'Capua', 'Mediolanum', 'Londinium', 'Lugdunum', 'Carthage', 'Alexandria', 'Antioch', 'Athens', 'Ephesus', 'Corinth', 'Herculaneum'] },
+    { name: 'Kingdom of England', ancient: 'medieval', flag: '🏰', cur: '🪙', k: 0.02, life: 70, tax: 0.05,
+      male: ['William', 'John', 'Robert', 'Richard', 'Thomas', 'Walter', 'Hugh', 'Henry', 'Roger', 'Geoffrey', 'Ralph', 'Simon', 'Adam', 'Gilbert', 'Nicholas', 'Stephen', 'Osbert', 'Piers'],
+      female: ['Alice', 'Agnes', 'Matilda', 'Joan', 'Isabel', 'Margery', 'Emma', 'Cecily', 'Margaret', 'Edith', 'Eleanor', 'Beatrice', 'Juliana', 'Avice', 'Maud', 'Rohese', 'Sibyl', 'Christina'],
+      last: ['Smith', 'Miller', 'Baker', 'Carter', 'Fletcher', 'Cooper', 'Thatcher', 'Mason', 'Taylor', 'Webster', 'Brewer', 'Ward', 'Shepherd', 'Atwood', 'Fisher', 'Cook', 'Reeve', 'Fowler', 'Archer', 'Hayward', 'Godwin', 'Langley'],
+      cities: ['London', 'London', 'London', 'York', 'York', 'Norwich', 'Bristol', 'Winchester', 'Lincoln', 'Canterbury', 'Oxford', 'Coventry', 'Exeter', 'Chester', 'Durham', 'Southampton'] }
   ];
 
   return {
@@ -465,6 +479,7 @@ TL.data = (function () {
       return COUNTRIES[0];
     },
     // Roman family names: Aurelius for men, Aurelia for women (js/ancient.js).
+    // Medieval English surnames stay as they are.
     gentile: function (last, gender) {
       var stem = String(last).replace(/(ius|ia|us|a)$/, '');
       if (stem === last) return last;

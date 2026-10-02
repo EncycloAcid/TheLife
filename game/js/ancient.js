@@ -7,7 +7,8 @@
  * fame in the arena and the circus. History happens: emperors come and go,
  * Rome burns, Vesuvius erupts, the Colosseum opens, the Antonine Plague
  * spreads. State lives in S.anc; ancient lands live in D.ANCIENT. */
-TL.ancient = (function () {
+TL.eras = TL.eras || {};
+TL.eras.rome = (function () {
   var U = TL.util, E = TL.engine, D = TL.data;
   function S() { return TL.S; }
   function me() { return S().me; }
@@ -20,7 +21,7 @@ TL.ancient = (function () {
   function bump(key) { var y = S().yearActs || (S().yearActs = {}); y[key] = (y[key] || 0) + 1; }
   // Amounts below are written in denarii; den() turns them into game money.
   function den(x) { return E.$(x * 100); }
-  function on() { return !!(TL.S && E.ancient()); }
+  function on() { return !!(TL.S && E.ancient() === 'rome'); }
   function st() {
     var s = S();
     return s.anc || (s.anc = { cls: 'plebeian', edu: null, inv: [], offices: [], wins: 0, losses: 0, races: 0, raceWins: 0, decorations: 0 });
@@ -661,7 +662,7 @@ TL.ancient = (function () {
   var WEDDINGS = [['🏠', 'Simple ceremony at home', 100], ['🌿', 'Traditional wedding and procession', 3000], ['🏛️', 'Grand wedding feast', 30000], ['🌳', 'Lavish wedding at a villa', 150000]];
 
   // ------------------------------------------------------------ events
-  function def(id, o) { o.id = id; o.ancient = true; o.w = o.w || 10; TL.events.defs[id] = o; }
+  function def(id, o) { o.id = id; o.ancient = 'rome'; o.w = o.w || 10; TL.events.defs[id] = o; }
   function sdef(id, o) { o.id = id; o.scripted = true; TL.events.defs[id] = o; }
   def('r_insula_fire', { min: 16, w: 5, cond: function () { return S().home.type === 'rent'; }, build: function () {
     return { icon: '🔥', title: 'Fire!', text: 'Smoke is pouring up the stairwell of my insula. The building is old and made of wood.', choices: [
@@ -813,8 +814,24 @@ TL.ancient = (function () {
     'Concussion': 'A Blow to the Head', 'Alcoholism': 'Drunkenness', 'Gambling Addiction': 'A Gambling Habit', 'Nicotine Addiction': 'A Bad Habit' };
   function illName(n) { return ILL[n] || n; }
   function birthOptions() { return [['rome', '🏛️ Ancient Rome · AD 40–160']]; }
+  // Era-specific wording for shared menus (actions.js, engine.js).
+  var TXT = {
+    matchSub: 'Most Roman marriages are arranged', matchEvent: 'r_marriage',
+    pranks: ['put salt in their wine', 'hid a frog in their sandal', 'painted a rude drawing on their door', 'swapped their honey for garum'],
+    argue: ['money', 'chores', 'their attitude', 'politics', 'the chariot races', 'which gods to honor', 'something they said years ago'],
+    bored: 'They kept yawning the whole time.', partySick: 'We drank so much unwatered wine that I was sick for days.',
+    dates: ['a feast at a taberna', 'the theater', 'the gardens of Maecenas', 'a picnic by the Tiber', 'the chariot races', 'the baths', 'the seashore at sunset'],
+    gifts: [['🍯', 'A pot of honey', 100], ['🌸', 'A garland of flowers', 200], ['📜', 'A scroll of poetry', 800], ['🏺', 'A jar of fine wine', 1500], ['💍', 'A gold ring', 20000], ['🐎', 'A horse', 150000]],
+    pray: ['🙏 Pray to Juno Lucina', 'I\'ve already prayed to Juno this year.', 'Juno heard our prayers!', 'We left offerings at the temple of Juno Lucina.'],
+    adoptIcon: '🏛️', adoptFee: ' in legal fees and gifts to the birth family.', lawyer: 'Advocate fee ',
+    parentsGone: 'With my parents gone, I rented an apartment in an insula.', moveOut: 'an insula apartment', rentHome: { type: 'rent', tier: 1, anc: 'apt', mult: 2.5 },
+    youngDeaths: ['a fever', 'a fall from a roof', 'drowning', 'a festering wound'],
+    npcDeaths: { old: ['old age', 'a fever', 'a stroke', 'a wasting sickness'], young: ['a fever', 'an accident', 'the pox', 'a stomach sickness'], adult: ['a fever', 'an accident at work', 'a festering wound', 'a lung fever'] },
+    child: 'Child'
+  };
+  function txt(k) { return TXT[k]; }
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
+    emperor: emperor, birthOptions: birthOptions, txt: txt, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();

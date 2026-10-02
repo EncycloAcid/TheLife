@@ -89,7 +89,7 @@ TL.actions = (function () {
       // Meeting people comes before school, work and old contacts.
       var meet = [{ section: 'Meet people' }];
       if (me().age >= 5) meet.push({ icon: '🤝', label: 'Make a new friend', sub: 'Put yourself out there', onClick: makeFriend });
-      if (TL.ancient && TL.ancient.on() && me().age >= 15 && !E.partner() && TL.ancient.st().cls !== 'slave') meet.push({ icon: '💍', label: 'Ask my family to find a match', sub: 'Most Roman marriages are arranged', onClick: function () { if (S().yearActs.r_match) return done(nope('My family is still searching.')); S().yearActs.r_match = 1; if (!U.chance(0.6)) return done('My family couldn\'t find a suitable match this year.'); S().pending.push({ id: 'r_marriage', data: {} }); ui().runPending(); } });
+      if (TL.ancient && TL.ancient.on() && me().age >= 15 && !E.partner() && TL.ancient.st().cls !== 'slave') meet.push({ icon: '💍', label: 'Ask my family to find a match', sub: TL.ancient.txt('matchSub'), onClick: function () { if (S().yearActs.r_match) return done(nope('My family is still searching.')); S().yearActs.r_match = 1; if (!U.chance(0.6)) return done('My family couldn\'t find a suitable match this year.'); S().pending.push({ id: TL.ancient.txt('matchEvent'), data: {} }); ui().runPending(); } });
       if (me().age >= 16 && !S().prison && (!TL.history || TL.history.exists('dating'))) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
       var at = -1;
       items.forEach(function (it, k) { if (at < 0 && it.section && ['School & Work', 'Others', 'Pets'].indexOf(it.section) >= 0) at = k; });
@@ -130,7 +130,7 @@ TL.actions = (function () {
       if (me().age >= 5) items.push({ icon: '😜', label: 'Prank', onClick: function () { prank(p); } });
       if (me().age >= 4) items.push({ icon: '😠', label: 'Argue', onClick: function () { argue(p); } });
       if (me().age >= 6) items.push({ icon: '🤬', label: 'Insult', onClick: function () { insult(p); } });
-      if (me().age >= 18 && p.age >= 18) items.push({ icon: '⚖️', label: 'Sue', sub: (TL.ancient && TL.ancient.on() ? 'Advocate fee ' : 'Lawyer fee ') + E.fmt(E.$(5000)), onClick: function () { TL.world.sue(p); } });
+      if (me().age >= 18 && p.age >= 18) items.push({ icon: '⚖️', label: 'Sue', sub: (TL.ancient && TL.ancient.on() ? TL.ancient.txt('lawyer') : 'Lawyer fee ') + E.fmt(E.$(5000)), onClick: function () { TL.world.sue(p); } });
 
       if (['partner', 'fiance', 'spouse'].indexOf(r) >= 0) {
         items.push({ section: 'Romance' });
@@ -207,7 +207,7 @@ TL.actions = (function () {
         var gain = Math.round((U.rand(4, 9) + sc * 6) * f);
         E.rel(p, Math.max(sc < 0 ? -2 : 1, gain)); E.stat('happy', Math.max(1, 3 + sc) * f);
         if (sc > 0) return done(good('I ' + x[5] + ' ' + p.first + '. ' + U.pick(['They loved it!', 'It was exactly their kind of thing.', 'We had the best time.'])));
-        if (sc < 0) return done(p.first + ' wasn\'t into it when we ' + x[5].replace(/ with$/, '') + '. ' + U.pick([TL.ancient && TL.ancient.on() ? 'They kept yawning the whole time.' : 'They checked their phone the whole time.', 'They were clearly bored.', 'Not their thing at all.']));
+        if (sc < 0) return done(p.first + ' wasn\'t into it when we ' + x[5].replace(/ with$/, '') + '. ' + U.pick([TL.ancient && TL.ancient.on() ? TL.ancient.txt('bored') : 'They checked their phone the whole time.', 'They were clearly bored.', 'Not their thing at all.']));
         return done('I ' + x[5] + ' ' + p.first + '.');
       } };
     }));
@@ -249,7 +249,7 @@ TL.actions = (function () {
     done('I gave ' + p.first + ' a big hug. 🤗');
   }
   function giftMenu(p) {
-    var gifts = TL.ancient && TL.ancient.on() ? [['🍯', 'A pot of honey', 100], ['🌸', 'A garland of flowers', 200], ['📜', 'A scroll of poetry', 800], ['🏺', 'A jar of fine wine', 1500], ['💍', 'A gold ring', 20000], ['🐎', 'A horse', 150000]] : [['🍫', 'Box of chocolates', 20], ['💐', 'Flowers', 40], ['📚', 'A book', 25], ['🧸', 'Stuffed animal', 30], ['🎮', 'Video game', 60], ['👜', 'Designer handbag', 1500], ['⌚', 'Luxury watch', 8000], ['🚗', 'A new car', 35000]];
+    var gifts = TL.ancient && TL.ancient.on() ? TL.ancient.txt('gifts') : [['🍫', 'Box of chocolates', 20], ['💐', 'Flowers', 40], ['📚', 'A book', 25], ['🧸', 'Stuffed animal', 30], ['🎮', 'Video game', 60], ['👜', 'Designer handbag', 1500], ['⌚', 'Luxury watch', 8000], ['🚗', 'A new car', 35000]];
     ui().menu('Gift for ' + p.first, function () {
       return gifts.map(function (g) {
         var cost = E.$(g[2]);
@@ -290,12 +290,12 @@ TL.actions = (function () {
   }
   function prank(p) {
     var anc = TL.ancient && TL.ancient.on();
-    var pr = U.pick(anc ? ['put salt in their wine', 'hid a frog in their sandal', 'painted a rude drawing on their door', 'swapped their honey for garum'] : ['put salt in their coffee', 'hid a whoopee cushion on their chair', 'filled their room with balloons', 'swapped their shampoo with mayo', 'changed their phone language to Klingon']);
+    var pr = U.pick(anc ? TL.ancient.txt('pranks') : ['put salt in their coffee', 'hid a whoopee cushion on their chair', 'filled their room with balloons', 'swapped their shampoo with mayo', 'changed their phone language to Klingon']);
     if (U.chance(0.55)) { E.rel(p, 4); E.stat('happy', 4); done('I ' + pr + '. ' + p.first + ' laughed it off! 😂'); }
     else { E.rel(p, -10); done(bad('I ' + pr + '. ' + p.first + ' was NOT amused.')); }
   }
   function argue(p) {
-    var topic = U.pick(TL.ancient && TL.ancient.on() ? ['money', 'chores', 'their attitude', 'politics', 'the chariot races', 'which gods to honor', 'something they said years ago'] : ['money', 'chores', 'their attitude', 'politics', 'a TV show', 'who ate the last slice of pizza', 'something they said years ago']);
+    var topic = U.pick(TL.ancient && TL.ancient.on() ? TL.ancient.txt('argue') : ['money', 'chores', 'their attitude', 'politics', 'a TV show', 'who ate the last slice of pizza', 'something they said years ago']);
     if (U.chance(me().smarts / 200)) { E.rel(p, -3); done('I argued with ' + p.first + ' about ' + topic + ' and won the argument.'); }
     else { E.rel(p, -U.rand(6, 14)); E.stat('happy', -3); done(bad('I got into a big fight with ' + p.first + ' about ' + topic + '.')); }
   }
@@ -345,14 +345,14 @@ TL.actions = (function () {
   function party(p) {
     var f = diminish('party');
     E.rel(p, 8 * f); E.stat('happy', 6 * f);
-    if (U.chance(0.1)) { E.stat('health', -8); return done(bad(TL.ancient && TL.ancient.on() ? 'We drank so much unwatered wine that I was sick for days.' : 'We partied so hard I ended up in the ER.')); }
+    if (U.chance(0.1)) { E.stat('health', -8); return done(bad(TL.ancient && TL.ancient.on() ? TL.ancient.txt('partySick') : 'We partied so hard I ended up in the ER.')); }
     done('I went out partying with ' + p.first + '. 🎉');
   }
   function dateNight(p) {
     var f = diminish('date' + p.id);
     var cost = E.$(U.rand(50, 250));
     E.addMoney(-cost);
-    var place = U.pick(TL.ancient && TL.ancient.on() ? ['a feast at a taberna', 'the theater', 'the gardens of Maecenas', 'a picnic by the Tiber', 'the chariot races', 'the baths', 'the seashore at sunset'] : ['a fancy restaurant', 'the movies', 'a rooftop bar', 'a picnic in the park', 'a comedy club', 'a cooking class', 'the beach at sunset']);
+    var place = U.pick(TL.ancient && TL.ancient.on() ? TL.ancient.txt('dates') : ['a fancy restaurant', 'the movies', 'a rooftop bar', 'a picnic in the park', 'a comedy club', 'a cooking class', 'the beach at sunset']);
     E.rel(p, U.rand(6, 14) * f); E.stat('happy', 5 * f);
     done('I took ' + p.first + ' to ' + place + '. 🌹');
   }
@@ -380,11 +380,12 @@ TL.actions = (function () {
     if (s.flags.pregnant) return done(nope('We\'re already expecting!'));
     var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
     var ivf = E.$(15000), surro = E.$(80000), opts = [];
-    // Ancient Rome: prayers and remedies instead of clinics.
+    // Ancient and medieval lives: prayers and remedies instead of clinics.
     if (TL.ancient && TL.ancient.on()) {
-      if (mom) opts.push({ label: '🙏 Pray to Juno Lucina', fn: function () { if (used('ivf')) return done(nope('I\'ve already prayed to Juno this year.')); use('ivf'); E.addMoney(-E.$(500)); if (U.chance(mom.age < 35 ? 0.25 : 0.08)) { S().flags.pregnant = { with: p.id }; return done(good('Juno heard our prayers! ' + (mom === m ? 'I\'m' : p.first + ' is') + ' pregnant! 🤰')); } done('We left offerings at the temple of Juno Lucina.'); } });
+      var pray = TL.ancient.txt('pray');
+      if (mom) opts.push({ label: pray[0], fn: function () { if (used('ivf')) return done(nope(pray[1])); use('ivf'); E.addMoney(-E.$(500)); if (U.chance(mom.age < 35 ? 0.25 : 0.08)) { S().flags.pregnant = { with: p.id }; return done(good(pray[2] + ' ' + (mom === m ? 'I\'m' : p.first + ' is') + ' pregnant! 🤰')); } done(pray[3]); } });
       if (mom) opts.push({ label: '🌿 Fertility remedies', fn: function () { if (used('remedy')) return done(nope('Enough remedies for one year.')); use('remedy'); E.addMoney(-E.$(300)); E.stat('health', -U.rand(0, 4)); if (U.chance(0.1)) { S().flags.pregnant = { with: p.id }; return done(good('The midwife\'s remedy worked! A baby is on the way. 🤰')); } done('The midwife\'s potions tasted awful and did nothing.'); } });
-      opts.push({ label: '🏛️ Adopt a child', fn: adopt });
+      opts.push({ label: TL.ancient.txt('adoptIcon') + ' Adopt a child', fn: adopt });
       return ui().choose('Fertility options', 'How do we want to grow our family with ' + p.first + '?', opts);
     }
     if (mom) opts.push({ label: '🧪 IVF (' + E.fmt(ivf) + ')', fn: function () {
@@ -1432,7 +1433,7 @@ TL.actions = (function () {
   function adopt() {
     var cost = E.$(25000);
     if (!afford(cost)) return done(noMoney(cost));
-    ui().choose('Adoption', 'Adopting a child costs ' + E.fmt(cost) + (TL.ancient && TL.ancient.on() ? ' in legal fees and gifts to the birth family.' : ' in agency fees.'), [
+    ui().choose('Adoption', 'Adopting a child costs ' + E.fmt(cost) + (TL.ancient && TL.ancient.on() ? TL.ancient.txt('adoptFee') : ' in agency fees.'), [
       { label: 'Adopt a baby', fn: function () { doAdopt(0, cost); } },
       { label: 'Adopt a young child', fn: function () { doAdopt(U.rand(3, 10), cost); } },
       { label: 'Not now', fn: function () { } }

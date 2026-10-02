@@ -172,7 +172,7 @@ TL.ui = (function () {
     show('create');
   }
   function randomName() {
-    var c = D.country($('#c-year') && $('#c-year').value === 'rome' ? 'Roman Empire' : $('#c-country').value);
+    var era = $('#c-year') && TL.ancient && TL.ancient.byOption($('#c-year').value), c = D.country(era ? era.land : $('#c-country').value);
     var g = $('#c-gender').value;
     $('#c-first').value = U.pick(g === 'M' ? c.male : c.female);
     $('#c-last').value = U.pick(c.last);
@@ -193,10 +193,11 @@ TL.ui = (function () {
     var interest = $('#c-interest').value;
     if (interest === 'auto') interest = g === 'M' ? 'F' : 'M';
     var yv = $('#c-year') ? $('#c-year').value : '', now = new Date().getFullYear(), year;
-    // Ancient eras (js/ancient.js) have their own land, names and years.
-    if (yv === 'rome') {
-      var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country('Roman Empire');
-      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(D.gentile(rl, 'M')) >= 0 ? D.gentile(rl, 'M') : undefined, gender: g, country: 'Roman Empire', interest: interest, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(40, 160) });
+    // Earlier eras (js/eras.js) have their own land, names and years.
+    var era = TL.ancient && TL.ancient.byOption(yv);
+    if (era) {
+      var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country(era.land), ln = era.gentile ? D.gentile(rl, 'M') : rl;
+      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(era.years[0], era.years[1]) });
       E.save(); return startGame();
     }
     if (yv === 'random') year = U.rand(1900, now - 20);
@@ -775,7 +776,7 @@ TL.ui = (function () {
     $('#h-menu').onclick = function () { E.save(); home(); };
     $('#c-random').onclick = randomName;
     $('#c-country').onchange = randomName;
-    if ($('#c-year')) $('#c-year').onchange = function () { var r = $('#c-year').value === 'rome'; $('#c-country').parentNode.style.display = r ? 'none' : ''; $('#c-royal').parentNode.style.display = r ? 'none' : ''; randomName(); };
+    if ($('#c-year')) $('#c-year').onchange = function () { var r = !!TL.ancient.byOption($('#c-year').value); $('#c-country').parentNode.style.display = r ? 'none' : ''; $('#c-royal').parentNode.style.display = r ? 'none' : ''; randomName(); };
     $('#c-gender').onchange = randomName;
     $('#c-start').onclick = createLife;
     $('#c-reroll').onclick = rerollStats;

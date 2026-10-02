@@ -10,10 +10,10 @@ TL.engine = (function () {
   // Local currency per base dollar, times the era's price level (js/history.js).
   function k() { var c = country(); return c.ancient ? c.k : c.k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
   function ancient() { return TL.S && country().ancient ? country().ancient : null; }
-  // "AD 79" for ancient lives, "1979" otherwise.
+  // "AD 79" for Roman lives, "1979" otherwise.
   // A condition's name as people of the time would say it (js/ancient.js).
   function illName(n) { return TL.S && country().ancient && TL.ancient ? TL.ancient.illName(n) : n; }
-  function yearLabel(y) { return TL.S && country().ancient ? 'AD ' + y : String(y); }
+  function yearLabel(y) { return TL.S && country().ancient === 'rome' ? 'AD ' + y : String(y); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
     var v = usd * k();
@@ -22,7 +22,7 @@ TL.engine = (function () {
   }
   function fmt(n) { return U.money(n, country().cur); }
   // "the United States", "the Philippines"; other countries take no article.
-  function countryName(n) { return (/^(United|Philippines|Roman)/.test(n) ? 'the ' : '') + n; }
+  function countryName(n) { return (/^(United|Philippines|Roman|Kingdom)/.test(n) ? 'the ' : '') + n; }
   // "a nurse", "an engineer", "unemployed", "retired".
   function jobPhrase(job) {
     var j = job.toLowerCase();
@@ -149,7 +149,7 @@ TL.engine = (function () {
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
-    if (S() && country().ancient) nm.last = D.gentile(nm.last, gender);
+    if (S() && country().ancient === 'rome') nm.last = D.gentile(nm.last, gender);
     // No two people in one life share a full name (two "James Wilson" classmates was confusing).
     var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
@@ -196,7 +196,7 @@ TL.engine = (function () {
       famePerks: null, social: { platform: false }, home: { type: 'parents' }
     };
     TL.S = st;
-    if (ctry.ancient) { st.me.last = D.gentile(st.me.last, gender); st.flags.noSchool = true; }
+    if (ctry.ancient) { if (ctry.ancient === 'rome') st.me.last = D.gentile(st.me.last, gender); st.flags.noSchool = true; }
     // Share prices start near real levels, in local currency.
     D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round($(s.price || U.randf(20, 300)) * U.randf(0.75, 1.3) * 100) / 100; });
     st.log.push({ age: 0, year: startYear, entries: [] });
@@ -827,9 +827,9 @@ TL.engine = (function () {
     var s = S(), h = home(), why = null;
     if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
     else if (h.type === 'palace' && !s.royal) why = 'I left the palace and moved into a studio apartment.';
-    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = ancient() ? 'With my parents gone, I rented an apartment in an insula.' : 'With my parents gone, I moved into a studio apartment.';
-    if (why && ancient()) why = why.replace('a studio apartment', 'an insula apartment');
-    if (why) { s.home = ancient() ? { type: 'rent', tier: 1, anc: 'apt', mult: 2.5 } : { type: 'rent', tier: 1 }; log(why); }
+    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = ancient() ? TL.ancient.txt('parentsGone') : 'With my parents gone, I moved into a studio apartment.';
+    if (why && ancient()) why = why.replace('a studio apartment', TL.ancient.txt('moveOut'));
+    if (why) { s.home = ancient() ? JSON.parse(JSON.stringify(TL.ancient.txt('rentHome'))) : { type: 'rent', tier: 1 }; log(why); }
   }
   function moveHome(h, msg) {
     var s = S();
@@ -917,7 +917,7 @@ TL.engine = (function () {
     hazard *= 1.6 - m.health / 100;
     if (a > 110) hazard = 0.8;
     if (U.chance(Math.min(hazard, 0.75))) {
-      if (a < 45) return die(U.pick(ancient() ? ['a fever', 'a fall from a roof', 'drowning', 'a festering wound'] : ['a car accident', 'a freak accident', 'a sudden aneurysm', 'a heart defect nobody knew about']));
+      if (a < 45) return die(U.pick(ancient() ? TL.ancient.txt('youngDeaths') : ['a car accident', 'a freak accident', 'a sudden aneurysm', 'a heart defect nobody knew about']));
       return die(U.pick(['natural causes', 'old age', 'heart failure', 'a stroke', 'old age, peacefully in my sleep']));
     }
     return false;
@@ -932,6 +932,16 @@ TL.engine = (function () {
   }
 
   // ---------- people each year ----------
+  // Someone in my life dies (old age, or a plague in js/medieval.js).
+  function npcDies(p, cause) {
+    var s = S();
+    p.alive = false; p.died = s.year;
+    var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
+    log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
+    if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
+    if (TL.features) TL.features.onDeath(p);
+    if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
+  }
   function yearlyPeople() {
     var s = S(), m = me();
     s.people.forEach(function (p) {
@@ -944,7 +954,7 @@ TL.engine = (function () {
         var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : family ? (p.rel > 40 ? U.rand(0, 2) : U.chance(0.4) ? 1 : 0) : U.rand(0, 4);
         rel(p, -decay);
       }
-      if (p.age === 5 && p.job === 'Toddler') p.job = ancient() ? 'Child' : 'Student';
+      if (p.age === 5 && p.job === 'Toddler') p.job = ancient() ? TL.ancient.txt('child') : 'Student';
       if (p.age === 15 && p.job === 'Child') p.job = npcJob(20);
       if (p.age === 18 && p.job === 'Student') p.job = U.chance(0.5) ? 'University Student' : npcJob(24);
       if (p.age === 23 && p.job === 'University Student') p.job = npcJob(26);
@@ -955,17 +965,12 @@ TL.engine = (function () {
       // shifted by the country's life expectancy.
       var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life) - (TL.history ? TL.history.lifeGap(s.year) * 0.55 : 0)) / 11.5);
       if (U.chance(Math.min(0.8, hazard))) {
-        p.alive = false; p.died = s.year;
         // Causes that fit the person's age and the era.
-        var yr = s.year, old = yr < 1950;
-        var cause = p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia'].concat(old ? ['tuberculosis'] : []))
+        var yr = s.year, old = yr < 1950, nd = ancient() && TL.ancient.txt('npcDeaths');
+        var cause = nd ? U.pick(p.age > 60 ? nd.old : p.age < 18 ? nd.young : nd.adult) : p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia'].concat(old ? ['tuberculosis'] : []))
           : p.age < 18 ? U.pick(old ? ['scarlet fever', 'polio', 'pneumonia', 'an accident', 'diphtheria'] : ['an accident', 'a rare illness', 'cancer', 'a car accident'])
           : U.pick((old ? ['tuberculosis', 'pneumonia', 'an accident at work'] : ['an overdose', 'a boating accident']).concat(['cancer', 'a heart attack', yr >= 1915 ? 'a car accident' : 'a riding accident']).concat(yr === 1918 || yr === 1919 ? ['the Spanish flu', 'the Spanish flu'] : []));
-        var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
-        log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
-        if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
-        if (TL.features) TL.features.onDeath(p);
-        if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
+        npcDies(p, cause);
       }
     });
     // A younger sibling may be born while I'm small
@@ -1396,7 +1401,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, npcDies: npcDies,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
