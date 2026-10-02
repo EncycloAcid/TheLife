@@ -406,6 +406,8 @@ TL.data = (function () {
     { id: 'tourney_champ', name: 'Champion of the Lists', desc: 'Win five tournaments', icon: '🐎' },
     { id: 'neck_verse', name: 'The Neck Verse', desc: 'Escape the gallows by reading Latin', icon: '📖' },
     { id: 'agincourt', name: 'We Happy Few', desc: 'Fight at Agincourt', icon: '🏹' },
+    { id: 'vestal', name: 'Keeper of the Flame', desc: 'Serve thirty years as a Vestal Virgin', icon: '🔥' },
+    { id: 'mystic', name: 'Revelations', desc: 'Write a book of visions as an anchoress or anchorite', icon: '✍️' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },

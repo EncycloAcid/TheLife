@@ -86,6 +86,7 @@ TL.eras.rome = (function () {
     r_charioteer: { id: 'r_charioteer', icon: '🐎', name: 'Chariot Racing', levels: [['Charioteer', 0]] },
     r_cursus: { id: 'r_cursus', icon: '🏛️', name: 'Politics', levels: [['Senator', 0]] },
     r_philo: { id: 'r_philo', icon: '🦉', name: 'Philosophy', levels: [['Student of Philosophy', 0], ['Philosopher', 150], ['Teacher of Philosophy', 600], ['Head of the School', 2500]] },
+    r_vestal: { id: 'r_vestal', icon: '🔥', name: 'The Vestals', levels: [['Novice Vestal', 0], ['Vestal Virgin', 900], ['Vestalis Maxima', 3000]] },
     r_servus: { id: 'r_servus', icon: '⛓️', name: 'Servitude', levels: [['Household Slave', 40], ['Trusted Steward', 120]] }
   };
   function career(id) { return CAREERS.filter(function (c) { return c.id === id; })[0] || SPECIAL[id] || null; }
@@ -146,6 +147,7 @@ TL.eras.rome = (function () {
       if (me().health < 20 && U.chance(0.5)) E.die('the Antonine Plague');
     }
     if (s.dead) return;
+    if (s.home.type === 'cloister' && !(s.job && s.job.career === 'r_vestal')) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
     // Coming of age: the toga of manhood, or marriage age for girls.
     if (age === 16 && me().gender === 'M' && citizen()) E.log('🎽 I put on the toga virilis. I am a Roman man now.');
     // The grain dole for citizens of Rome.
@@ -182,6 +184,7 @@ TL.eras.rome = (function () {
     if (j.career === 'r_charioteer') return charioteerYear(j);
     if (j.career === 'r_cursus') return cursusYear(j);
     if (j.career === 'r_philo') return philoYear(j, c);
+    if (j.career === 'r_vestal') return vestalYear(j);
     var sv = j.career === 'r_servus' ? me().smarts : E.statValue(c.stat || 'smarts');
     j.perf = U.clamp(Math.round((j.perf || 50) + U.rand(-9, 8) + (sv - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0)), 0, 100);
     j.workHard = 0;
@@ -266,6 +269,22 @@ TL.eras.rome = (function () {
     } else if (j.governor) { E.log('🗺️ My governorship of ' + j.governor + ' ended.'); j.governor = null; }
     E.fame(1);
     return earned;
+  }
+  // The six Vestal Virgins kept Vesta's sacred fire for thirty years: ten learning, ten serving, ten teaching.
+  function vestalYear(j) {
+    var s = S();
+    j.perf = U.clamp(Math.round((j.perf || 55) + U.rand(-6, 7) + (s.karma - 50) / 15 + (j.workHard || 0) * 4), 0, 100); j.workHard = 0;
+    E.fame(1);
+    if (j.level === 0 && j.years >= 10) { j.level = 1; E.log('🔥 My ten years of learning are over. I now keep the sacred fire of Vesta myself.', 'good'); E.stat('happy', 6); }
+    else if (j.level === 1 && j.years >= 20 && j.perf >= 70 && U.chance(0.25)) { j.level = 2; E.fame(8); E.log('🔥 I was made Vestalis Maxima, chief of the Vestals. Even consuls lower their fasces when I pass.', 'good'); }
+    if (E.partner() && U.chance(0.35)) s.pending.push({ id: 'r_incestum' });
+    if (j.years >= 30) {
+      var g = den(j.level >= 2 ? 20000 : 8000); E.addMoney(g);
+      E.log('🔥 My thirty years of service are complete. I left the House of the Vestals with honor and a dowry of ' + E.fmt(g) + '. I may marry if I wish.', 'good');
+      E.achieve('vestal'); see('Kept the flame of Vesta for 30 years', '🔥'); E.quitJob(true); s.home = { type: 'rent', tier: 2, anc: 'fine', mult: HOMES.fine[1] * 100 / E.RENT_TIERS[2][1] };
+      return 0;
+    }
+    return salary(j);
   }
   function s_pending(id, data) { S().pending.push({ id: id, data: data || {} }); }
   function freeMe(how) {
@@ -389,16 +408,23 @@ TL.eras.rome = (function () {
           items.push({ icon: '🗣️', label: 'Debate in the Forum', sub: 'Win fame and pupils, or be humiliated', onClick: debate });
           items.push({ icon: '🏛️', label: 'Teach my pupils', onClick: teach });
           items.push({ icon: '🧘', label: { stoic: 'Morning reflection', epicurean: 'Dine with friends in the garden', cynic: 'Live in a barrel like Diogenes', platonist: 'Contemplate the Forms' }[p.school], onClick: meditate });
+        } else if (j.career === 'r_vestal') {
+          items.push({ info: true, html: '<p class="muted">Year ' + j.years + ' of 30 · ' + (j.years < 10 ? 'learning the rites' : j.years < 20 ? 'serving the goddess' : 'teaching the novices') + '</p>' });
+          items.push({ icon: '🔥', label: 'Tend the sacred fire', sub: 'If it ever goes out, Rome is in danger', onClick: function () { if (count('r_flame')) return done(nope('I kept my watches this year.')); bump('r_flame'); j.workHard = (j.workHard || 0) + 1; if (U.chance(0.04)) { E.stat('health', -12); E.stat('happy', -10); return done(bad('I dozed on my night watch and the fire went out. The Pontifex Maximus had me scourged in the dark.')); } E.karma(2); done('I fed the fire with sacred wood through the night. It never flickered.'); } });
+          items.push({ icon: '⛓️', label: 'Pardon a condemned prisoner', sub: 'A Vestal who meets the condemned by chance can free them', onClick: function () { if (count('r_pardon')) return done(nope('I met no condemned prisoner this year.')); bump('r_pardon'); if (!U.chance(0.5)) return done('I walked the streets, but chance brought me no prisoner this year.'); E.karma(8); E.fame(3); done(good('A man was being led to his execution as my lictor cleared the way. I touched his chains, and by ancient law he walked free.')); } });
+          items.push({ icon: '📜', label: 'Guard the wills of the powerful', sub: 'Senators and emperors leave their wills with us', onClick: function () { if (count('r_wills')) return done(nope('The wills are safe.')); bump('r_wills'); E.stat('smarts', 1); E.fame(1); done('A ' + U.pick(['senator', 'general', 'rich widow', 'member of the imperial family']) + ' entrusted me with their will. Nobody would dare tamper with it here.'); } });
         } else if (j.career === 'r_charioteer') {
           items.push({ icon: '🐎', label: 'Train with my horses', onClick: function () { if (count('r_train')) return done(nope('My horses need rest.')); bump('r_train'); j.skill = Math.min(100, (j.skill || 20) + 4); done('I drove practice laps until the horses and I moved as one.'); } });
         } else {
           items.push({ icon: '💪', label: 'Work harder', onClick: function () { if (count('r_work') >= 2) return done(nope('I\'m exhausted.')); bump('r_work'); j.workHard = (j.workHard || 0) + 1; j.perf = Math.min(100, (j.perf || 50) + 5); E.stat('happy', -1); done('I put in extra effort.'); } });
         }
-        items.push({ icon: '🚪', label: j.career === 'r_legion' ? 'Desert the legion' : 'Quit', danger: true, onClick: function () {
+        if (j.career === 'r_vestal') items.push({ info: true, html: '<p class="muted">A Vestal serves for thirty years. There is no leaving early.</p>' });
+        else items.push({ icon: '🚪', label: j.career === 'r_legion' ? 'Desert the legion' : 'Quit', danger: true, onClick: function () {
           if (j.career === 'r_legion' && U.chance(0.4)) { E.stat('health', -25); E.karma(-10); E.quitJob(true); return done(bad('I deserted and was caught. They beat me nearly to death before throwing me out.')); }
           E.quitJob(); done('I left my work.');
         } });
       }
+      if (j && j.career === 'r_vestal') return items;
       items.push({ section: 'Find work' });
       CAREERS.forEach(function (c) {
         if (j && j.career === c.id) return;
@@ -410,6 +436,8 @@ TL.eras.rome = (function () {
       items.push({ icon: '🦅', label: 'Join the legions', sub: !male ? 'Only men may serve' : age < 17 || age > 35 ? 'Ages 17 to 35' : '25 years of service · pay ' + E.fmt(den(225)) + '/yr', disabled: !male || age < 17 || age > 35 || (j && j.career === 'r_legion'), onClick: enlist });
       items.push({ icon: '⚔️', label: 'Become a gladiator', sub: 'Glory, prize money, and death', disabled: age < 17 || (j && j.career === 'r_gladiator') || (y() >= 200 && !male), onClick: function () { pickStyle(); } });
       items.push({ icon: '🐎', label: 'Race chariots', sub: 'The Greens, the Blues, the Reds or the Whites', disabled: age < 15 || (j && j.career === 'r_charioteer'), onClick: pickFaction });
+      var canVest = !male && age >= 6 && age <= 10 && (a.cls === 'patrician' || a.cls === 'equestrian' || a.cls === 'plebeian') && E.parentsAround().length > 0;
+      items.push({ icon: '🔥', label: 'Become a Vestal Virgin', sub: male ? 'Only girls are chosen' : age < 6 || age > 10 ? 'Girls are chosen between 6 and 10' : a.cls === 'slave' || a.cls === 'freed' ? 'Only freeborn daughters of citizens' : !E.parentsAround().length ? 'Both parents must be living' : 'Thirty years keeping Vesta\'s fire', disabled: !canVest || (j && j.career === 'r_vestal'), onClick: function () { if (!U.chance(a.cls === 'patrician' ? 0.6 : 0.3)) return done(bad('The Pontifex Maximus chose another girl this time.')); E.quitJob(true); hire('r_vestal'); S().job.company = 'the Temple of Vesta'; S().home = { type: 'cloister' }; done(good('The Pontifex Maximus took my hand and said, "I take you, beloved." My hair was cut and I entered the House of the Vestals. 🔥')); } });
       var canPhil = (a.edu || (a.philo && a.philo.wisdom >= 15)) && me().smarts >= 50;
       items.push({ icon: '🦉', label: 'Become a philosopher', sub: canPhil ? 'Stoic, Epicurean, Cynic or Platonist' : 'Needs schooling and a sharp mind', disabled: !canPhil || age < 16 || (j && j.career === 'r_philo'), onClick: becomePhilosopher });
       var canPol = (a.cls === 'patrician' || a.cls === 'equestrian') && a.edu === 'rhetoric';
@@ -472,6 +500,7 @@ TL.eras.rome = (function () {
   function homeLabel(h) {
     var a = st();
     if (h.type === 'parents') return a.cls === 'slave' ? 'The household of ' + a.master : !E.parentsAround().length ? 'The family domus' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
+    if (h.type === 'cloister') return 'The House of the Vestals';
     if (h.type === 'homeless') return 'Sleeping in the streets';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
     return (HOMES[h.anc] || HOMES.apt)[0];
@@ -712,7 +741,8 @@ TL.eras.rome = (function () {
       { label: 'No thanks', run: function () { return 'I stayed a civilian.'; } }
     ] };
   } });
-  def('r_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave'; }, build: function () {
+  def('r_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
+    if (S().job && S().job.career === 'r_vestal') return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + D.gentile(U.pick(c.last), g);
     return { icon: '💍', title: 'An arranged match', text: 'My family has arranged a marriage to ' + nm + ', from a respectable family.', choices: [
       { label: 'Agree to the marriage', run: function () { var p = E.addPerson({ role: 'spouse', gender: g, age: me().age + U.rand(-3, 8), rel: U.rand(40, 75) }); p.first = nm.split(' ')[0]; p.last = nm.split(' ')[1]; E.achieve('married'); E.stat('happy', 8); return good('We were married in a ceremony at home. Feliciter! 💍'); } },
@@ -771,6 +801,13 @@ TL.eras.rome = (function () {
       { label: 'Flee Rome in the night', run: function () { if (U.chance(0.5)) { var j = S().job; if (j) j.tutor = false; S().city = 'Athens'; return good('I escaped to Athens with nothing but my scrolls.'); } E.die('the soldiers of Emperor Nero'); return bad('They caught me at the city gate.'); } }
     ] };
   } });
+  sdef('r_incestum', { build: function () {
+    var p = E.partner(), j = S().job; if (!p || !j || j.career !== 'r_vestal') return null;
+    return { icon: '⚖️', title: 'Accused', text: 'Someone saw me with ' + p.first + '. The pontiffs accuse me of breaking my vow of chastity. The punishment is to be buried alive.', choices: [
+      { label: 'Swear by Vesta that I am innocent', run: function () { if (U.chance(0.45)) { p.role = 'ex'; E.rel(p, -30); return good('The pontiffs believed me. I never saw ' + p.first + ' again.'); } E.die('being buried alive for breaking my vows'); return bad('They led me to the Colline Gate and sealed me in an underground chamber with a lamp and a little bread.'); } },
+      { label: 'End it and beg forgiveness', run: function () { p.role = 'ex'; E.rel(p, -40); E.stat('health', -15); E.stat('happy', -15); return 'I was scourged, but spared. ' + p.first + ' was flogged to death in the Forum.'; } }
+    ] };
+  } });
   sdef('r_governor', { build: function () {
     var j = S().job; if (!j || !j.governor) return null;
     return { icon: '🗺️', title: 'Governor of ' + j.governor, text: 'Governors grow rich. Some honestly, some by squeezing the provincials.', choices: [
@@ -795,6 +832,7 @@ TL.eras.rome = (function () {
     }
     if (a.decorations || a.veteran) out.push(['🦅', 'Legions', (a.veteran ? 'Served 25 years' : 'Served') + (a.decorations ? ', ' + U.plural(a.decorations, 'decoration') : '')]);
     if (a.cls === 'freed') out.push(['🕊️', 'Freedom', 'Born into slavery, died free']);
+    if ((S().jobHistory || []).concat(S().job ? [S().job] : []).some(function (h) { return h.career === 'r_vestal'; })) out.push(['🔥', 'Vestal Virgin', S().ach.indexOf('vestal') >= 0 ? 'Kept the sacred fire for thirty years' : 'Served the goddess Vesta']);
     return out;
   }
   // Conversation topics for Roman lives (actions.conversation).
@@ -804,7 +842,7 @@ TL.eras.rome = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics in the Senate', [], true], ['the gods', [], true], ['the weather', []]];
   var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
   // Achievements that fit a Roman life.
-  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor'];
+  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor', 'vestal'];
   // What a Roman would call each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Head Cold', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Sore Throat', 'Asthma': 'Breathlessness',
     'Acne': 'Spots', 'Migraine': 'Headaches', 'PTSD': 'War Terrors', 'Depression': 'Melancholia', 'Anxiety': 'Nervous Dread', 'Insomnia': 'Sleeplessness',

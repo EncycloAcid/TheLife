@@ -120,6 +120,7 @@ TL.eras.medieval = (function () {
     guild('m_brewer', '🍺', 'Brewer', 'smarts', 360),
     guild('m_tailor', '🧵', 'Tailor', 'looks', 380),
     guild('m_barber', '✂️', 'Barber-Surgeon', 'smarts', 440),
+    { id: 'm_midwife', icon: '🤱', name: 'Midwifery', stat: 'smarts', min: 16, need: function () { return male() ? 'Midwives are women' : null; }, levels: [['Midwife\'s Helper', 150], ['Midwife', 450], ['Midwife to the Queen', 3000]] },
     { id: 'm_servant', icon: '🧹', name: 'Service', stat: 'smarts', min: 10, levels: [['Kitchen Servant', 150], ['Household Servant', 300], ['Steward of the Household', 1200]] },
     { id: 'm_inn', icon: '🍻', name: 'Inns', stat: 'looks', min: 14, need: notSerf, levels: [['Tavern Servant', 200], ['Innkeeper', 700]] },
     { id: 'm_minstrel', icon: '🎵', name: 'Music', stat: 'looks', min: 14, need: notSerf, levels: [['Wandering Minstrel', 200], ['Minstrel of a Great House', 600], ['King\'s Minstrel', 2000]] },
@@ -134,9 +135,10 @@ TL.eras.medieval = (function () {
     m_archer: { id: 'm_archer', icon: '🏹', name: 'The king\'s archers', levels: [['Archer', 900], ['Vintenar', 1300], ['Centenar', 2400]] },
     m_monk: { id: 'm_monk', icon: '📿', name: 'The cloister', levels: [['Novice', 0], ['Monk', 0], ['Prior', 0], ['Abbot', 2400]] },
     m_priest: { id: 'm_priest', icon: '⛪', name: 'The Church', levels: [['Parish Clerk', 200], ['Parish Priest', 600], ['Archdeacon', 2500], ['Bishop', 15000]] },
+    m_anchor: { id: 'm_anchor', icon: '🕯️', name: 'The anchorhold', levels: [['Anchorite', 0]] },
     m_court: { id: 'm_court', icon: '👑', name: 'The royal court', levels: [['Courtier', 500], ['Royal Councillor', 3000], ['Lord Chancellor', 12000]] }
   };
-  var FEMALE = { Monk: 'Nun', Prior: 'Prioress', Abbot: 'Abbess', Courtier: 'Lady-in-Waiting', 'Royal Councillor': 'Lady of the Bedchamber', 'Lord Chancellor': 'Mistress of the Queen\'s Household' };
+  var FEMALE = { Anchorite: 'Anchoress', Monk: 'Nun', Prior: 'Prioress', Abbot: 'Abbess', Courtier: 'Lady-in-Waiting', 'Royal Councillor': 'Lady of the Bedchamber', 'Lord Chancellor': 'Mistress of the Queen\'s Household' };
   function career(id) { return CAREERS.filter(function (c) { return c.id === id; })[0] || SPECIAL[id] || null; }
   function lvlName(c, l) { var n = c.levels[Math.min(l, c.levels.length - 1)][0]; return !male() && FEMALE[n] ? FEMALE[n] : n; }
   // After the Black Death, laborers were scarce and wages rose.
@@ -180,7 +182,7 @@ TL.eras.medieval = (function () {
     var s = S(), a = st(), age = me().age, yr = s.year, j = s.job;
     var k = king(yr);
     // Left the cloister some other way (fired, retired): find a roof.
-    if (s.home.type === 'cloister' && !(j && j.career === 'm_monk')) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
+    if (s.home.type === 'cloister' && !(j && (j.career === 'm_monk' || j.career === 'm_anchor'))) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
     if (k !== a.king) { a.king = k; if (age >= 5) E.log('👑 ' + royal(k) + ' was crowned.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
@@ -223,7 +225,7 @@ TL.eras.medieval = (function () {
       }
     }
     // Clergy take a vow of celibacy.
-    if (j && (j.career === 'm_monk' || j.career === 'm_priest') && E.partner() && E.partner().role === 'spouse') { E.log('💔 I broke my vows by marrying. The Church cast me out.', 'bad'); E.quitJob(true); if (s.home.type === 'cloister') s.home = JSON.parse(JSON.stringify(TXT.rentHome)); }
+    if (j && /m_(monk|priest|anchor)/.test(j.career) && E.partner() && E.partner().role === 'spouse') { E.log('💔 I broke my vows by marrying. The Church cast me out.', 'bad'); E.quitJob(true); if (s.home.type === 'cloister') s.home = JSON.parse(JSON.stringify(TXT.rentHome)); }
     // Court life is dangerous.
     if (j && j.career === 'm_court' && U.chance([1399, 1460, 1461, 1470, 1471, 1483, 1484, 1485].indexOf(yr) >= 0 || yr >= 1530 ? 0.12 : 0.02)) s.pending.push({ id: 'm_tower' });
     if (j && j.career === 'm_merchant' && j.level >= 2 && s.city === 'London' && !a.mayor && U.chance(0.03)) s.pending.push({ id: 'm_mayor' });
@@ -265,12 +267,14 @@ TL.eras.medieval = (function () {
     if (j.career === 'm_knight') return knightYear(j, c);
     if (j.career === 'm_archer') return archerYear(j, c);
     if (j.career === 'm_monk' || j.career === 'm_priest') return churchYear(j, c);
+    if (j.career === 'm_anchor') return anchorYear(j);
+    if (j.career === 'm_midwife') midwifeYear(j);
     var stv = j.career === 'm_villein' ? me().athl : E.statValue(c.stat || 'smarts');
     j.perf = U.clamp(Math.round((j.perf || 50) + U.rand(-9, 8) + (stv - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0)), 0, 100);
     j.workHard = 0;
     if (c.guild) return guildYear(j, c);
     var need = j.career === 'm_villein' ? 3 : 2;
-    if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= need && U.chance(0.3 + (j.perf - 70) / 60) && (j.career !== 'm_court' || (S().fame >= 25 * j.level && j.levelYears >= 3 * (j.level + 1)))) {
+    if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= need && U.chance(0.3 + (j.perf - 70) / 60) && (j.career !== 'm_midwife' || j.level < 1) && (j.career !== 'm_court' || (S().fame >= 25 * j.level && j.levelYears >= 3 * (j.level + 1)))) {
       j.level++; j.levelYears = 0; j.perf = Math.max(45, j.perf - 20);
       E.log(j.career === 'm_villein' && j.level === 2 ? '🌾 My neighbors chose me as reeve. I answer to the lord for the whole village.' : '📈 I rose to ' + title(j) + '! New pay: ' + E.fmt(salary(j)) + ' a year.', 'good'); E.stat('happy', 10);
     } else if (j.perf < 15 && j.career !== 'm_villein' && U.chance(0.5)) { E.fire('My work was terrible.'); }
@@ -332,6 +336,27 @@ TL.eras.medieval = (function () {
     }
     return salary(j);
   }
+  // Anchorites were walled into a cell beside a church for life, to pray and give counsel.
+  function anchorYear(j) {
+    var a = st(), an = a.anchor || (a.anchor = { visions: 0, counsel: 0 });
+    E.karma(2); E.fame(1); if (me().happy < 35) E.stat('happy', 3);
+    if (U.chance(0.3)) { an.counsel++; E.log('🕯️ ' + U.pick(['A grieving widow', 'A merchant afraid for his soul', 'A young woman torn between two suitors', 'A knight haunted by the war', 'A famous pilgrim from Lynn']) + ' came to my window for counsel.'); }
+    return pen(U.rand(30, 90) + Math.min(400, S().fame * 6)); // alms
+  }
+  function midwifeYear(j) {
+    if (j.level >= 1 && U.chance(0.12)) {
+      if (U.chance(0.75)) { E.karma(2); j.perf = Math.min(100, (j.perf || 50) + 6); E.log('🤱 A breech birth that everyone feared would kill mother and child. I turned the baby, and both lived.', 'good'); }
+      else { E.stat('happy', -6); E.log('🕯️ I lost a mother and her baby in a long, hard birth. The family blamed me.', 'bad'); }
+    }
+    if (j.level === 1 && S().fame >= 15 && j.perf >= 80 && j.levelYears >= 6 && U.chance(0.15)) { j.level = 2; j.levelYears = 0; E.fame(6); E.log('👑 I was summoned to deliver the queen\'s child. The royal household keeps me now.', 'good'); }
+  }
+  function enclose() {
+    var s = S(), ch = U.pick(['St Julian\'s', 'St Mary\'s', 'St Edmund\'s', 'All Saints\'', 'St Botolph\'s']) + ' Church';
+    ui().choose('Become ' + (male() ? 'an anchorite' : 'an anchoress'), 'The bishop will wall me into a small cell beside ' + ch + ' for the rest of my life. I will pray, counsel those who come to my window, and live on alms. There is no way back.', [
+      { label: 'Be enclosed', fn: function () { E.quitJob(true); hire('m_anchor'); s.job.company = ch + ', ' + s.city; s.home = { type: 'cloister' }; done(good('The bishop said the prayers for the dead over me and the door was walled up. A small window looks into the church, another out onto the street. 🕯️')); } },
+      { label: 'Not yet', fn: function () { done('I\'m not ready to leave the world.'); } }
+    ]);
+  }
   function hire(id) {
     var c = career(id);
     S().job = { career: id, ancient: true, level: 0, perf: 55, years: 0, levelYears: 0, mult: 1, company: place() };
@@ -374,12 +399,19 @@ TL.eras.medieval = (function () {
           items.push({ icon: '💪', label: 'Work harder', onClick: workHarder });
         } else if (j.career === 'm_court') {
           items.push({ icon: '🎁', label: 'Win the king\'s favor', sub: 'Gifts, flattery and hunting', right: E.fmt(pen(400)), onClick: function () { var cost = pen(400); if (s.money < cost) return done(nope('Favor at court is expensive.')); if (count('m_favor')) return done(nope('Too much flattery looks suspicious.')); bump('m_favor'); E.addMoney(-cost); j.perf = Math.min(100, (j.perf || 50) + 10); E.fame(2); done('I gave the king a fine ' + U.pick(['falcon', 'hound', 'gilded cup', 'horse']) + '. He smiled at me in front of the whole court.'); } });
+        } else if (j.career === 'm_anchor') {
+          var an = a.anchor || (a.anchor = { visions: 0, counsel: 0 });
+          items.push({ icon: '🙏', label: 'Pray through the night', onClick: function () { if (count('m_vigil')) return done(nope('I already kept vigil this year.')); bump('m_vigil'); E.karma(3); E.stat('happy', 3); E.stat('health', -1); done('I prayed from Compline to dawn on the cold stone floor.'); } });
+          items.push({ icon: '🪟', label: 'Counsel those at my window', sub: an.counsel + ' counseled so far', onClick: function () { if (count('m_counsel')) return done(nope('I\'ve seen everyone who came this year.')); bump('m_counsel'); an.counsel += U.rand(1, 4); E.fame(2); E.karma(2); done(U.pick(['"All shall be well, and all shall be well, and all manner of thing shall be well," I told them.', 'I listened through the curtain and gave what comfort I could.', 'A woman wept at my window all afternoon. She left lighter.'])); } });
+          items.push({ icon: '✍️', label: 'Write down my visions', sub: an.visions ? U.plural(an.visions, 'chapter') + ' written' : 'Showings of divine love', onClick: function () { if (count('m_vision')) return done(nope('No new visions have come this year.')); bump('m_vision'); an.visions++; E.stat('smarts', 1); if (an.visions >= 5 && !an.book) { an.book = true; E.achieve('mystic'); E.fame(10); see('Wrote a book of revelations', '✍️'); return done(good('I finished my book of revelations. Monks are copying it, and people travel from far away to speak with me. ✍️')); } done('I wrote down what I saw in my sickness: ' + U.pick(['a hazelnut in the palm of my hand, holding all that is made', 'Christ\'s face, bleeding and kind', 'the whole world held in love', 'a great lord and his servant who fell']) + '.'); } });
         } else if (j.career === 'm_minstrel') {
           items.push({ icon: '🎶', label: 'Compose a ballad', onClick: function () { if (count('m_ballad')) return done(nope('The muse has left me for this year.')); bump('m_ballad'); var q = U.rand(1, 100) + (me().smarts - 50) / 3; if (q > 70) { E.fame(4); E.addMoney(pen(U.rand(20, 120))); return done(good('My ballad of ' + U.pick(['Robin Hood', 'King Arthur', 'a lost love', 'the Battle of Crécy']) + ' is being sung in every tavern. 🎶')); } done('I wrote a ballad. Nobody asked to hear it twice.'); } });
         } else if (j.career !== 'm_villein') items.push({ icon: '💪', label: 'Work harder', onClick: workHarder });
         else items.push({ icon: '💪', label: 'Work the lord\'s fields', sub: 'Three days a week are owed to him', onClick: workHarder });
-        if (j.career !== 'm_villein') items.push({ icon: '🚪', label: j.career === 'm_monk' || j.career === 'm_priest' ? 'Leave the Church' : j.career === 'm_knight' ? 'Give up knighthood' : 'Quit', danger: true, onClick: function () { E.quitJob(); if (s.home.type === 'cloister') s.home = JSON.parse(JSON.stringify(TXT.rentHome)); done('I left my work.'); } });
+        if (j.career === 'm_anchor') items.push({ info: true, html: '<p class="muted">My enclosure is for life.</p>' });
+        else if (j.career !== 'm_villein') items.push({ icon: '🚪', label: j.career === 'm_monk' || j.career === 'm_priest' ? 'Leave the Church' : j.career === 'm_knight' ? 'Give up knighthood' : 'Quit', danger: true, onClick: function () { E.quitJob(); if (s.home.type === 'cloister') s.home = JSON.parse(JSON.stringify(TXT.rentHome)); done('I left my work.'); } });
       }
+      if (j && j.career === 'm_anchor') return items;
       if (serf()) {
         items.push({ section: 'Serfdom' });
         var price = pen(1500);
@@ -399,9 +431,11 @@ TL.eras.medieval = (function () {
       var single = !E.partner() || E.partner().role !== 'spouse';
       items.push({ icon: '📿', label: male() ? 'Become a monk' : 'Become a nun', sub: !single ? 'Not while I\'m married' : serf() ? 'Serfs need their lord\'s leave' : y() >= 1536 ? 'The king has closed the monasteries' : 'A life of prayer behind abbey walls', disabled: !single || serf() || y() >= 1536 || age < 14 || (j && j.career === 'm_monk'), onClick: function () { E.quitJob(true); hire('m_monk'); S().job.company = U.pick(male() ? ['Westminster Abbey', 'Fountains Abbey', 'Glastonbury Abbey', 'St Albans Abbey', 'Rievaulx Abbey'] : ['Barking Abbey', 'Shaftesbury Abbey', 'Lacock Abbey', 'Romsey Abbey']); S().home = { type: 'cloister' }; done(good('I entered ' + S().job.company + ' as a novice. I left the world behind. 📿')); } });
       items.push({ icon: '⛪', label: 'Become a priest', sub: !male() ? 'Only men are ordained' : !single ? 'Priests may not marry' : serf() ? 'Serfs need their lord\'s leave' : !a.edu ? 'Needs letters' : 'Parish clerk first; bishops need a degree', disabled: !male() || !single || serf() || !a.edu || age < 16 || (j && j.career === 'm_priest'), onClick: function () { E.quitJob(true); hire('m_priest'); done(good('I took minor orders and became the parish clerk.')); } });
+      var anch = j && j.career === 'm_anchor';
+      items.push({ icon: '🕯️', label: male() ? 'Become an anchorite' : 'Become an anchoress', sub: !single ? 'Not while I\'m married' : serf() ? 'Serfs need their lord\'s leave' : age < 25 ? 'The bishop only encloses those 25 or older' : S().karma < 50 ? 'The bishop doubts my holiness' : 'Walled into a cell for life, to pray and counsel', disabled: anch || !single || serf() || age < 25 || S().karma < 50, onClick: enclose });
       var canCourt = gentle() && a.edu && age >= 17;
       items.push({ icon: '👑', label: 'Seek a place at court', sub: canCourt ? 'Power, riches and danger' : 'Needs a noble or knightly family and letters', disabled: !canCourt || (j && j.career === 'm_court'), onClick: function () { if (!U.chance(0.4 + S().fame / 100 + (a.cls === 'noble' ? 0.3 : 0))) return done(bad('Nobody at court would see me. Perhaps with more friends in high places.')); E.quitJob(true); hire('m_court'); S().job.company = 'the court of ' + royal(king(y())); done(good('I was given a place at ' + S().job.company + '. 👑')); } });
-      if (j && j.years >= 15 && age >= 55 && j.career !== 'm_villein') items.push({ section: ' ' }, { icon: '🏡', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
+      if (j && j.years >= 15 && age >= 55 && j.career !== 'm_villein' && j.career !== 'm_anchor') items.push({ section: ' ' }, { icon: '🏡', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
       return items;
     });
   }
@@ -473,7 +507,7 @@ TL.eras.medieval = (function () {
   function homeLabel(h) {
     var a = st();
     if (h.type === 'parents') return serf() ? (me().age < 18 ? 'My family\'s cottage on the manor' : 'A cottage on the manor') : a.cls === 'noble' ? 'My family\'s castle' : a.cls === 'gentry' ? 'My family\'s manor house' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
-    if (h.type === 'cloister') return S().job && S().job.company ? S().job.company : 'The cloister';
+    if (h.type === 'cloister') return S().job && S().job.career === 'm_anchor' ? 'My anchorhold at ' + S().job.company : S().job && S().job.company ? S().job.company : 'The cloister';
     if (h.type === 'homeless') return 'Sleeping rough';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
     return (HOMES[h.anc] || HOMES.cottage)[0];
@@ -737,7 +771,8 @@ TL.eras.medieval = (function () {
       { label: 'Stay home', run: function () { return 'Someone has to mind the fields.'; } }
     ] };
   } });
-  def('m_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest)/.test(S().job.career)); }, build: function () {
+  def('m_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest|anchor)/.test(S().job.career)); }, build: function () {
+    if (S().job && /m_(monk|priest|anchor)/.test(S().job.career)) return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + U.pick(c.last);
     var fee = serf() ? Math.min(money(), pen(20)) : 0;
     return { icon: '💍', title: 'An arranged match', text: 'My family has arranged a marriage to ' + nm + (gentle() ? ', whose family brings good land with them.' : ', from a respectable family.') + (fee ? ' The lord demands his merchet fee of ' + E.fmt(fee) + ' first.' : ''), choices: [
@@ -830,6 +865,8 @@ TL.eras.medieval = (function () {
     if (court.length) out.push(['👑', 'At court', court.map(function (h) { return h.title; }).filter(Boolean).pop() || 'Served the king']);
     if (a.mayor) out.push(['🏛️', 'Lord Mayor', 'Lord Mayor of London']);
     if (had('m_monk') || had('m_priest')) out.push(['⛪', 'The Church', s.ach.indexOf('abbot') >= 0 ? 'Rose to the top of the Church' : 'Served the Church']);
+    if (a.anchor) out.push(['🕯️', male() ? 'Anchorite' : 'Anchoress', 'Counseled ' + U.plural(a.anchor.counsel, 'soul') + (a.anchor.book ? ', wrote a book of revelations' : '')]);
+    if (had('m_midwife')) out.push(['🤱', 'Midwife', 'Brought the village\'s children into the world']);
     if (s.ach.indexOf('master_craftsman') >= 0) out.push(['🏆', 'Guild master', 'Made a masterpiece']);
     if (a.pilgrimages.length) out.push(['🐚', 'Pilgrim', a.pilgrimages.join(', ')]);
     if (a.freed) out.push(['🕊️', 'Freedom', 'Born a serf, died free']);
@@ -842,7 +879,7 @@ TL.eras.medieval = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['the king and his barons', [], true], ['God and the Church', [], true], ['the weather', []]];
   var KID_TOPICS = [['dragons and giants', []], ['games of hoodman blind', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['knights and their deeds', ['Athletic']], ['their drawings', ['Artsy']]];
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff',
-    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt'];
+    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic'];
   // What medieval English people called each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Rheum', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Quinsy', 'Asthma': 'Tightness of the Chest',
     'Acne': 'Pimples', 'Migraine': 'The Megrim', 'PTSD': 'Battle Terrors', 'Depression': 'Melancholy', 'Anxiety': 'Troubled Spirits', 'Insomnia': 'Sleeplessness',
