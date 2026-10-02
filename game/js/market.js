@@ -43,7 +43,7 @@ TL.market = (function () {
   // ------------------------------------------------------------ trading
   function buy(k, cash) {
     var s = S(), m = st(), price = s.prices[k], n = Math.floor(Math.max(0, cash) / price);
-    if (!(n >= 1)) return 0;
+    if (!(n >= 1) || (TL.history && !TL.history.listed(k))) return 0;
     var cost = Math.round(n * price);
     E.addMoney(-cost); s.stocks[k] = (s.stocks[k] || 0) + n; m.basis[k] = (m.basis[k] || 0) + cost;
     return n;
@@ -68,11 +68,21 @@ TL.market = (function () {
     var s = S(), m = st(), lr = U.gauss(0.085, 0.14), mood = null;
     if (U.chance(0.07)) { lr = U.randf(-0.5, -0.22); mood = 'crash'; }
     else if (U.chance(0.06)) { lr = U.randf(0.24, 0.34); mood = 'boom'; }
+    // Historic years follow what really happened (1929, 2008, the '90s boom...).
+    var forced = TL.history ? TL.history.marketYear(s.year) : null;
+    if (forced != null) { lr = forced + U.gauss(0, 0.03); mood = forced <= -0.2 ? 'crash' : forced >= 0.24 ? 'boom' : null; }
     var r = Math.exp(lr) - 1;
     m.hist.push({ year: s.year, r: r }); if (m.hist.length > 12) m.hist.shift();
     var divs = 0, news = [];
     D.STOCKS.forEach(function (x) {
       var k = x.sym, p = s.prices[k] || E.$(x.price);
+      // Companies only trade once they've gone public.
+      if (TL.history && TL.history.ipoYear(k) === s.year) {
+        s.prices[k] = Math.round(E.$(x.price) * U.randf(0.4, 0.8) * 100) / 100; m.ph[k] = [s.prices[k]];
+        if (me().age >= 16) E.log('🔔 ' + x.name + ' went public on the stock market.');
+        return;
+      }
+      if (TL.history && !TL.history.listed(k)) return;
       divs += Math.round((s.stocks[k] || 0) * p * x.div);
       var own = U.gauss(0, x.vol), ret = Math.max(-0.85, Math.exp(Math.log(1 + x.drift) - x.beta * 0.068 + x.beta * lr + own) - 1);
       s.prices[k] = Math.max(0.01 * E.k(), Math.round(p * (1 + ret) * 100) / 100);
@@ -152,14 +162,17 @@ TL.market = (function () {
         items.push({ section: 'My stocks' });
         mine.forEach(function (k) { var x = info(k), m = st(), g = value(k) - (m.basis[k] || 0); items.push({ icon: logo(x), label: x.name, sub: s.stocks[k] + ' shares · ' + (g >= 0 ? 'up ' : 'down ') + E.fmt(Math.abs(g)), right: E.fmt(value(k)), onClick: function () { detail(k); } }); });
       }
-      items.push({ section: 'Funds' });
-      D.STOCKS.forEach(function (x, i) {
-        if (i === 2) items.push({ section: 'Stocks' });
+      var open = D.STOCKS.filter(function (x) { return !TL.history || TL.history.listed(x.sym); });
+      var soon = D.STOCKS.filter(function (x) { return open.indexOf(x) < 0; });
+      open.forEach(function (x, i) {
+        var fund = /fund/i.test(x.name);
+        if (fund && !items.some(function (it) { return it.section === 'Funds'; })) items.push({ section: 'Funds' });
+        if (!fund && !items.some(function (it) { return it.section === 'Stocks'; })) items.push({ section: 'Stocks' });
         var c = change(x.sym);
         items.push({ icon: logo(x), label: x.name, sub: x.sym + ' · ' + x.sector + (c != null ? ' · ' + pct(c) + ' last year' : ''), right: E.fmt(s.prices[x.sym]), onClick: function () { detail(x.sym); } });
       });
-      items.push({ section: 'Settings' });
-      items.push({ icon: '🔁', label: 'Auto-invest', sub: st().auto ? Math.round(st().auto * 100) + '% of each year\'s pay goes into the S&P 500' : 'Put part of every paycheck into the S&P 500', onClick: autoMenu });
+      if (soon.length) items.push({ info: true, html: '<p class="bz-cap" style="margin:0">Not public yet: ' + soon.map(function (x) { return U.esc(x.name) + ' (' + TL.history.ipoYear(x.sym) + ')'; }).join(', ') + '.</p>' });
+      if (!TL.history || TL.history.listed('VOO')) items.push({ section: 'Settings' }, { icon: '🔁', label: 'Auto-invest', sub: st().auto ? Math.round(st().auto * 100) + '% of each year\'s pay goes into the S&P 500' : 'Put part of every paycheck into the S&P 500', onClick: autoMenu });
       return items;
     });
   }

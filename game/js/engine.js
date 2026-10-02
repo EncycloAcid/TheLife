@@ -7,7 +7,8 @@ TL.engine = (function () {
   function S() { return TL.S; }
   function me() { return TL.S.me; }
   function country() { return D.country(TL.S.country); }
-  function k() { return country().k; }
+  // Local currency per base dollar, times the era's price level (js/history.js).
+  function k() { return country().k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
     var v = usd * k();
@@ -449,6 +450,7 @@ TL.engine = (function () {
     if (c.minStat && statValue(c.stat) < c.minStat) reasons.push('Not enough ' + statLabel(c.stat));
     if (c.noRecord && s.record.length) reasons.push('Criminal record');
     if (c.req) { var extra = c.req(); if (extra) reasons.push(extra); }
+    if (TL.history && TL.history.notYet(c.id)) reasons.push(TL.history.notYet(c.id));
     return reasons;
   }
   function statLabel(k) { return { happy: 'happiness', health: 'health', smarts: 'smarts', looks: 'looks', athl: 'athleticism' }[k]; }
@@ -887,14 +889,15 @@ TL.engine = (function () {
     if (s.fame > 60 && U.chance(0.3)) stat('happy', U.rand(-6, 6));
   }
   function deathCheck() {
-    var s = S(), m = me(), a = m.age, life = country().life + (s.karma - 50) / 10;
+    var s = S(), m = me(), a = m.age, gap = TL.history ? TL.history.lifeGap(s.year) : 0, life = country().life + (s.karma - 50) / 10 + gap * 0.55;
     if (m.health <= 0) {
       var c = s.conditions.filter(function (n) { var i = D.illness(n); return i && i.dmg >= 8; })[0];
       var hid = !c && TL.health && TL.health.deathCause();
       return die(c ? 'complications from ' + c.toLowerCase() : hid || 'poor health');
     }
     var hazard;
-    if (a < 5) hazard = 0.001;
+    // Earlier eras: far more children died young.
+    if (a < 5) hazard = 0.001 * (1 - gap / 3);
     else if (a < 40) hazard = 0.0008;
     else hazard = 0.012 * Math.exp((a - life) / 5.5);
     hazard *= 1.6 - m.health / 100;
@@ -935,10 +938,14 @@ TL.engine = (function () {
       // death
       // Real-world-ish mortality: about 1% a year at 60, 6% at 80, a third at 100,
       // shifted by the country's life expectancy.
-      var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life)) / 11.5);
+      var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life) - (TL.history ? TL.history.lifeGap(s.year) * 0.55 : 0)) / 11.5);
       if (U.chance(Math.min(0.8, hazard))) {
         p.alive = false; p.died = s.year;
-        var cause = p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia']) : U.pick(['a car accident', 'cancer', 'an overdose', 'a heart attack', 'a boating accident']);
+        // Causes that fit the person's age and the era.
+        var yr = s.year, old = yr < 1950;
+        var cause = p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia'].concat(old ? ['tuberculosis'] : []))
+          : p.age < 18 ? U.pick(old ? ['scarlet fever', 'polio', 'pneumonia', 'an accident', 'diphtheria'] : ['an accident', 'a rare illness', 'cancer', 'a car accident'])
+          : U.pick((old ? ['tuberculosis', 'pneumonia', 'an accident at work'] : ['an overdose', 'a boating accident']).concat(['cancer', 'a heart attack', yr >= 1915 ? 'a car accident' : 'a riding accident']).concat(yr === 1918 || yr === 1919 ? ['the Spanish flu', 'the Spanish flu'] : []));
         var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
         log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
         if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
@@ -1127,12 +1134,14 @@ TL.engine = (function () {
     // Out of school, classmates become old classmates.
     if (!s.edu) people('classmate').forEach(function (p) { p.role = 'former classmate'; });
 
-    TL.events.roll();
+    // History happens (js/history.js): wars, pandemics, crashes, big moments.
+    if (TL.history) TL.history.yearly();
+    if (!s.dead) TL.events.roll();
     // Yearly snapshot for the life chart.
     s.hist = s.hist || [];
     s.hist.push([m.age, netWorth(), m.happy]);
     if (s.hist.length > 130) s.hist.shift();
-    if (!deathCheck()) checkAchievements();
+    if (!s.dead && !deathCheck()) checkAchievements();
     s.updated = Date.now();
   }
 

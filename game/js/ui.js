@@ -159,6 +159,13 @@ TL.ui = (function () {
       D.COUNTRIES.forEach(function (c) { var o = document.createElement('option'); o.value = c.name; o.textContent = c.flag + ' ' + c.name; sel.appendChild(o); });
     }
     sel.value = U.pick(D.COUNTRIES).name;
+    // Birth year: today, or any decade back to 1900 (js/history.js).
+    var ys = $('#c-year'), now = new Date().getFullYear();
+    if (ys && !ys.options.length) {
+      var opts = [['', 'Today (' + now + ')'], ['random', '🎲 A random year in history']];
+      for (var dec = Math.floor((now - 1) / 10) * 10; dec >= 1900; dec -= 10) opts.push([String(dec), dec + 's' + (TL.history ? ' · ' + TL.history.eraName(dec + 5) : '')]);
+      opts.forEach(function (o) { var el = document.createElement('option'); el.value = o[0]; el.textContent = o[1]; ys.appendChild(el); });
+    }
     $('#c-gender').value = U.chance(0.5) ? 'M' : 'F';
     randomName();
     rerollStats();
@@ -185,7 +192,10 @@ TL.ui = (function () {
     var g = $('#c-gender').value;
     var interest = $('#c-interest').value;
     if (interest === 'auto') interest = g === 'M' ? 'F' : 'M';
-    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats() });
+    var yv = $('#c-year') ? $('#c-year').value : '', now = new Date().getFullYear(), year;
+    if (yv === 'random') year = U.rand(1900, now - 20);
+    else if (yv) year = Math.min(now, +yv + U.rand(0, 9));
+    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: year });
     E.save();
     startGame();
   }

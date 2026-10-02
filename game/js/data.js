@@ -386,6 +386,8 @@ TL.data = (function () {
     { id: 'second_chance', name: 'Second Chance', desc: 'Survive a heart attack', icon: '🚑' },
     { id: 'market_millionaire', name: 'Wall Street', desc: 'Grow a stock portfolio to $1 million', icon: '📈' },
     { id: 'buy_the_dip', name: 'Buy the Dip', desc: 'Buy stocks during a market crash', icon: '🛒' },
+    { id: 'history_buff', name: 'Witness to History', desc: 'Live through 10 historic moments', icon: '📜' },
+    { id: 'veteran_war', name: 'Answered the Call', desc: 'Serve in a historic war', icon: '🎖️' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },

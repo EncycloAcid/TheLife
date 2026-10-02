@@ -59,7 +59,8 @@ TL.creator = (function () {
   function title() { var c = ch(); return c && c.fulltime ? (c.subs >= 1e6 ? 'Star ' : '') + (c.platform === 'twitch' ? 'Streamer' : 'Content Creator') : null; }
 
   function startChannel() {
-    var choices = Object.keys(PLATFORMS).map(function (k) {
+    // Only platforms that exist in the current year (js/history.js).
+    var choices = Object.keys(PLATFORMS).filter(function (k) { return !TL.history || TL.history.exists(k); }).map(function (k) {
       var p = PLATFORMS[k];
       return { label: p.icon + ' ' + p.name, fn: function () { pickNiche(k); } };
     });

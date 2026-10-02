@@ -128,6 +128,7 @@ TL.recap = (function () {
     if (s.awards && s.awards.length) out.push(['🏆', 'Awards', s.awards.map(function (a) { return a.award; }).slice(0, 3).join(', ') + (s.awards.length > 3 ? ' +' + (s.awards.length - 3) : '')]);
     if (s.books && s.books.length) out.push(['📚', 'Books', U.plural(s.books.length, 'book') + ', including "' + s.books[0].title + '"']);
     if (s.royal) out.push(['👑', 'Royalty', TL.features.royalTitle() || 'Royal']);
+    var hr = TL.history && TL.history.aboutRow(); if (hr) out.unshift(hr);
     if (s.mob) out.push(['🕴️', 'Organized crime', 'Rose to rank ' + (s.mob.rank || 0)]);
     return out;
   }

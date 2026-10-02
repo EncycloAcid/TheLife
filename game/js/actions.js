@@ -89,7 +89,7 @@ TL.actions = (function () {
       // Meeting people comes before school, work and old contacts.
       var meet = [{ section: 'Meet people' }];
       if (me().age >= 5) meet.push({ icon: '🤝', label: 'Make a new friend', sub: 'Put yourself out there', onClick: makeFriend });
-      if (me().age >= 16 && !S().prison) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
+      if (me().age >= 16 && !S().prison && (!TL.history || TL.history.exists('dating'))) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
       var at = -1;
       items.forEach(function (it, k) { if (at < 0 && it.section && ['School & Work', 'Others', 'Pets'].indexOf(it.section) >= 0) at = k; });
       if (meet.length > 1) Array.prototype.splice.apply(items, [at < 0 ? items.length : at, 0].concat(meet));
@@ -907,7 +907,7 @@ TL.actions = (function () {
         items.push({ icon: '🚗', label: 'Vehicles', sub: 'Cars, bikes, jets & yachts', onClick: dealership });
         items.push({ icon: '💎', label: 'Jewelry & luxury', onClick: jewelryStore });
         items.push({ icon: '📈', label: 'Stock market', sub: TL.market && TL.market.held().length ? 'Portfolio ' + E.fmt(TL.market.portfolio()) : 'Stocks, index funds and bonds', onClick: TL.market ? TL.market.menu : stockMenu });
-        items.push({ icon: '🪙', label: 'Crypto', sub: TL.creator.cryptoValue() ? 'Wallet ' + E.fmt(TL.creator.cryptoValue()) : 'Bitcoin, Ethereum, Solana, Dogecoin', onClick: TL.creator.cryptoMenu });
+        if (!TL.history || TL.history.exists('crypto')) items.push({ icon: '🪙', label: 'Crypto', sub: TL.creator.cryptoValue() ? 'Wallet ' + E.fmt(TL.creator.cryptoValue()) : 'Bitcoin, Ethereum, Solana, Dogecoin', onClick: TL.creator.cryptoMenu });
         items.push({ icon: '🏢', label: 'Start a business', onClick: businessMenu });
       } else items.push({ info: true, html: '<p class="muted">I need to be 18 to buy property, vehicles, or stocks.</p>' });
       return items;
@@ -1149,8 +1149,8 @@ TL.actions = (function () {
       if (S().conditions.some(function (n) { var i = D.illness(n); return i && i.rehab; })) items.push({ icon: '🏥', label: 'Rehab', onClick: rehab });
 
       items.push({ section: 'Fun & Social' });
-      if (a >= 13) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
-      if (a >= 13) items.push({ icon: '🎬', label: 'Content creator', sub: TL.creator.summary(), onClick: TL.creator.menu });
+      if (a >= 13 && (!TL.history || TL.history.exists('social'))) items.push({ icon: '📱', label: 'Social media', sub: S().social.platform ? S().followers.toLocaleString() + ' followers' : 'Create an account', onClick: socialMenu });
+      if (a >= 13 && (!TL.history || TL.history.exists('youtube') || TL.creator.summary() !== 'Start a channel')) items.push({ icon: '🎬', label: 'Content creator', sub: TL.creator.summary(), onClick: TL.creator.menu });
       if (a >= 18) items.push({ icon: '🪩', label: 'Nightclub', onClick: nightclub });
       if (a >= 18) items.push({ icon: '🧖', label: 'Spa day', right: E.fmt(E.$(250)), onClick: TL.world.spa });
       if (a >= 6) items.push({ icon: '🎣', label: 'Go fishing', onClick: TL.world.fishing });
@@ -1169,7 +1169,7 @@ TL.actions = (function () {
       items.push({ section: 'Life' });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
       if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
-      if (a >= 14) items.push({ icon: '💼', label: 'Side hustles', sub: 'Uber, DoorDash, Fiverr, StockX…', onClick: TL.creator.hustleMenu });
+      if (a >= 14 && (!TL.history || TL.history.exists('gig'))) items.push({ icon: '💼', label: 'Side hustles', sub: 'Uber, DoorDash, Fiverr, StockX…', onClick: TL.creator.hustleMenu });
       if (a >= 8) items.push({ icon: '🦹', label: 'Crime', onClick: crimeMenu });
       if (a >= 18) items.push({ icon: '🙏', label: 'Volunteer', onClick: function () { S().flags.volunteered = (S().flags.volunteered || 0) + 1; var f = diminish('vol'); E.karma(3 * f); E.stat('happy', 4 * f); if (U.chance(0.2 * f)) { var p = E.addPerson({ role: 'friend', age: a + U.rand(-8, 8), rel: 55 }); return done(good('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank']) + ' and befriended ' + p.first + '.')); } done('I volunteered at ' + U.pick(['a soup kitchen', 'an animal shelter', 'a hospital', 'a food bank', 'a nursing home']) + '.'); } });
       if (a >= 18) items.push({ icon: '🧬', label: 'DNA test', sub: S().flags.dna ? 'Results in' : 'Discover your ancestry', right: S().flags.dna ? '' : E.fmt(E.$(99)), onClick: TL.world.dnaTest });
@@ -1444,7 +1444,7 @@ TL.actions = (function () {
           if (!U.chance(0.7 + (E.eduRank() * 0.07))) return done(bad('My visa application to ' + c.name + ' was rejected.'));
           ui().confirm('Move to ' + c.name + '?', 'All of your money and property will be converted to the local currency.', function () {
             E.addMoney(-cost);
-            var ratio = c.k / E.k();
+            var ratio = c.k / D.country(S().country).k;
             var s = S();
             s.money = Math.round(s.money * ratio);
             s.studentDebt = Math.round(s.studentDebt * ratio);
