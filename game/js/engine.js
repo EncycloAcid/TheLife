@@ -8,7 +8,10 @@ TL.engine = (function () {
   function me() { return TL.S.me; }
   function country() { return D.country(TL.S.country); }
   // Local currency per base dollar, times the era's price level (js/history.js).
-  function k() { return country().k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
+  function k() { var c = country(); return c.ancient ? c.k : c.k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
+  function ancient() { return TL.S && country().ancient ? country().ancient : null; }
+  // "AD 79" for ancient lives, "1979" otherwise.
+  function yearLabel(y) { return TL.S && country().ancient ? 'AD ' + y : String(y); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
     var v = usd * k();
@@ -17,7 +20,7 @@ TL.engine = (function () {
   }
   function fmt(n) { return U.money(n, country().cur); }
   // "the United States", "the Philippines"; other countries take no article.
-  function countryName(n) { return (/^(United|Philippines)/.test(n) ? 'the ' : '') + n; }
+  function countryName(n) { return (/^(United|Philippines|Roman)/.test(n) ? 'the ' : '') + n; }
   // "a nurse", "an engineer", "unemployed", "retired".
   function jobPhrase(job) {
     var j = job.toLowerCase();
@@ -131,6 +134,7 @@ TL.engine = (function () {
     return { first: U.pick(gender === 'M' ? c.male : c.female), last: lastName || U.pick(c.last) };
   }
   function npcJob(age) {
+    if (TL.S && country().ancient && TL.ancient) return TL.ancient.npcJob(age);
     if (age < 5) return 'Toddler';
     if (age < 18) return 'Student';
     if (age >= 67) return 'Retired';
@@ -143,6 +147,7 @@ TL.engine = (function () {
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
+    if (S() && country().ancient) nm.last = D.gentile(nm.last, gender);
     // No two people in one life share a full name (two "James Wilson" classmates was confusing).
     var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
@@ -174,7 +179,7 @@ TL.engine = (function () {
 
     var st = {
       v: SAVE_VERSION, id: U.uid(), created: Date.now(), updated: Date.now(),
-      gen: opts.gen || 1, country: ctry.name, birthCountry: ctry.name, year: startYear, city: TL.real ? TL.real.city(ctry.name) : null,
+      gen: opts.gen || 1, country: ctry.name, birthCountry: ctry.name, year: startYear, city: ctry.cities ? U.pick(ctry.cities) : TL.real ? TL.real.city(ctry.name) : null,
       me: {
         first: opts.first || nm.first, last: nm.last, gender: gender, age: 0, month: month, day: day, zodiac: zodiac,
         happy: U.rand(60, 100), health: U.rand(70, 100), smarts: U.rand(5, 100), looks: U.rand(5, 100),
@@ -189,6 +194,7 @@ TL.engine = (function () {
       famePerks: null, social: { platform: false }, home: { type: 'parents' }
     };
     TL.S = st;
+    if (ctry.ancient) { st.me.last = D.gentile(st.me.last, gender); st.flags.noSchool = true; }
     // Share prices start near real levels, in local currency.
     D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round($(s.price || U.randf(20, 300)) * U.randf(0.75, 1.3) * 100) / 100; });
     st.log.push({ age: 0, year: startYear, entries: [] });
@@ -212,7 +218,7 @@ TL.engine = (function () {
     var dad = addPerson({ role: 'father', gender: 'M', age: Math.max(18, dadAge), last: st.me.last, rel: U.rand(45, 100), money: $(wealthTier.m * U.randf(0.5, 1.5)) });
     mom.married = dad.married = parentsMarried;
     [mom, dad].forEach(function (p) { if (p.job === 'Student' || p.job === 'University Student') p.job = npcJob(30); });
-    if (wealthTier.t === 'rich') { mom.job = U.pick(['CEO', 'Managing Partner', 'Movie Star', 'Surgeon']); }
+    if (wealthTier.t === 'rich' && !ctry.ancient) { mom.job = U.pick(['CEO', 'Managing Partner', 'Movie Star', 'Surgeon']); }
 
     var sibs = U.weighted([{ w: 30, n: 0 }, { w: 40, n: 1 }, { w: 20, n: 2 }, { w: 10, n: 3 }]).n;
     for (var i = 0; i < sibs; i++) {
@@ -230,7 +236,7 @@ TL.engine = (function () {
 
     if (opts.royal && TL.features) TL.features.makeRoyal(st);
     var m = st.me;
-    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + (st.city ? st.city + ', ' : '') + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + startYear + '.');
+    log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + (st.city ? st.city + ', ' : '') + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + yearLabel(startYear) + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
     log('My mother is ' + fullName(mom) + ', ' + jobPhrase(mom.job) + ' (age ' + mom.age + ').');
     log('My father is ' + fullName(dad) + ', ' + jobPhrase(dad.job) + ' (age ' + dad.age + ').');
@@ -240,7 +246,8 @@ TL.engine = (function () {
     });
     if (st.royal) TL.features.royalBirthLog();
     else if (wealthTier.t === 'rich') log('My family is extremely wealthy. 💎', 'good');
-    else if (wealthTier.t === 'poor') log('My family struggles to make ends meet.', 'bad');
+    else if (wealthTier.t === 'poor' && !ctry.ancient) log('My family struggles to make ends meet.', 'bad');
+    if (ctry.ancient && TL.ancient) TL.ancient.setup(st, opts);
     return st;
   }
 
@@ -417,6 +424,7 @@ TL.engine = (function () {
 
   // ---------- jobs ----------
   function jobSalary(job) {
+    if (job.ancient && TL.ancient) return TL.ancient.salary(job);
     if (job.acting || job.music || job.pro) return job.salary || 0;
     if ((job.hoops || job.mil) && job.salary) return job.salary;
     if (job.partTime) return $(D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].salary);
@@ -425,6 +433,7 @@ TL.engine = (function () {
   }
   function jobTitle(job) {
     if (!job) return 'Unemployed';
+    if (job.ancient && TL.ancient) return TL.ancient.title(job);
     if (job.mil) return job.title || 'Soldier';
     if (job.acting) return TL.acting ? TL.acting.title() : job.title || 'Actor';
     if (job.music) return TL.music ? TL.music.title() : job.title || 'Musician';
@@ -527,6 +536,7 @@ TL.engine = (function () {
     var s = S(), j = s.job;
     if (!j || s.prison) return 0;
     j.years++; j.levelYears++;
+    if (j.ancient && TL.ancient) return TL.ancient.jobYear(j);
     if (j.hoops && TL.hoops) return TL.hoops.season();
     if (j.mil && TL.military) return TL.military.year();
     if (j.career === 'actor' && !j.acting && TL.acting) TL.acting.st(); // pre-v1.14 actors
@@ -796,6 +806,7 @@ TL.engine = (function () {
   }
   function homeLabel() {
     var h = home();
+    if (ancient() && TL.ancient) return TL.ancient.homeLabel(h);
     if (h.type === 'parents') return me().age < 18 ? 'My family\'s home' : 'Living with my parents';
     if (h.type === 'palace') return 'The royal palace';
     if (h.type === 'homeless') return 'Homeless';
@@ -814,8 +825,9 @@ TL.engine = (function () {
     var s = S(), h = home(), why = null;
     if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
     else if (h.type === 'palace' && !s.royal) why = 'I left the palace and moved into a studio apartment.';
-    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = 'With my parents gone, I moved into a studio apartment.';
-    if (why) { s.home = { type: 'rent', tier: 1 }; log(why); }
+    else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length) why = ancient() ? 'With my parents gone, I rented an apartment in an insula.' : 'With my parents gone, I moved into a studio apartment.';
+    if (why && ancient()) why = why.replace('a studio apartment', 'an insula apartment');
+    if (why) { s.home = ancient() ? { type: 'rent', tier: 1, anc: 'apt', mult: 2.5 } : { type: 'rent', tier: 1 }; log(why); }
   }
   function moveHome(h, msg) {
     var s = S();
@@ -831,7 +843,7 @@ TL.engine = (function () {
     else if (h.type === 'owned') stat('happy', 2);
     else if (h.type === 'palace') stat('happy', 3);
     else if (h.type === 'homeless') { stat('happy', -8); stat('health', -4); }
-    else if (h.type === 'parents' && m.age >= 25) {
+    else if (h.type === 'parents' && m.age >= 25 && !ancient()) {
       stat('happy', -2);
       parentsAround().forEach(function (p) { rel(p, -U.rand(0, 2)); });
       if (m.age === 30) log('I\'m 30 and I still live with my parents...', 'bad');
@@ -903,8 +915,8 @@ TL.engine = (function () {
     hazard *= 1.6 - m.health / 100;
     if (a > 110) hazard = 0.8;
     if (U.chance(Math.min(hazard, 0.75))) {
-      if (a < 45) return die(U.pick(['a car accident', 'a freak accident', 'a sudden aneurysm', 'a heart defect nobody knew about']));
-      return die(U.pick(['natural causes', 'old age', 'heart failure', 'a stroke', 'peacefully in my sleep']));
+      if (a < 45) return die(U.pick(ancient() ? ['a fever', 'a fall from a roof', 'drowning', 'a festering wound'] : ['a car accident', 'a freak accident', 'a sudden aneurysm', 'a heart defect nobody knew about']));
+      return die(U.pick(['natural causes', 'old age', 'heart failure', 'a stroke', 'old age, peacefully in my sleep']));
     }
     return false;
   }
@@ -930,7 +942,8 @@ TL.engine = (function () {
         var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : family ? (p.rel > 40 ? U.rand(0, 2) : U.chance(0.4) ? 1 : 0) : U.rand(0, 4);
         rel(p, -decay);
       }
-      if (p.age === 5 && p.job === 'Toddler') p.job = 'Student';
+      if (p.age === 5 && p.job === 'Toddler') p.job = ancient() ? 'Child' : 'Student';
+      if (p.age === 15 && p.job === 'Child') p.job = npcJob(20);
       if (p.age === 18 && p.job === 'Student') p.job = U.chance(0.5) ? 'University Student' : npcJob(24);
       if (p.age === 23 && p.job === 'University Student') p.job = npcJob(26);
       if (p.age === 67 && p.job !== 'Retired' && U.chance(0.7)) p.job = 'Retired';
@@ -1136,6 +1149,7 @@ TL.engine = (function () {
 
     // History happens (js/history.js): wars, pandemics, crashes, big moments.
     if (TL.history) TL.history.yearly();
+    if (ancient() && TL.ancient && !s.dead) TL.ancient.yearly();
     if (!s.dead) TL.events.roll();
     // Yearly snapshot for the life chart.
     s.hist = s.hist || [];
@@ -1380,6 +1394,7 @@ TL.engine = (function () {
   }
 
   return {
+    ancient: ancient, yearLabel: yearLabel,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

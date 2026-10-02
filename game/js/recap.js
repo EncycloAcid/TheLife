@@ -129,6 +129,7 @@ TL.recap = (function () {
     if (s.books && s.books.length) out.push(['📚', 'Books', U.plural(s.books.length, 'book') + ', including "' + s.books[0].title + '"']);
     if (s.royal) out.push(['👑', 'Royalty', TL.features.royalTitle() || 'Royal']);
     var hr = TL.history && TL.history.aboutRow(); if (hr) out.unshift(hr);
+    if (TL.ancient && TL.ancient.on()) out = TL.ancient.recapRow().concat(out);
     if (s.mob) out.push(['🕴️', 'Organized crime', 'Rose to rank ' + (s.mob.rank || 0)]);
     return out;
   }

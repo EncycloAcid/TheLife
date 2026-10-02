@@ -89,6 +89,7 @@ TL.actions = (function () {
       // Meeting people comes before school, work and old contacts.
       var meet = [{ section: 'Meet people' }];
       if (me().age >= 5) meet.push({ icon: '🤝', label: 'Make a new friend', sub: 'Put yourself out there', onClick: makeFriend });
+      if (TL.ancient && TL.ancient.on() && me().age >= 15 && !E.partner() && TL.ancient.st().cls !== 'slave') meet.push({ icon: '💍', label: 'Ask my family to find a match', sub: 'Most Roman marriages are arranged', onClick: function () { if (S().yearActs.r_match) return done(nope('My family is still searching.')); S().yearActs.r_match = 1; if (!U.chance(0.6)) return done('My family couldn\'t find a suitable match this year.'); S().pending.push({ id: 'r_marriage', data: {} }); ui().runPending(); } });
       if (me().age >= 16 && !S().prison && (!TL.history || TL.history.exists('dating'))) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
       var at = -1;
       items.forEach(function (it, k) { if (at < 0 && it.section && ['School & Work', 'Others', 'Pets'].indexOf(it.section) >= 0) at = k; });
@@ -157,7 +158,7 @@ TL.actions = (function () {
       if (r === 'child' && p.age < 12) items.push({ icon: '📖', label: 'Read a bedtime story', onClick: function () { var f = diminish('story' + p.id); E.rel(p, 10 * f); p.smarts = U.clamp(p.smarts + 2, 0, 100); done('I read ' + p.first + ' a bedtime story. 📚'); } });
       if (r === 'child' && p.age >= 5 && p.age < 18) items.push({ icon: '✏️', label: 'Help with homework', onClick: function () { var f = diminish('hw' + p.id); E.rel(p, 6 * f); p.smarts = U.clamp(p.smarts + Math.round(4 * f), 0, 100); done('I helped ' + p.first + ' with homework.'); } });
       if ((r === 'mother' || r === 'father') && me().age >= 16 && me().age < 25 && p.money > E.$(40000) && !S().assets.some(function (a) { return a.kind === 'car'; }))
-        items.push({ icon: '🚗', label: 'Ask for a car', onClick: function () { askCar(p); } });
+        if (!(TL.ancient && TL.ancient.on())) items.push({ icon: '🚗', label: 'Ask for a car', onClick: function () { askCar(p); } });
       return items;
     });
   }
@@ -194,7 +195,8 @@ TL.actions = (function () {
   var KID_ACTS = [['🧸', 'Play pretend', 0, [], [], 'played pretend with'], ['🛝', 'Go to the playground', 0, ['Athletic'], [], 'went to the playground with'], ['🍦', 'Get ice cream', 5, [], [], 'got ice cream with'], ['📺', 'Watch cartoons', 0, ['Lazy'], [], 'watched cartoons with'], ['🏰', 'Build a pillow fort', 0, ['Artsy'], [], 'built a pillow fort with']];
   var OLD_ACTS = [['🃏', 'Play cards', 0, ['Stubborn', 'Funny'], [], 'played cards with'], ['📷', 'Look at old photos', 0, ['Loyal', 'Kind'], [], 'looked at old photos with'], ['🌳', 'Walk in the park', 0, ['Cheerful'], [], 'walked in the park with'], ['🧩', 'Do a crossword', 0, ['Nerdy'], [], 'did a crossword with'], ['🍰', 'Bake together', 10, ['Kind', 'Generous'], [], 'baked a cake with']];
   function spendTime(p) {
-    var a = me().age, pool = p.age < 10 || a < 10 ? KID_ACTS : p.age >= 70 ? OLD_ACTS : ACTS.filter(function (x) { return a >= (x[6] || 6) && p.age >= (x[6] || 6); });
+    var anc = TL.ancient && TL.ancient.on(), A = anc ? TL.ancient.acts() : ACTS, K = anc ? TL.ancient.acts('kid') : KID_ACTS, O = anc ? TL.ancient.acts('old') : OLD_ACTS;
+    var a = me().age, pool = p.age < 10 || a < 10 ? K : p.age >= 70 ? O : A.filter(function (x) { return a >= (x[6] || 6) && p.age >= (x[6] || 6); });
     var picks = U.shuffle(pool.slice()).slice(0, 4);
     ui().choose('⏳ Time with ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What should we do?', picks.map(function (x) {
       var cost = E.$(x[2]);
@@ -205,7 +207,7 @@ TL.actions = (function () {
         var gain = Math.round((U.rand(4, 9) + sc * 6) * f);
         E.rel(p, Math.max(sc < 0 ? -2 : 1, gain)); E.stat('happy', Math.max(1, 3 + sc) * f);
         if (sc > 0) return done(good('I ' + x[5] + ' ' + p.first + '. ' + U.pick(['They loved it!', 'It was exactly their kind of thing.', 'We had the best time.'])));
-        if (sc < 0) return done(p.first + ' wasn\'t into it when we ' + x[5].replace(/ with$/, '') + '. ' + U.pick(['They checked their phone the whole time.', 'They were clearly bored.', 'Not their thing at all.']));
+        if (sc < 0) return done(p.first + ' wasn\'t into it when we ' + x[5].replace(/ with$/, '') + '. ' + U.pick([TL.ancient && TL.ancient.on() ? 'They kept yawning the whole time.' : 'They checked their phone the whole time.', 'They were clearly bored.', 'Not their thing at all.']));
         return done('I ' + x[5] + ' ' + p.first + '.');
       } };
     }));
@@ -246,7 +248,7 @@ TL.actions = (function () {
     done('I gave ' + p.first + ' a big hug. 🤗');
   }
   function giftMenu(p) {
-    var gifts = [['🍫', 'Box of chocolates', 20], ['💐', 'Flowers', 40], ['📚', 'A book', 25], ['🧸', 'Stuffed animal', 30], ['🎮', 'Video game', 60], ['👜', 'Designer handbag', 1500], ['⌚', 'Luxury watch', 8000], ['🚗', 'A new car', 35000]];
+    var gifts = TL.ancient && TL.ancient.on() ? [['🍯', 'A pot of honey', 100], ['🌸', 'A garland of flowers', 200], ['📜', 'A scroll of poetry', 800], ['🏺', 'A jar of fine wine', 1500], ['💍', 'A gold ring', 20000], ['🐎', 'A horse', 150000]] : [['🍫', 'Box of chocolates', 20], ['💐', 'Flowers', 40], ['📚', 'A book', 25], ['🧸', 'Stuffed animal', 30], ['🎮', 'Video game', 60], ['👜', 'Designer handbag', 1500], ['⌚', 'Luxury watch', 8000], ['🚗', 'A new car', 35000]];
     ui().menu('Gift for ' + p.first, function () {
       return gifts.map(function (g) {
         var cost = E.$(g[2]);
@@ -257,7 +259,7 @@ TL.actions = (function () {
           var gain = Math.round((6 + Math.log10(g[2]) * 5) * f * (p.traits.indexOf('Greedy') >= 0 ? 1.4 : 1));
           E.rel(p, gain); E.karma(1);
           ui().back();
-          done(U.chance(0.9) ? good(p.first + ' loved the ' + g[1].toLowerCase() + '!') : p.first + ' said they\'d "treasure it"... sarcastically.');
+          done(U.chance(0.9) ? good(p.first + ' loved the ' + g[1].toLowerCase().replace(/^an? /, '') + '!') : p.first + ' said they\'d "treasure it"... sarcastically.');
         } };
       });
     });
@@ -286,12 +288,13 @@ TL.actions = (function () {
     }));
   }
   function prank(p) {
-    var pr = U.pick(['put salt in their coffee', 'hid a whoopee cushion on their chair', 'filled their room with balloons', 'swapped their shampoo with mayo', 'changed their phone language to Klingon']);
+    var anc = TL.ancient && TL.ancient.on();
+    var pr = U.pick(anc ? ['put salt in their wine', 'hid a frog in their sandal', 'painted a rude drawing on their door', 'swapped their honey for garum'] : ['put salt in their coffee', 'hid a whoopee cushion on their chair', 'filled their room with balloons', 'swapped their shampoo with mayo', 'changed their phone language to Klingon']);
     if (U.chance(0.55)) { E.rel(p, 4); E.stat('happy', 4); done('I ' + pr + '. ' + p.first + ' laughed it off! 😂'); }
     else { E.rel(p, -10); done(bad('I ' + pr + '. ' + p.first + ' was NOT amused.')); }
   }
   function argue(p) {
-    var topic = U.pick(['money', 'chores', 'their attitude', 'politics', 'a TV show', 'who ate the last slice of pizza', 'something they said years ago']);
+    var topic = U.pick(TL.ancient && TL.ancient.on() ? ['money', 'chores', 'their attitude', 'politics', 'the chariot races', 'which gods to honor', 'something they said years ago'] : ['money', 'chores', 'their attitude', 'politics', 'a TV show', 'who ate the last slice of pizza', 'something they said years ago']);
     if (U.chance(me().smarts / 200)) { E.rel(p, -3); done('I argued with ' + p.first + ' about ' + topic + ' and won the argument.'); }
     else { E.rel(p, -U.rand(6, 14)); E.stat('happy', -3); done(bad('I got into a big fight with ' + p.first + ' about ' + topic + '.')); }
   }
@@ -341,14 +344,14 @@ TL.actions = (function () {
   function party(p) {
     var f = diminish('party');
     E.rel(p, 8 * f); E.stat('happy', 6 * f);
-    if (U.chance(0.1)) { E.stat('health', -8); return done(bad('We partied so hard I ended up in the ER.')); }
+    if (U.chance(0.1)) { E.stat('health', -8); return done(bad(TL.ancient && TL.ancient.on() ? 'We drank so much unwatered wine that I was sick for days.' : 'We partied so hard I ended up in the ER.')); }
     done('I went out partying with ' + p.first + '. 🎉');
   }
   function dateNight(p) {
     var f = diminish('date' + p.id);
     var cost = E.$(U.rand(50, 250));
     E.addMoney(-cost);
-    var place = U.pick(['a fancy restaurant', 'the movies', 'a rooftop bar', 'a picnic in the park', 'a comedy club', 'a cooking class', 'the beach at sunset']);
+    var place = U.pick(TL.ancient && TL.ancient.on() ? ['a feast at a taberna', 'the theater', 'the gardens of Maecenas', 'a picnic by the Tiber', 'the chariot races', 'the baths', 'the seashore at sunset'] : ['a fancy restaurant', 'the movies', 'a rooftop bar', 'a picnic in the park', 'a comedy club', 'a cooking class', 'the beach at sunset']);
     E.rel(p, U.rand(6, 14) * f); E.stat('happy', 5 * f);
     done('I took ' + p.first + ' to ' + place + '. 🌹');
   }
@@ -402,7 +405,7 @@ TL.actions = (function () {
     } else { E.rel(p, -20); done(bad(p.first + ' said no. 💔' + (rings.length ? '' : ' (Maybe buy a ring first.)'))); }
   }
   function wedding(p) {
-    var tiers = [['⚖️', 'Courthouse wedding', 150], ['🌳', 'Small backyard wedding', 8000], ['⛪', 'Big traditional wedding', 35000], ['🏰', 'Lavish destination wedding', 200000]];
+    var tiers = TL.ancient && TL.ancient.on() ? TL.ancient.WEDDINGS : [['⚖️', 'Courthouse wedding', 150], ['🌳', 'Small backyard wedding', 8000], ['⛪', 'Big traditional wedding', 35000], ['🏰', 'Lavish destination wedding', 200000]];
     ui().menu('Plan the wedding', function () {
       var items = tiers.map(function (t, i) {
         var cost = E.$(t[2]);
@@ -534,6 +537,7 @@ TL.actions = (function () {
   // OCCUPATION: school + jobs
   // ======================================================================
   function occupationMenu() {
+    if (TL.ancient && TL.ancient.on()) return TL.ancient.occupationMenu();
     ui().menu('Occupation', function () {
       var s = S(), m = me(), items = [];
       if (s.prison) return [{ info: true, html: '<p>I\'m in prison. My career is on hold.</p>' }];
@@ -876,6 +880,7 @@ TL.actions = (function () {
   // ASSETS
   // ======================================================================
   function assetsMenu() {
+    if (TL.ancient && TL.ancient.on()) return TL.ancient.assetsMenu();
     ui().menu('Assets', function () {
       var s = S(), items = [];
       var prop = 0, owed = s.studentDebt || 0, inv = TL.creator ? TL.creator.cryptoValue() : 0;
@@ -1125,6 +1130,7 @@ TL.actions = (function () {
   // ACTIVITIES
   // ======================================================================
   function activitiesMenu() {
+    if (TL.ancient && TL.ancient.on()) return TL.ancient.activitiesMenu();
     if (S().prison) return prisonMenu();
     ui().menu('Activities', function () {
       var m = me(), a = m.age, items = [];

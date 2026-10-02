@@ -388,6 +388,12 @@ TL.data = (function () {
     { id: 'buy_the_dip', name: 'Buy the Dip', desc: 'Buy stocks during a market crash', icon: '🛒' },
     { id: 'history_buff', name: 'Witness to History', desc: 'Live through 10 historic moments', icon: '📜' },
     { id: 'veteran_war', name: 'Answered the Call', desc: 'Serve in a historic war', icon: '🎖️' },
+    { id: 'consul', name: 'Consul of Rome', desc: 'Be elected consul in Ancient Rome', icon: '🏛️' },
+    { id: 'centurion', name: 'Centurion', desc: 'Rise to centurion in the legions', icon: '🦅' },
+    { id: 'rudis', name: 'The Wooden Sword', desc: 'Win your freedom from the arena', icon: '🗡️' },
+    { id: 'charioteer_champ', name: 'Hero of the Circus', desc: 'Win 100 chariot races', icon: '🐎' },
+    { id: 'freedom', name: 'Libertas', desc: 'Be born into slavery and win your freedom', icon: '🕊️' },
+    { id: 'vesuvius', name: 'Out of the Ashes', desc: 'Survive the eruption of Vesuvius', icon: '🌋' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
@@ -424,8 +430,18 @@ TL.data = (function () {
   // Tickers from saves before v1.22 and the real stock each one became.
   var OLD_STOCKS = { FRUT: 'AAPL', MEGA: 'WMT', ROKT: 'TSLA', OILX: 'AMZN', HLTH: 'PFE', BANK: 'GS', INDX: 'VOO', COIN: 'NVDA' };
 
+  /* Ancient lands: not in COUNTRIES (so they never show up in pickers or
+   * emigration), but D.country() finds them. k: local coin per base dollar. */
+  var ANCIENT = [
+    { name: 'Roman Empire', ancient: 'rome', flag: '🏛️', cur: '🪙', k: 0.01, life: 72, tax: 0.05,
+      male: ['Gaius', 'Lucius', 'Marcus', 'Publius', 'Quintus', 'Titus', 'Gnaeus', 'Sextus', 'Aulus', 'Decimus', 'Tiberius', 'Servius', 'Manius', 'Appius', 'Numerius', 'Spurius'],
+      female: ['Julia', 'Cornelia', 'Claudia', 'Livia', 'Aurelia', 'Valeria', 'Octavia', 'Antonia', 'Flavia', 'Caecilia', 'Sulpicia', 'Tullia', 'Junia', 'Fabia', 'Domitia', 'Lucilla', 'Agrippina', 'Faustina'],
+      last: ['Aurelius', 'Cornelius', 'Valerius', 'Claudius', 'Fabius', 'Flavius', 'Junius', 'Antonius', 'Caecilius', 'Domitius', 'Sulpicius', 'Tullius', 'Livius', 'Octavius', 'Aemilius', 'Licinius', 'Pompeius', 'Sempronius', 'Calpurnius', 'Plautius', 'Vibius', 'Terentius'],
+      cities: ['Rome', 'Rome', 'Rome', 'Ostia', 'Pompeii', 'Neapolis', 'Capua', 'Mediolanum', 'Londinium', 'Lugdunum', 'Carthage', 'Alexandria', 'Antioch', 'Athens', 'Ephesus', 'Corinth', 'Herculaneum'] }
+  ];
+
   return {
-    COUNTRIES: COUNTRIES, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
+    COUNTRIES: COUNTRIES, ANCIENT: ANCIENT, EDU_RANK: EDU_RANK, MAJORS: MAJORS, PREMED: PREMED, GRAD_SCHOOLS: GRAD_SCHOOLS,
     TRADES: TRADES, CAREERS: CAREERS, PART_TIME: PART_TIME, FAME_CAREERS: FAME_CAREERS, POLITICS: POLITICS, SPORTS: SPORTS, GENRES: GENRES,
     HOUSES: HOUSES, STREETS: STREETS, STREET_TYPES: STREET_TYPES, CARS: CARS, CAR_COLORS: CAR_COLORS,
     JEWELRY: JEWELRY, PETS: PETS, PET_NAMES: PET_NAMES, ILLNESSES: ILLNESSES, CRIMES: CRIMES, CLUBS: CLUBS,
@@ -434,7 +450,7 @@ TL.data = (function () {
     career: function (id) {
       var all = CAREERS.concat(FAME_CAREERS, [POLITICS]);
       for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
-      return null;
+      return TL.ancient ? TL.ancient.career(id) : null;
     },
     illness: function (name) {
       for (var i = 0; i < ILLNESSES.length; i++) if (ILLNESSES[i].name === name) return ILLNESSES[i];
@@ -442,7 +458,14 @@ TL.data = (function () {
     },
     country: function (name) {
       for (var i = 0; i < COUNTRIES.length; i++) if (COUNTRIES[i].name === name) return COUNTRIES[i];
+      for (i = 0; i < ANCIENT.length; i++) if (ANCIENT[i].name === name) return ANCIENT[i];
       return COUNTRIES[0];
+    },
+    // Roman family names: Aurelius for men, Aurelia for women (js/ancient.js).
+    gentile: function (last, gender) {
+      var stem = String(last).replace(/(ius|ia|us|a)$/, '');
+      if (stem === last) return last;
+      return stem + (/ius$|ia$/.test(last) ? (gender === 'F' ? 'ia' : 'ius') : (gender === 'F' ? 'a' : 'us'));
     }
   };
 })();

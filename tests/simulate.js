@@ -12,7 +12,7 @@ var SMath = Object.create(Math); SMath.random = rand;
 var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'history', 'recap'].forEach(function (f) {
+['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'extras', 'world', 'hoops', 'military', 'sports', 'creator', 'acting', 'music', 'prosports', 'work', 'business', 'health', 'market', 'history', 'ancient', 'recap'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;
@@ -79,7 +79,9 @@ for (var n = 0; n < N; n++) {
 }
 function playFamily() {
   // 30% of families start somewhere in history (js/history.js).
-  TL.engine.newLife({ royal: rand() < 0.3, year: rand() < 0.3 ? 1900 + Math.floor(rand() * 120) : undefined });
+  var era = rand();
+  if (era < 0.2) TL.engine.newLife({ country: 'Roman Empire', year: 40 + Math.floor(rand() * 120) }); // js/ancient.js
+  else TL.engine.newLife({ royal: rand() < 0.3, year: era < 0.45 ? 1900 + Math.floor(rand() * 120) : undefined });
   var lives = 0;
   while (true) {
     var years = 0;

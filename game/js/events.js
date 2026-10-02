@@ -873,6 +873,8 @@ TL.events = (function () {
   function eligible(def) {
     var s = S(), a = me().age;
     if (def.scripted) return false;
+    // Ancient lives only get ancient events, and modern lives never do (js/ancient.js).
+    if (!!def.ancient !== !!(E.ancient && E.ancient())) return false;
     if (def.min != null && a < def.min) return false;
     if (def.max != null && a > def.max) return false;
     if (def.once && s.flags['ev_' + def.id]) return false;

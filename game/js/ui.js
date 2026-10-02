@@ -162,7 +162,7 @@ TL.ui = (function () {
     // Birth year: today, or any decade back to 1900 (js/history.js).
     var ys = $('#c-year'), now = new Date().getFullYear();
     if (ys && !ys.options.length) {
-      var opts = [['', 'Today (' + now + ')'], ['random', '🎲 A random year in history']];
+      var opts = [['', 'Today (' + now + ')'], ['random', '🎲 A random year in history']].concat(TL.ancient ? TL.ancient.birthOptions() : []);
       for (var dec = Math.floor((now - 1) / 10) * 10; dec >= 1900; dec -= 10) opts.push([String(dec), dec + 's' + (TL.history ? ' · ' + TL.history.eraName(dec + 5) : '')]);
       opts.forEach(function (o) { var el = document.createElement('option'); el.value = o[0]; el.textContent = o[1]; ys.appendChild(el); });
     }
@@ -172,7 +172,7 @@ TL.ui = (function () {
     show('create');
   }
   function randomName() {
-    var c = D.country($('#c-country').value);
+    var c = D.country($('#c-year') && $('#c-year').value === 'rome' ? 'Roman Empire' : $('#c-country').value);
     var g = $('#c-gender').value;
     $('#c-first').value = U.pick(g === 'M' ? c.male : c.female);
     $('#c-last').value = U.pick(c.last);
@@ -193,6 +193,12 @@ TL.ui = (function () {
     var interest = $('#c-interest').value;
     if (interest === 'auto') interest = g === 'M' ? 'F' : 'M';
     var yv = $('#c-year') ? $('#c-year').value : '', now = new Date().getFullYear(), year;
+    // Ancient eras (js/ancient.js) have their own land, names and years.
+    if (yv === 'rome') {
+      var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country('Roman Empire');
+      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(D.gentile(rl, 'M')) >= 0 ? D.gentile(rl, 'M') : undefined, gender: g, country: 'Roman Empire', interest: interest, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(40, 160) });
+      E.save(); return startGame();
+    }
     if (yv === 'random') year = U.rand(1900, now - 20);
     else if (yv) year = Math.min(now, +yv + U.rand(0, 9));
     E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: year });
@@ -345,7 +351,7 @@ TL.ui = (function () {
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
   function yearHtml(y, last) {
-    var html = '<div class="year-h"><b>Age ' + y.age + '</b><span>' + y.year + '</span></div><div class="ycard">';
+    var html = '<div class="year-h"><b>Age ' + y.age + '</b><span>' + E.yearLabel(y.year) + '</span></div><div class="ycard">';
     // Money lines are bookkeeping, not story: they sit in a quiet footer.
     var story = y.entries.filter(function (e) { return e.c !== 'money'; });
     var cash = y.entries.filter(function (e) { return e.c === 'money'; });
@@ -429,6 +435,7 @@ TL.ui = (function () {
     var ar = TL.acting && TL.acting.aboutRow(); if (ar) rows.push(ar);
     var mu = TL.music && TL.music.aboutRow(); if (mu) rows.push(mu);
     var pr = TL.pro && TL.pro.aboutRow(); if (pr) rows.push(pr);
+    if (TL.ancient && TL.ancient.on()) rows = TL.ancient.aboutRows().concat(rows);
     var sk = TL.features.SKILLS.filter(function (x) { return (s.skills || {})[x.id]; });
     if (sk.length) rows.push(['🎯 Skills', sk.map(function (x) { return x.name + ' ' + s.skills[x.id]; }).join(', ')]);
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);
@@ -715,7 +722,7 @@ TL.ui = (function () {
   function deathScreen() {
     var s = S(), m = s.me, rb = E.ribbon(), deg = E.highestDegree();
     $('#death-name').textContent = m.first + ' ' + m.last;
-    $('#death-sub').textContent = (s.year - m.age) + ' – ' + s.year + ' · Died at ' + m.age + ' from ' + s.cause;
+    $('#death-sub').textContent = E.yearLabel(s.year - m.age) + ' – ' + E.yearLabel(s.year) + ' · Died at ' + m.age + ' from ' + s.cause;
     $('#death-ribbon').innerHTML = '<div class="ribbon-ico">' + rb[0] + '</div><div><b>' + rb[1] + '</b><br><span class="muted">' + rb[2] + '</span></div>';
     var spouse = E.people('spouse')[0];
     var kids = E.people('child', true);
@@ -768,6 +775,7 @@ TL.ui = (function () {
     $('#h-menu').onclick = function () { E.save(); home(); };
     $('#c-random').onclick = randomName;
     $('#c-country').onchange = randomName;
+    if ($('#c-year')) $('#c-year').onchange = function () { var r = $('#c-year').value === 'rome'; $('#c-country').parentNode.style.display = r ? 'none' : ''; $('#c-royal').parentNode.style.display = r ? 'none' : ''; randomName(); };
     $('#c-gender').onchange = randomName;
     $('#c-start').onclick = createLife;
     $('#c-reroll').onclick = rerollStats;

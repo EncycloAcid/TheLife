@@ -96,7 +96,7 @@ TL.health = (function () {
       if (U.chance(0.45)) E.log('🤔 ' + U.pick(SILENT[n].hints));
       if (me().health < 30 || U.chance(0.12 + m.hidden[n] * 0.08)) {
         var er = bill(n === 'Cancer' || n === 'Heart Disease' ? 12000 : 2500);
-        diagnose(n, 'I ended up in the ER.' + (er ? ' The bill was ' + E.fmt(er) + '.' : ''));
+        diagnose(n, E.ancient() ? 'I collapsed and a physician was summoned.' : 'I ended up in the ER.' + (er ? ' The bill was ' + E.fmt(er) + '.' : ''));
       }
     });
     // Untreated cancer spreads.
@@ -106,7 +106,7 @@ TL.health = (function () {
     }
     if (!has('Cancer')) delete m.stage.Cancer;
     // Untreated heart disease can mean a heart attack.
-    if (has('Heart Disease') && !m.meds['Heart Disease'] && !s.prison && U.chance(0.1 + (a > 65 ? 0.06 : 0))) s.pending.push({ id: 'med_heart_attack' });
+    if (has('Heart Disease') && !m.meds['Heart Disease'] && !s.prison && !E.ancient() && U.chance(0.1 + (a > 65 ? 0.06 : 0))) s.pending.push({ id: 'med_heart_attack' });
     // Prescriptions for conditions you no longer have lapse.
     Object.keys(m.meds).forEach(function (n) { if (!E.hasCondition(n)) delete m.meds[n]; });
   }
