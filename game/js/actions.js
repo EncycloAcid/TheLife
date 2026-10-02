@@ -1183,6 +1183,7 @@ TL.actions = (function () {
       if (a >= 21) items.push({ icon: '👶', label: 'Adoption', onClick: adopt });
 
       items.push({ section: 'Life' });
+      if (TL.maps) items.push({ icon: '🗺️', label: 'World map', sub: 'Home, places I\'ve lived, wars of the day', onClick: TL.maps.menu });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
       if (a >= 18) items.push({ icon: '📜', label: 'Write a will', sub: S().will && E.person(S().will) ? 'Main heir: ' + E.person(S().will).first : 'Choose your heir', onClick: TL.features.willMenu });
       if (a >= 14 && (!TL.history || TL.history.exists('gig'))) items.push({ icon: '💼', label: 'Side hustles', sub: 'Uber, DoorDash, Fiverr, StockX…', onClick: TL.creator.hustleMenu });
@@ -1469,6 +1470,7 @@ TL.actions = (function () {
             Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.max(0.01, Math.round(s.prices[k] * ratio * 100) / 100); });
             if (TL.market) TL.market.convert(ratio);
             s.people.forEach(function (p) { p.money = Math.round(p.money * ratio); });
+            if ((s.lived = s.lived || []).indexOf(s.country) < 0) s.lived.push(s.country); // js/maps.js world map
             s.country = c.name;
             s.city = TL.real ? TL.real.city(c.name) : null;
             if (s.job) E.quitJob(true);

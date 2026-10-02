@@ -196,7 +196,7 @@ TL.ui = (function () {
     // Earlier eras (js/eras.js) have their own land, names and years.
     var era = TL.ancient && TL.ancient.byOption(yv);
     if (era) {
-      var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country(era.land), ln = era.gentile ? D.gentile(rl, 'M') : rl;
+      var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country(era.land), ln = D.surname(rl, 'M', era.id);
       E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(era.years[0], era.years[1]) });
       E.save(); return startGame();
     }

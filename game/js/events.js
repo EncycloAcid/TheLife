@@ -875,6 +875,8 @@ TL.events = (function () {
     if (def.scripted) return false;
     // Each era only gets its own events (js/ancient.js, js/medieval.js); modern lives get the rest.
     if ((def.ancient || null) !== ((E.ancient && E.ancient()) || null)) return false;
+    // Some things never happen to an emperor or a king (tax collectors, recruiters, matchmakers).
+    if (def.notRuler && TL.ancient && TL.ancient.on() && TL.ancient.st().rule) return false;
     if (def.min != null && a < def.min) return false;
     if (def.max != null && a > def.max) return false;
     if (def.once && s.flags['ev_' + def.id]) return false;

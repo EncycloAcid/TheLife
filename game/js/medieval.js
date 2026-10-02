@@ -90,6 +90,9 @@ TL.eras.medieval = (function () {
     [1517, '📜', 'In Germany, a monk named Martin Luther challenged the Pope.', 'The Reformation'],
     [1534, '⛪', 'King Henry broke with the Pope and made himself head of the Church in England.', 'The break with Rome']
   ];
+  // Moments that only happen if the real kings are on the throne.
+  var RULER_MOMENTS = ['The Third Crusade', 'The captive king', 'The king\'s ransom', 'The death of the Lionheart', 'The loss of Normandy', 'Magna Carta', 'The death of King John', 'The fall of Edward II', 'The Hundred Years\' War',
+    'The Black Prince', 'The boy king', 'Richard II deposed', 'The Battle of Agincourt', 'The baby king', 'The Wars of the Roses', 'The Battle of Towton', 'The Princes in the Tower', 'The Battle of Bosworth', 'Henry VIII', 'The break with Rome'];
   var COMETS = [1222, 1301, 1378, 1456, 1531];
   var CAMPAIGNS = [[1173, 1174, 'the Great Revolt'], [1189, 1192, 'the Holy Land, on the Third Crusade'], [1194, 1199, 'Normandy'], [1202, 1204, 'Normandy'], [1214, 1214, 'France'],
     [1215, 1217, 'the Barons\' War'], [1242, 1243, 'Poitou'], [1264, 1265, 'the Second Barons\' War'], [1270, 1272, 'the Holy Land, with Lord Edward'], [1277, 1283, 'Wales'], [1294, 1295, 'Wales'],
@@ -184,14 +187,15 @@ TL.eras.medieval = (function () {
     var k = king(yr);
     // Left the cloister some other way (fired, retired): find a roof.
     if (s.home.type === 'cloister' && !(j && (j.career === 'm_monk' || j.career === 'm_anchor'))) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
-    if (k !== a.king) { a.king = k; if (age >= 5) E.log('👑 ' + royal(k) + ' was crowned.'); }
+    if (k !== a.king) { a.king = k; if (age >= 5 && !a.rule) E.log('👑 ' + royal(k) + ' was crowned.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
+      if (a.rule && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // I wear the crown now: history went another way
       E.log(mo[1] + ' ' + mo[2]); see(mo[3], mo[1]);
     });
     if (COMETS.indexOf(yr) >= 0 && age >= 5) E.log('☄️ A comet with a fiery tail hung in the sky for weeks. Everyone says it is an omen.');
     // King Richard's ransom.
-    if (yr === 1194 && age >= 16 && !serf()) E.addMoney(-Math.round(money() * 0.25));
+    if (yr === 1194 && age >= 16 && !serf() && !a.rule) E.addMoney(-Math.round(money() * 0.25));
     // The Great Famine (1315-1317) fell hardest on the poor.
     if (yr >= 1315 && yr <= 1317 && !gentle()) {
       E.stat('health', -U.rand(4, 14)); E.stat('happy', -6);
@@ -211,9 +215,9 @@ TL.eras.medieval = (function () {
     // Henry VIII closed the monasteries (1536-1540).
     if (yr >= 1536 && j && j.career === 'm_monk') { E.log('🏚️ The king\'s men closed my abbey and sold its lands. I was given a small pension and sent out into the world.', 'bad'); s.pension = pen(j.level >= 3 ? 1200 : 120); E.quitJob(true); s.home = JSON.parse(JSON.stringify(TXT.rentHome)); }
     if (a.plot) { TL.coup.yearly(coupCfg(a.plot.kind)); if (s.dead) return; }
-    if (a.rule && !(j && j.career === 'm_king')) a.rule = null;
+    if (a.rule && !(j && j.career === 'm_king')) TL.coup.lostThrone();
     // The Wars of the Roses: whoever wins, the other side pays.
-    if (ROSES[yr] && a.rose) roseTurn(ROSES[yr]);
+    if (ROSES[yr] && a.rose && !a.rule) roseTurn(ROSES[yr]);
     if (s.dead) return;
     if (age === 14 && male() && !serf()) E.log('🏹 By law, every man must practice with the longbow on Sundays. I got my first bow.');
     // Serfs: work the lord's land; freedom becomes easier after the Black Death.
@@ -514,6 +518,7 @@ TL.eras.medieval = (function () {
   function homeLabel(h) {
     var a = st();
     if (h.type === 'parents') return serf() ? (me().age < 18 ? 'My family\'s cottage on the manor' : 'A cottage on the manor') : a.cls === 'noble' ? 'My family\'s castle' : a.cls === 'gentry' ? 'My family\'s manor house' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
+    if (h.type === 'palace') return 'The Palace of Westminster';
     if (h.type === 'cloister') return S().job && S().job.career === 'm_anchor' ? 'My anchorhold at ' + S().job.company : S().job && S().job.company ? S().job.company : 'The cloister';
     if (h.type === 'homeless') return 'Sleeping rough';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
@@ -526,7 +531,7 @@ TL.eras.medieval = (function () {
       var s = S(), a = st(), items = [], props = s.assets.filter(function (x) { return x.anc; });
       var worth = props.reduce(function (t, x) { return t + x.value; }, 0) + (a.inv || []).reduce(function (t, v) { return t + (v.value || v.amt || 0); }, 0);
       items.push({ info: true, html: '<div class="nw"><small>Wealth</small><div class="nw-big' + (s.money + worth < 0 ? ' neg' : '') + '">' + E.fmt(s.money + worth) + '</div><div class="nw-grid"><div><small>Coin</small><b>' + E.fmt(s.money) + '</b></div><div><small>Property & ventures</small><b>' + E.fmt(worth) + '</b></div></div><div class="bz-cap">Money is counted in silver pennies. A laborer earns about ' + E.fmt(pen(300)) + ' a year.</div></div>' });
-      var stuck = me().age < 16 || serf() || s.home.type === 'cloister';
+      var stuck = me().age < 16 || serf() || s.home.type === 'cloister' || s.home.type === 'palace';
       items.push({ icon: '🏠', label: E.homeLabel(), sub: stuck ? 'Where I live' : 'Tap to move', disabled: stuck, onClick: moveMenu });
       if (props.length || (a.inv || []).length) {
         items.push({ section: 'What I own' });
@@ -617,14 +622,15 @@ TL.eras.medieval = (function () {
       if (age >= 14 && free) items.push({ icon: '🚶', label: 'Go on pilgrimage', sub: 'Canterbury, Walsingham, or far beyond', onClick: pilgrimage });
       if (age >= 14 && free) items.push({ icon: '📜', label: 'Buy an indulgence', sub: 'Pay to shorten my time in Purgatory', right: E.fmt(pen(100)), onClick: function () { var c = pen(100); if (s.money < c) return done(nope('The pardoner wants ' + E.fmt(c) + '.')); if (count('m_indul')) return done(nope('One pardon a year.')); bump('m_indul'); E.addMoney(-c); E.karma(4); done('The pardoner sealed a letter forgiving my sins. He looked very pleased with himself.'); } });
       if (age >= 10 && s.money > 0) items.push({ icon: '🤲', label: 'Give alms to the poor', onClick: function () { if (count('m_alms')) return done(nope('I already gave alms this year.')); bump('m_alms'); var g = Math.max(pen(1), Math.round(money() * 0.02)); E.addMoney(-g); E.karma(5); E.stat('happy', 3); done('I gave ' + E.fmt(g) + ' to the beggars at the church door.'); } });
-      if (age >= 10) {
+      if (age >= 10 && !a.rule) {
         items.push({ section: 'Crime' });
         [['🦌', 'Poach the king\'s deer', 0.6, 20, 80, 12], ['👛', 'Cut purses at the fair', 0.62, 2, 60, 10], ['🗡️', 'Rob travelers on the highway', 0.45, 60, 1200, 16], ['🕯️', 'Steal the church silver', 0.35, 300, 3000, 18]].forEach(function (c) {
           items.push({ icon: c[0], label: c[1], disabled: age < c[5], onClick: function () { crime(c); } });
         });
       }
       items.push({ section: 'Life' });
-      if (age >= 18 && free && s.home.type !== 'cloister') items.push({ icon: '🧭', label: 'Move to another town', onClick: function () { ui().choose('Move where?', 'A fresh start somewhere else in England.', U.shuffle(TOWNS.filter(function (x) { return x !== s.city; })).slice(0, 5).map(function (city) { return { label: city, fn: function () { s.city = city; E.log('🧭 I moved to ' + city + '.'); done('I packed my things on a cart and moved to ' + city + '.'); } }; })); } });
+      if (age >= 18 && free && s.home.type !== 'cloister' && !a.rule) items.push({ icon: '🧭', label: 'Move to another town', onClick: function () { ui().choose('Move where?', 'A fresh start somewhere else in England.', U.shuffle(TOWNS.filter(function (x) { return x !== s.city; })).slice(0, 5).map(function (city) { return { label: city, fn: function () { s.city = city; E.log('🧭 I moved to ' + city + '.'); done('I packed my things on a cart and moved to ' + city + '.'); } }; })); } });
+      if (TL.maps) items.push({ icon: '🗺️', label: 'Map of Europe', sub: a.rule ? 'My kingdom and my wars' : 'Who holds what in ' + y(), onClick: TL.maps.menu });
       items.push({ icon: '⏳', label: 'Time Machine', sub: E.tmAges().length ? 'Go back up to ' + U.plural(E.tmAges().length, 'year') : 'Age up to charge it', disabled: !E.tmAges().length, onClick: function () { ui().timeMachine(); } });
       items.push({ icon: '🏆', label: 'Achievements', onClick: TL.actions.achievementsMenu });
       return items;
@@ -717,7 +723,7 @@ TL.eras.medieval = (function () {
       { label: 'Buy grain at any price', run: function () { E.addMoney(-Math.min(money(), pen(U.rand(40, 120)))); return 'The grain merchants doubled their prices, but we ate.'; } }
     ] };
   } });
-  def('m_tithe', { min: 18, w: 4, cond: function () { return S().money > 0 && !(S().job && /m_(monk|priest)/.test(S().job.career)); }, build: function () {
+  def('m_tithe', { notRuler: true, min: 18, w: 4, cond: function () { return S().money > 0 && !(S().job && /m_(monk|priest)/.test(S().job.career)); }, build: function () {
     var amt = Math.max(pen(5), Math.round(money() * 0.1));
     return { icon: '🌾', title: 'The tithe', text: 'The priest\'s man has come for the tithe: a tenth of everything, ' + E.fmt(amt) + '.', choices: [
       { label: 'Pay it', run: function () { E.addMoney(-amt); E.karma(2); return 'I paid. God\'s tenth.'; } },
@@ -730,7 +736,7 @@ TL.eras.medieval = (function () {
       { label: 'Bring in my own harvest first', run: function () { if (U.chance(0.5)) { E.addMoney(-Math.min(money(), pen(U.rand(10, 60)))); return bad('The manor court fined me for shirking.'); } E.addMoney(pen(U.rand(10, 40))); return good('Nobody noticed. My family has a good store for winter.'); } }
     ] };
   } });
-  def('m_pardoner', { min: 12, w: 3, build: function () {
+  def('m_pardoner', { notRuler: true, min: 12, w: 3, build: function () {
     var relic = U.pick(['a feather from the Archangel Gabriel', 'a toe of Saint Peter', 'a piece of Noah\'s Ark', 'a jar of the Virgin\'s tears']);
     return { icon: '🦴', title: 'The pardoner', text: 'A traveling pardoner offers to sell me ' + relic + ' for ' + E.fmt(pen(40)) + '.', choices: [
       { label: 'Buy the relic', run: function () { var c = Math.min(money(), pen(40)); E.addMoney(-c); E.stat('happy', 4); return 'I keep it by my bed. It looks a lot like a pig bone.'; } },
@@ -744,13 +750,13 @@ TL.eras.medieval = (function () {
       { label: 'Keep away from her', run: function () { return 'Some say she\'s a witch. I didn\'t want to find out.'; } }
     ] };
   } });
-  def('m_thatch', { min: 10, w: 3, cond: function () { return S().home.type !== 'cloister'; }, build: function () {
+  def('m_thatch', { notRuler: true, min: 10, w: 3, cond: function () { return S().home.type !== 'cloister'; }, build: function () {
     return { icon: '🔥', title: 'Fire in the thatch', text: 'A spark from the hearth caught the thatch. The roof is burning!', choices: [
       { label: 'Save what we can', run: function () { E.addMoney(-Math.round(money() * 0.1)); E.stat('health', -U.rand(0, 6)); return 'We dragged out the bedding and the pots. The roof is gone.'; } },
       { label: 'Call the neighbors with buckets', run: function () { E.karma(2); if (U.chance(0.6)) return good('The whole street formed a line to the well. We saved the house.'); E.addMoney(-Math.round(money() * 0.15)); return bad('Too late. The fire spread to the barn.'); } }
     ] };
   } });
-  def('m_outlaws', { min: 14, w: 3, build: function () {
+  def('m_outlaws', { notRuler: true, min: 14, w: 3, build: function () {
     return { icon: '🌲', title: 'Outlaws in the greenwood', text: 'On the forest road, men in green stepped out from the trees with bows drawn.', choices: [
       { label: 'Hand over my purse', run: function () { E.addMoney(-Math.min(money(), pen(U.rand(5, 60)))); return 'They took my purse and melted back into the forest.'; } },
       { label: 'Tell them I\'m poor', run: function () { if (money() < pen(200) || U.chance(0.3)) { E.stat('happy', 4); return good('Their leader laughed and let me go. "We only rob the rich," he said.'); } E.addMoney(-Math.min(money(), pen(U.rand(30, 120)))); E.stat('health', -6); return bad('They searched me, found my coins and gave me a thrashing for lying.'); } }
@@ -778,7 +784,7 @@ TL.eras.medieval = (function () {
       { label: 'Stay home', run: function () { return 'Someone has to mind the fields.'; } }
     ] };
   } });
-  def('m_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest|anchor)/.test(S().job.career)); }, build: function () {
+  def('m_marriage', { notRuler: true, min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest|anchor)/.test(S().job.career)); }, build: function () {
     if (S().job && /m_(monk|priest|anchor)/.test(S().job.career)) return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + U.pick(c.last);
     var fee = serf() ? Math.min(money(), pen(20)) : 0;
@@ -791,6 +797,42 @@ TL.eras.medieval = (function () {
     return { icon: '🌹', title: 'York or Lancaster?', text: 'The great lords are choosing sides. Everyone at court and every knight must choose too.', choices: [
       { label: '🤍 The white rose of York', run: function () { st().rose = 'york'; if (S().job) S().job.rose = 'york'; return 'I wear the white rose now.'; } },
       { label: '❤️ The red rose of Lancaster', run: function () { st().rose = 'lancaster'; if (S().job) S().job.rose = 'lancaster'; return 'I wear the red rose now.'; } }
+    ] };
+  } });
+  def('m_aleconner', { min: 21, w: 3, cond: function () { return !gentle(); }, build: function () {
+    return { icon: '🍺', title: 'Ale-taster', text: 'The town chose me as ale-taster: I must test every brewer\'s ale for strength and honest measure.', choices: [
+      { label: 'Be strict', run: function () { E.karma(4); E.fame(1); return 'I fined three brewers for watered ale. They glared at me in church.'; } },
+      { label: 'Take a little something to look the other way', run: function () { E.addMoney(pen(U.rand(10, 40))); E.karma(-4); E.stat('health', -2); return 'Free ale and a few pennies. My liver is not grateful.'; } }
+    ] };
+  } });
+  def('m_huecry', { notRuler: true, min: 14, w: 3, build: function () {
+    return { icon: '📣', title: 'Hue and cry!', text: 'A neighbor was robbed and raised the hue and cry. By law every man must chase the thief.', choices: [
+      { label: 'Join the chase', run: function () { if (U.chance(0.5)) { E.fame(1); E.karma(2); return good('We caught him in the woods and dragged him to the sheriff.'); } E.stat('health', -3); return 'He got away, and I fell in a ditch.'; } },
+      { label: 'Stay home', run: function () { E.addMoney(-Math.min(Math.max(0, S().money), pen(10))); return 'The village was fined for letting him escape, and I paid my share.'; } }
+    ] };
+  } });
+  def('m_mummers', { min: 4, w: 4, build: function () {
+    return { icon: '🎭', title: 'Christmas mummers', text: 'Masked mummers came to the door on Twelfth Night, acting out Saint George and the dragon.', choices: [
+      { label: 'Invite them in for ale', run: function () { E.stat('happy', 6); E.addMoney(-Math.min(Math.max(0, S().money), pen(2))); return 'The dragon died very dramatically on our floor. Everyone cheered.'; } },
+      { label: 'Join in', run: function () { E.stat('happy', 8); E.fame(1); return 'I put on a mask and played the doctor who brings Saint George back to life.'; } }
+    ] };
+  } });
+  def('m_leper', { min: 10, w: 3, build: function () {
+    return { icon: '🔔', title: 'A leper', text: 'A leper ringing a bell and holding out a bowl stopped by the road.', choices: [
+      { label: 'Give alms', run: function () { E.addMoney(-Math.min(Math.max(0, S().money), pen(2))); E.karma(4); return 'I put coins in his bowl. He blessed me.'; } },
+      { label: 'Hurry past', run: function () { return 'Everyone hurried past. I felt ashamed later.'; } }
+    ] };
+  } });
+  def('m_boybishop', { min: 8, max: 14, w: 3, cond: function () { return male(); }, build: function () {
+    return { icon: '⛪', title: 'Boy bishop', text: 'On Saint Nicholas\'s day the choirboys elect one of their own as bishop until Holy Innocents. They chose me!', choices: [
+      { label: 'Preach a sermon', run: function () { E.fame(2); E.stat('happy', 8); return 'I wore a little mitre and preached to the whole town. The real bishop laughed until he cried.'; } },
+      { label: 'Use my power to cancel lessons', run: function () { E.stat('happy', 10); return 'For three weeks, no Latin. Best reign ever.'; } }
+    ] };
+  } });
+  def('m_wolf', { notRuler: true, min: 6, w: 3, cond: function () { return y() < 1300 && !town(); }, build: function () {
+    return { icon: '🐺', title: 'Wolves', text: 'In the hard winter, wolves came down from the forest and are killing the sheep.', choices: [
+      { label: 'Hunt them with the village', run: function () { if (U.chance(0.75)) { E.addMoney(pen(U.rand(5, 30))); return good('We killed the pack. The lord paid a bounty for each head.'); } E.stat('health', -U.rand(10, 25)); return bad('A wolf tore my leg before we drove them off.'); } },
+      { label: 'Bar the doors', run: function () { E.addMoney(-Math.min(Math.max(0, S().money), pen(U.rand(5, 20)))); return 'We stayed safe, but lost two ewes.'; } }
     ] };
   } });
   sdef('m_blackdeath', { build: function () {
@@ -888,7 +930,7 @@ TL.eras.medieval = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['the king and his barons', [], true], ['God and the Church', [], true], ['the weather', []]];
   var KID_TOPICS = [['dragons and giants', []], ['games of hoodman blind', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['knights and their deeds', ['Athletic']], ['their drawings', ['Artsy']]];
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff',
-    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic', 'usurper', 'rebel', 'long_reign'];
+    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic', 'usurper', 'rebel', 'long_reign', 'conqueror'];
   // What medieval English people called each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Rheum', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Quinsy', 'Asthma': 'Tightness of the Chest',
     'Acne': 'Pimples', 'Migraine': 'The Megrim', 'PTSD': 'Battle Terrors', 'Depression': 'Melancholy', 'Anxiety': 'Troubled Spirits', 'Insomnia': 'Sleeplessness',
@@ -919,7 +961,18 @@ TL.eras.medieval = (function () {
       win: function () { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); see('Seized the crown of England', '👑'); E.log('👑 I was crowned ' + (fem ? 'Queen' : 'King') + ' of England at Westminster Abbey.', 'good'); return 'We met the king\'s army and broke it. ' + royal(old) + ' was taken to the Tower, and I was crowned at Westminster Abbey! 👑'; },
       lose: { cause: 'being hanged, drawn and quartered for treason', text: 'The king\'s army routed mine.', death: 'I was hanged, drawn and quartered as a traitor.', spared: 'The king spared my life for a vast fine and banished me from court.' },
       caught: { cause: 'the axe on Tower Hill', text: 'A spy betrayed the plot to the king.', death: 'I was beheaded on Tower Hill.', spared: 'I lost my lands and was banished from court.' },
-      rule: { career: 'm_king', seat: 'Westminster', popName: 'The people', guardName: 'The barons', acts: [
+      rule: { career: 'm_king', cls: 'noble', seat: 'Westminster', popName: 'The people', guardName: 'The barons', realm: 'the kingdom', spy: pen(3000), taxcut: pen(10000),
+        neighbors: ['France', 'Scotland', 'the Welsh princes', 'Castile', 'the Duke of Burgundy'],
+        brides: ['a French princess', 'a princess of Castile', 'the Duke of Burgundy\'s daughter'], grooms: ['a French prince', 'a prince of Castile', 'the Duke of Burgundy\'s son'],
+        disaster: ['🌊', 'The Thames has flooded', 'The river burst its banks and swept away half of the poorer streets of London.'],
+        laws: [
+          { id: 'charter', label: 'Confirm Magna Carta', text: 'I swore again that even the king is under the law. The barons cheered.', fx: { guard: 12, pop: 4 } },
+          { id: 'serfs', label: 'Abolish serfdom', text: 'Every serf in England is free. The lords are furious, the villages are dancing.', fx: { pop: 16, guard: -15, karma: 10 } },
+          { id: 'towns', label: 'Grant charters to the towns', text: 'Towns may elect their own mayors and keep their own markets.', fx: { pop: 8, money: pen(8000) } },
+          { id: 'uni', label: 'Found a new college', text: 'A college bearing my name will teach scholars for centuries.', fx: { fame: 6, money: -pen(12000) } },
+          { id: 'coin', label: 'Debase the coinage', text: 'Lighter pennies, a fuller treasury, angrier merchants.', fx: { money: pen(25000), pop: -10 } },
+          { id: 'forest', label: 'Open the royal forests', text: 'Ordinary people may gather wood and graze pigs in the king\'s forests again.', fx: { pop: 10, guard: -3 } }],
+        acts: [
         { id: 'feast', icon: '🍗', label: 'Feast the barons', sub: 'Keep the great lords sweet', cost: pen(8000), fx: { guard: 20, happy: 3 }, text: 'A week of feasting at Westminster. Every baron went home with a gift.' },
         { id: 'tax', icon: '💰', label: 'Raise a new tax', sub: 'Fills the treasury, angers everyone', fx: { money: pen(30000), pop: -14 }, text: 'Parliament grumbled and granted the tax. The people grumbled louder.' },
         { id: 'build', icon: '⛪', label: 'Build a great cathedral', sub: 'For God, and to be remembered', cost: pen(50000), fx: { fame: 10, karma: 5, pop: 6 }, see: ['Built a cathedral', '⛪'], text: 'Masons from all over Europe came to raise my cathedral. It will take a hundred years to finish.' },
@@ -934,7 +987,7 @@ TL.eras.medieval = (function () {
     var a = st(), o = old || {};
     a.cls = o.cls || 'free';
     if (a.cls === 'villein') { a.lord = o.lord; if (o.fled) { a.fled = o.fled; a.village = o.village; a.fledTo = o.fledTo; } }
-    if (o.rule) { a.cls = 'noble'; TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); E.log('👑 I inherited the crown. I am ' + (male() ? 'King' : 'Queen') + ' of England.', 'good'); return; }
+    if (o.rule && TL.coup.inherits(o.rule)) { a.cls = 'noble'; TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); E.log('👑 I inherited the crown. I am ' + (male() ? 'King' : 'Queen') + ' of England.', 'good'); return; }
     a.king = king(y());
     if ((a.cls === 'noble' || a.cls === 'gentry') && me().age >= 14) a.edu = 'letters'; // tutored at home
     var lines = { noble: '🏰 I am heir to my family\'s lands and titles.', gentry: '🛡️ The family manor passes to my generation.', burgher: '🏘️ I carry on my family\'s place among the townsfolk.', free: '🌾 Like my parents, I am a free peasant.', villein: '🌾 Like my parents, I am a serf on the manor of ' + a.lord + '.' };

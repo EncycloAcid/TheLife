@@ -10,10 +10,10 @@ TL.engine = (function () {
   // Local currency per base dollar, times the era's price level (js/history.js).
   function k() { var c = country(); return c.ancient ? c.k : c.k * (TL.history && TL.S ? TL.history.priceLevel(TL.S.year) : 1); }
   function ancient() { return TL.S && country().ancient ? country().ancient : null; }
-  // "AD 79" for Roman lives, "1979" otherwise.
+  // "AD 79" for Roman and Viking lives, "1979" otherwise.
   // A condition's name as people of the time would say it (js/ancient.js).
   function illName(n) { return TL.S && country().ancient && TL.ancient ? TL.ancient.illName(n) : n; }
-  function yearLabel(y) { return TL.S && country().ancient === 'rome' ? 'AD ' + y : String(y); }
+  function yearLabel(y) { var e = TL.S && country().ancient && TL.ancient && TL.ancient.era(); return e && e.ad ? 'AD ' + y : String(y); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
     var v = usd * k();
@@ -149,7 +149,7 @@ TL.engine = (function () {
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
-    if (S() && country().ancient === 'rome') nm.last = D.gentile(nm.last, gender);
+    if (S() && country().ancient) nm.last = D.surname(nm.last, gender, country().ancient);
     // No two people in one life share a full name (two "James Wilson" classmates was confusing).
     var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
@@ -196,7 +196,7 @@ TL.engine = (function () {
       famePerks: null, social: { platform: false }, home: { type: 'parents' }
     };
     TL.S = st;
-    if (ctry.ancient) { if (ctry.ancient === 'rome') st.me.last = D.gentile(st.me.last, gender); st.flags.noSchool = true; }
+    if (ctry.ancient) { st.me.last = D.surname(st.me.last, gender, ctry.ancient); st.flags.noSchool = true; }
     // Share prices start near real levels, in local currency.
     D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round($(s.price || U.randf(20, 300)) * U.randf(0.75, 1.3) * 100) / 100; });
     st.log.push({ age: 0, year: startYear, entries: [] });
@@ -826,7 +826,7 @@ TL.engine = (function () {
   function validateHome() {
     var s = S(), h = home(), why = null;
     if (h.type === 'owned') { var a = ownedHome(); if (!a || a.rented) why = 'I moved out of my old place and into a studio apartment.'; }
-    else if (h.type === 'palace' && !s.royal) why = 'I left the palace and moved into a studio apartment.';
+    else if (h.type === 'palace' && !s.royal && !(ancient() && TL.ancient && TL.ancient.st().rule)) why = 'I left the palace and moved into a studio apartment.';
     else if (h.type === 'parents' && me().age >= 18 && !parentsAround().length && !(ancient() && TL.ancient.housed())) why = ancient() ? TL.ancient.txt('parentsGone') : 'With my parents gone, I moved into a studio apartment.';
     if (why && ancient()) why = why.replace('a studio apartment', TL.ancient.txt('moveOut'));
     if (why) { s.home = ancient() ? JSON.parse(JSON.stringify(TL.ancient.txt('rentHome'))) : { type: 'rent', tier: 1 }; log(why); }
@@ -1168,7 +1168,9 @@ TL.engine = (function () {
 
   // ---------- legacy / continue as child ----------
   function heirs() {
-    var kids = people('child');
+    var kids = people('child'), r = S().anc && S().anc.rule;
+    // A ruler's named heir comes first (js/eras.js).
+    if (r && r.heir) kids.sort(function (a, b) { return (b.id === r.heir) - (a.id === r.heir); });
     if (kids.length) return kids;
     // No living children: the family line can continue through a grandchild.
     return people('grandchild');

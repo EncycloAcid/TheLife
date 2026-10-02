@@ -410,6 +410,12 @@ TL.data = (function () {
     { id: 'usurper', name: 'Seize the Throne', desc: 'Overthrow the emperor of Rome or the king of England', icon: '👑' },
     { id: 'rebel', name: 'Rise Up', desc: 'Lead a revolt that wins', icon: '🔥' },
     { id: 'long_reign', name: 'Long Live the King', desc: 'Rule for twenty years', icon: '🏰' },
+    { id: 'conqueror', name: 'Conqueror', desc: 'Take five provinces in war as a ruler', icon: '🚩' },
+    { id: 'valhalla', name: 'Valhalla', desc: 'Die in battle as a Viking', icon: '⚔️' },
+    { id: 'vinland', name: 'Vinland', desc: 'Sail to North America five hundred years before Columbus', icon: '🌲' },
+    { id: 'sea_king', name: 'Sea-King', desc: 'Lead a fleet of longships', icon: '⛵' },
+    { id: 'skald', name: 'Mead of Poetry', desc: 'Compose a drápa that wins a gold ring', icon: '🎶' },
+    { id: 'settler', name: 'Land-Taker', desc: 'Settle Iceland or Greenland', icon: '🧊' },
     { id: 'mystic', name: 'Revelations', desc: 'Write a book of visions as an anchoress or anchorite', icon: '✍️' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
@@ -459,7 +465,12 @@ TL.data = (function () {
       male: ['William', 'John', 'Robert', 'Richard', 'Thomas', 'Walter', 'Hugh', 'Henry', 'Roger', 'Geoffrey', 'Ralph', 'Simon', 'Adam', 'Gilbert', 'Nicholas', 'Stephen', 'Osbert', 'Piers'],
       female: ['Alice', 'Agnes', 'Matilda', 'Joan', 'Isabel', 'Margery', 'Emma', 'Cecily', 'Margaret', 'Edith', 'Eleanor', 'Beatrice', 'Juliana', 'Avice', 'Maud', 'Rohese', 'Sibyl', 'Christina'],
       last: ['Smith', 'Miller', 'Baker', 'Carter', 'Fletcher', 'Cooper', 'Thatcher', 'Mason', 'Taylor', 'Webster', 'Brewer', 'Ward', 'Shepherd', 'Atwood', 'Fisher', 'Cook', 'Reeve', 'Fowler', 'Archer', 'Hayward', 'Godwin', 'Langley'],
-      cities: ['London', 'London', 'London', 'York', 'York', 'Norwich', 'Bristol', 'Winchester', 'Lincoln', 'Canterbury', 'Oxford', 'Coventry', 'Exeter', 'Chester', 'Durham', 'Southampton'] }
+      cities: ['London', 'London', 'London', 'York', 'York', 'Norwich', 'Bristol', 'Winchester', 'Lincoln', 'Canterbury', 'Oxford', 'Coventry', 'Exeter', 'Chester', 'Durham', 'Southampton'] },
+    { name: 'Viking Norway', ancient: 'viking', flag: '🪓', cur: '🪙', k: 0.02, life: 68, tax: 0.05,
+      male: ['Bjorn', 'Erik', 'Ragnar', 'Leif', 'Harald', 'Olaf', 'Sigurd', 'Ivar', 'Gunnar', 'Thorstein', 'Ulf', 'Halfdan', 'Knut', 'Sven', 'Arne', 'Egil', 'Hakon', 'Ketil', 'Torvald', 'Asger'],
+      female: ['Astrid', 'Freydis', 'Gudrun', 'Ingrid', 'Sigrid', 'Thora', 'Ragnhild', 'Aslaug', 'Helga', 'Gunnhild', 'Thyra', 'Ylva', 'Solveig', 'Hild', 'Brynhild', 'Asa', 'Estrid', 'Tove'],
+      last: ['Bjornsson', 'Eriksson', 'Ragnarsson', 'Leifsson', 'Haraldsson', 'Olafsson', 'Sigurdsson', 'Ivarsson', 'Gunnarsson', 'Thorsteinsson', 'Ulfsson', 'Halfdansson', 'Knutsson', 'Svensson', 'Egilsson', 'Hakonsson', 'Ketilsson'],
+      cities: ['Kaupang', 'Kaupang', 'Hedeby', 'Birka', 'Ribe'] }
   ];
 
   return {
@@ -485,6 +496,13 @@ TL.data = (function () {
     },
     // Roman family names: Aurelius for men, Aurelia for women (js/ancient.js).
     // Medieval English surnames stay as they are.
+    // A family name for this person in an early era: Roman nomina change ending
+    // with gender (js/ancient.js); Norse patronymics are -son or -dottir (js/viking.js).
+    surname: function (last, gender, era) {
+      if (era === 'rome') return this.gentile(last, gender);
+      if (era === 'viking') { var stem = String(last).replace(/(sson|sdottir|son|dottir)$/, ''); return stem === last ? last : stem + (gender === 'F' ? 'sdottir' : 'sson'); }
+      return last;
+    },
     gentile: function (last, gender) {
       var stem = String(last).replace(/(ius|ia|us|a)$/, '');
       if (stem === last) return last;

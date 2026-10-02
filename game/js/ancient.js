@@ -59,6 +59,9 @@ TL.eras.rome = (function () {
     [235, '⚔️', 'Emperor Severus Alexander was murdered by his troops. The empire fell into crisis.', 'The Crisis of the Third Century'],
     [248, '🎉', 'Rome celebrated its 1,000th birthday with great games.', 'Rome\'s 1,000th birthday']
   ];
+  // Moments that only happen if the real emperors are on the throne.
+  var RULER_MOMENTS = ['The conquest of Britain', 'The Great Fire of Rome', 'The fall of Nero', 'The Year of the Four Emperors', 'The Colosseum opened', 'Domitian\'s assassination', 'The conquest of Dacia', 'Trajan\'s Column',
+    'The empire at its height', 'Hadrian\'s Wall', 'The death of Marcus Aurelius', 'The fall of Commodus', 'The Year of the Five Emperors', 'Citizenship for all', 'The Crisis of the Third Century'];
   var CAMPAIGNS = [[43, 60, 'Britannia'], [60, 61, 'Britannia, against Boudica'], [66, 73, 'Judaea'], [69, 69, 'the civil war'], [83, 89, 'Germania'], [101, 106, 'Dacia'], [114, 117, 'Parthia'],
     [132, 135, 'Judaea'], [161, 166, 'Parthia'], [166, 180, 'the Danube frontier'], [193, 197, 'the civil wars'], [197, 199, 'Parthia'], [208, 211, 'Caledonia'], [230, 235, 'Persia'], [250, 251, 'the Goths'], [260, 274, 'the Gallic Empire']];
   function campaign(yr) { var c = CAMPAIGNS.filter(function (x) { return yr >= x[0] && yr <= x[1]; })[0]; return c ? c[2] : null; }
@@ -136,9 +139,10 @@ TL.eras.rome = (function () {
   function yearly() {
     var s = S(), a = st(), age = me().age, yr = s.year;
     var em = emperor(yr);
-    if (em !== a.emp) { a.emp = em; if (age >= 5) E.log('👑 ' + em + ' became emperor.'); }
+    if (em !== a.emp) { a.emp = em; if (age >= 5 && !a.rule) E.log('👑 ' + em + ' became emperor.'); }
     MOMENTS.forEach(function (mo) {
       if (mo[0] !== yr || age < 5 || (mo[4] && mo[4].indexOf(s.city) < 0)) return;
+      if (a.rule && RULER_MOMENTS.indexOf(mo[3]) >= 0) return; // I'm the emperor now: history went another way
       E.log(mo[1] + ' ' + mo[2]); see(mo[3], mo[1]);
     });
     if (yr === 79 && /Pompeii|Herculaneum|Neapolis/.test(s.city)) s.pending.push({ id: 'r_vesuvius' });
@@ -150,7 +154,7 @@ TL.eras.rome = (function () {
     }
     if (s.dead) return;
     if (a.plot) { TL.coup.yearly(coupCfg(a.plot.kind)); if (s.dead) return; }
-    if (a.rule && !(s.job && s.job.career === 'r_emperor')) a.rule = null;
+    if (a.rule && !(s.job && s.job.career === 'r_emperor')) TL.coup.lostThrone();
     if (s.home.type === 'cloister' && !(s.job && s.job.career === 'r_vestal')) s.home = JSON.parse(JSON.stringify(TXT.rentHome));
     // Coming of age: the toga of manhood, or marriage age for girls.
     if (age === 16 && me().gender === 'M' && citizen()) E.log('🎽 I put on the toga virilis. I am a Roman man now.');
@@ -510,6 +514,7 @@ TL.eras.rome = (function () {
     var a = st();
     if (h.type === 'parents') return a.cls === 'slave' ? 'The household of ' + a.master : !E.parentsAround().length ? 'The family domus' : me().age < 18 ? 'My family\'s home' : 'Living with my family';
     if (h.type === 'cloister') return 'The House of the Vestals';
+    if (h.type === 'palace') return 'The imperial palace on the Palatine';
     if (h.type === 'homeless') return 'Sleeping in the streets';
     if (h.type === 'owned') { var o = E.ownedHome(); return o ? 'My ' + o.type.toLowerCase() + ' ' + (o.where || '') : 'My house'; }
     return (HOMES[h.anc] || HOMES.apt)[0];
@@ -519,7 +524,8 @@ TL.eras.rome = (function () {
       var s = S(), a = st(), items = [], props = s.assets.filter(function (x) { return x.anc; });
       var worth = props.reduce(function (t, x) { return t + x.value; }, 0) + (a.inv || []).reduce(function (t, v) { return t + (v.value || v.amt || 0); }, 0);
       items.push({ info: true, html: '<div class="nw"><small>Wealth</small><div class="nw-big' + (s.money + worth < 0 ? ' neg' : '') + '">' + E.fmt(s.money + worth) + '</div><div class="nw-grid"><div><small>Coin</small><b>' + E.fmt(s.money) + '</b></div><div><small>Property & ventures</small><b>' + E.fmt(worth) + '</b></div></div><div class="bz-cap">Money is counted in denarii. A laborer earns about ' + E.fmt(den(200)) + ' a year.</div></div>' });
-      items.push({ icon: '🏠', label: E.homeLabel(), sub: me().age < 16 || a.cls === 'slave' ? 'Where I live' : 'Tap to move', disabled: me().age < 16 || a.cls === 'slave', onClick: moveMenu });
+      var stuck = me().age < 16 || a.cls === 'slave' || s.home.type === 'palace' || s.home.type === 'cloister';
+      items.push({ icon: '🏠', label: E.homeLabel(), sub: stuck ? 'Where I live' : 'Tap to move', disabled: stuck, onClick: moveMenu });
       if (props.length || (a.inv || []).length) {
         items.push({ section: 'What I own' });
         props.forEach(function (p) { items.push({ icon: p.icon, label: p.type, sub: p.where || '', right: E.fmt(p.value), onClick: function () { ui().choose(p.type, 'Sell it for ' + E.fmt(Math.round(p.value * 0.9)) + '?', [{ label: 'Sell', fn: function () { E.addMoney(Math.round(p.value * 0.9)); s.assets = s.assets.filter(function (x) { return x !== p; }); if (s.home.type === 'owned' && s.home.id === p.id) s.home = { type: 'rent', anc: 'apt', tier: 1, mult: 2.5 }; done('I sold my ' + p.type.toLowerCase() + '.'); } }]); } }); });
@@ -595,14 +601,15 @@ TL.eras.rome = (function () {
       items.push({ section: 'The Gods' });
       items.push({ icon: '🔥', label: 'Make an offering at a temple', onClick: function () { ui().choose('Which god?', 'Choose a temple.', GODS.map(function (g) { return { label: g[0] + ' ' + g[1] + ', god' + (g[1] === 'Venus' || g[1] === 'Ceres' || g[1] === 'Fortuna' ? 'dess' : '') + ' of ' + g[2], fn: function () { offering(g); } }; })); } });
       if (age >= 14) items.push({ icon: '🐦', label: 'Consult an augur', sub: 'Read the will of the gods in the birds', right: E.fmt(den(5)), onClick: augur });
-      if (age >= 10) {
+      if (age >= 10 && !a.rule) {
         items.push({ section: 'Crime' });
         [['👛', 'Pickpocket in the Forum', 0.65, 5, 60, 10], ['🍎', 'Steal from a market stall', 0.75, 1, 20, 8], ['🏛️', 'Burgle a rich man\'s domus', 0.45, 100, 1500, 14], ['📜', 'Forge a will', 0.35, 500, 5000, 18]].forEach(function (c) {
           items.push({ icon: c[0], label: c[1], disabled: age < c[5], onClick: function () { crime(c); } });
         });
       }
       items.push({ section: 'Life' });
-      if (age >= 18 && free) items.push({ icon: '🧭', label: 'Move to another city', onClick: function () { var c = D.country(s.country); ui().choose('Move where?', 'A new start somewhere else in the empire.', U.shuffle(c.cities.filter(function (x) { return x !== s.city; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; })).slice(0, 5).map(function (city) { return { label: city, fn: function () { s.city = city; E.log('🧭 I moved to ' + city + '.'); done('I packed up and moved to ' + city + '.'); } }; })); } });
+      if (age >= 18 && free && !a.rule && s.home.type !== 'cloister') items.push({ icon: '🧭', label: 'Move to another city', onClick: function () { var c = D.country(s.country); ui().choose('Move where?', 'A new start somewhere else in the empire.', U.shuffle(c.cities.filter(function (x) { return x !== s.city; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; })).slice(0, 5).map(function (city) { return { label: city, fn: function () { s.city = city; E.log('🧭 I moved to ' + city + '.'); done('I packed up and moved to ' + city + '.'); } }; })); } });
+      if (TL.maps) items.push({ icon: '🗺️', label: 'Map of the Roman world', sub: a.rule ? 'My empire and my wars' : 'Who holds what in ' + E.yearLabel(y()), onClick: TL.maps.menu });
       items.push({ icon: '⏳', label: 'Time Machine', sub: E.tmAges().length ? 'Go back up to ' + U.plural(E.tmAges().length, 'year') : 'Age up to charge it', disabled: !E.tmAges().length, onClick: function () { ui().timeMachine(); } });
       items.push({ icon: '🏆', label: 'Achievements', onClick: TL.actions.achievementsMenu });
       return items;
@@ -708,10 +715,10 @@ TL.eras.rome = (function () {
       { label: 'Help the neighbors out', run: function () { E.karma(6); if (U.chance(0.3)) { E.stat('health', -U.rand(10, 25)); return bad('I carried a child out but breathed in too much smoke.'); } return good('I helped three families escape. The vigiles thanked me.'); } }
     ] };
   } });
-  def('r_flood', { min: 6, w: 3, cond: function () { return S().city === 'Rome'; }, build: function () {
+  def('r_flood', { notRuler: true, min: 6, w: 3, cond: function () { return S().city === 'Rome'; }, build: function () {
     return { icon: '🌊', title: 'The Tiber floods', text: 'The Tiber burst its banks. Water is rising in the streets.', choices: [{ label: 'Move to higher ground', run: function () { E.addMoney(-Math.round(Math.max(0, S().money) * 0.05)); return 'We waited it out on the Aventine. The mud ruined some of our things.'; } }] };
   } });
-  def('r_patron', { min: 18, w: 6, cond: function () { return st().cls === 'plebeian' || st().cls === 'freed'; }, build: function () {
+  def('r_patron', { notRuler: true, min: 18, w: 6, cond: function () { return st().cls === 'plebeian' || st().cls === 'freed'; }, build: function () {
     var c = D.country(S().country), patron = U.pick(c.male) + ' ' + D.gentile(U.pick(c.last), 'M');
     return { icon: '🤝', title: 'A patron', text: 'The wealthy ' + patron + ' offers to become my patron. Clients greet their patron every morning and support him in public.', choices: [
       { label: 'Become his client', run: function () { st().patron = patron; E.addMoney(den(U.rand(20, 80))); return good('Every morning I join the crowd at his door. In return, he looks after me.'); } },
@@ -736,7 +743,7 @@ TL.eras.rome = (function () {
       { label: 'Celebrate', run: function () { E.stat('happy', 10); return slave ? good('My master served me dinner and I wore the felt cap of a free person for a day.') : good('I gave my friends candles and little clay figures, and lost some coins at dice.'); } }
     ] };
   } });
-  def('r_tax', { min: 18, w: 4, cond: function () { return st().cls !== 'slave' && S().money > 0; }, build: function () {
+  def('r_tax', { notRuler: true, min: 18, w: 4, cond: function () { return st().cls !== 'slave' && S().money > 0; }, build: function () {
     var amt = Math.min(S().money, den(U.rand(20, 200)));
     return { icon: '🧾', title: 'The tax collector', text: 'A publicanus demands ' + E.fmt(amt) + ' in taxes, far more than I owe.', choices: [
       { label: 'Pay up', run: function () { E.addMoney(-amt); return 'I paid. The publicani always win.'; } },
@@ -744,13 +751,13 @@ TL.eras.rome = (function () {
       { label: 'Complain to the magistrate', run: function () { if (U.chance(0.35)) return good('The magistrate sided with me!'); E.addMoney(-amt); return bad('The magistrate was the collector\'s cousin. I paid anyway.'); } }
     ] };
   } });
-  def('r_recruiter', { min: 17, max: 30, w: 5, cond: function () { return me().gender === 'M' && st().cls !== 'slave' && !(S().job && S().job.career === 'r_legion'); }, build: function () {
+  def('r_recruiter', { notRuler: true, min: 17, max: 30, w: 5, cond: function () { return me().gender === 'M' && st().cls !== 'slave' && !(S().job && S().job.career === 'r_legion'); }, build: function () {
     return { icon: '🦅', title: 'The legions are recruiting', text: 'A recruiting officer is signing up young men for the legions. Steady pay, a pension, and adventure.', choices: [
       { label: 'Enlist', run: function () { E.quitJob(true); hire('r_legion'); S().job.company = 'Legio ' + U.pick(['II Augusta', 'IX Hispana', 'X Fretensis', 'XX Valeria Victrix']); return good('I swore the sacramentum. I\'m a legionary now. 🦅'); } },
       { label: 'No thanks', run: function () { return 'I stayed a civilian.'; } }
     ] };
   } });
-  def('r_marriage', { min: 15, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
+  def('r_marriage', { notRuler: true, min: 15, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
     if (S().job && S().job.career === 'r_vestal') return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + D.gentile(U.pick(c.last), g);
     return { icon: '💍', title: 'An arranged match', text: 'My family has arranged a marriage to ' + nm + ', from a respectable family.', choices: [
@@ -758,7 +765,7 @@ TL.eras.rome = (function () {
       { label: 'Refuse', run: function () { E.people(['mother', 'father']).forEach(function (p) { E.rel(p, -15); }); return 'My family is furious with me.'; } }
     ] };
   } });
-  def('r_hoard', { min: 8, w: 2, build: function () {
+  def('r_hoard', { notRuler: true, min: 8, w: 2, build: function () {
     return { icon: '🏺', title: 'Buried treasure', text: 'While digging, I struck a clay jar full of old coins.', choices: [
       { label: 'Keep it', run: function () { var g = den(U.rand(40, 400)); E.addMoney(g); return good('I kept the hoard: ' + E.fmt(g) + '. Nobody will ever know.'); } },
       { label: 'Report it', run: function () { E.karma(5); var g = den(U.rand(10, 80)); E.addMoney(g); return 'I reported it and was allowed to keep a share: ' + E.fmt(g) + '.'; } }
@@ -773,10 +780,49 @@ TL.eras.rome = (function () {
   def('r_earthquake', { min: 4, w: 2, build: function () {
     return { icon: '🌋', title: 'Earthquake', text: 'The ground shook and walls cracked across the city.', choices: [{ label: 'Take cover', run: function () { if (U.chance(0.15)) { E.stat('health', -U.rand(10, 25)); return bad('A roof tile struck me on the head.'); } return 'We were shaken, but safe.'; } }] };
   } });
-  def('r_street', { min: 14, w: 4, build: function () {
+  def('r_street', { notRuler: true, min: 14, w: 4, build: function () {
     return { icon: '🗡️', title: 'Thieves at night', text: 'Rome\'s streets are dark at night. Two men stepped out of an alley.', choices: [
       { label: 'Hand over my purse', run: function () { E.addMoney(-Math.min(Math.max(0, S().money), den(U.rand(5, 40)))); return 'They took my purse and vanished.'; } },
       { label: 'Fight back', run: function () { if (U.chance(0.4 + me().athl / 250)) { E.stat('happy', 5); return good('I knocked one flat and the other ran.'); } E.stat('health', -U.rand(10, 25)); return bad('They beat me badly.'); } }
+    ] };
+  } });
+  def('r_captator', { min: 55, w: 4, cond: function () { return S().money > den(20000) && st().cls !== 'slave'; }, build: function () {
+    var c = D.country(S().country), who = U.pick(c.male) + ' ' + D.gentile(U.pick(c.last), 'M');
+    return { icon: '🎁', title: 'A legacy hunter', text: who + ' has started sending me gifts, praising my health and visiting every day. Everyone knows what he wants: to be named in my will.', choices: [
+      { label: 'Enjoy the gifts, promise nothing', run: function () { E.addMoney(den(U.rand(100, 600))); E.stat('happy', 4); return 'The wine he sends is excellent. My will is unchanged.'; } },
+      { label: 'Send him away', run: function () { E.karma(2); return 'I told him I plan to live to a hundred. He looked genuinely upset.'; } }
+    ] };
+  } });
+  def('r_triumph', { min: 6, w: 3, cond: function () { return S().city === 'Rome'; }, build: function () {
+    return { icon: '🦅', title: 'A triumph', text: 'A victorious general is parading through Rome with his legions, captured kings in chains and wagons of treasure.', choices: [
+      { label: 'Watch from the Via Sacra', run: function () { E.stat('happy', 6); return 'A slave rode behind the general in his chariot, whispering "Remember you are mortal." The crowd went wild.'; } },
+      { label: 'Grab a coin thrown to the crowd', run: function () { if (U.chance(0.6)) { E.addMoney(den(U.rand(2, 15))); return good('I caught a handful of coins in the scramble!'); } E.stat('health', -5); return bad('I was trampled in the scramble and came away with nothing but bruises.'); } }
+    ] };
+  } });
+  def('r_beast', { min: 6, w: 2, cond: function () { return S().city === 'Rome' || S().city === 'Capua'; }, build: function () {
+    return { icon: '🦁', title: 'A lion in the street', text: 'A lion has escaped from the animal pens under the arena and is loose in the street.', choices: [
+      { label: 'Climb onto a roof', run: function () { return 'I watched from a rooftop while the beast-hunters cornered it with nets.'; } },
+      { label: 'Help the hunters with a spear', run: function () { if (U.chance(0.4 + me().athl / 300)) { E.fame(3); return good('I helped pin it with my spear. Even the hunters were impressed.'); } E.stat('health', -U.rand(15, 30)); return bad('The lion got a paw on me before the hunters got their nets on it.'); } }
+    ] };
+  } });
+  def('r_crassus', { notRuler: true, min: 25, w: 2, cond: function () { return S().money > den(5000) && st().cls !== 'slave'; }, build: function () {
+    var price = den(U.rand(800, 2000));
+    return { icon: '🔥', title: 'A burning house', text: 'A neighbor\'s house is on fire. He is begging anyone to buy it before it burns down, for ' + E.fmt(price) + '. My own slaves could put the fire out.', choices: [
+      { label: 'Buy it cheap and put out the fire', run: function () { E.addMoney(-price); E.karma(-4); var house = { id: U.uid(), kind: 'house', anc: true, icon: '🏠', type: 'Rental insula', name: 'Rental insula', where: place(), value: price * 4, price: price, cond: 70, upkeep: 0.01 }; S().assets.push(house); return 'I bought it for a fraction of its worth and saved it. Crassus got rich this way.'; } },
+      { label: 'Just help him put it out', run: function () { E.karma(5); return 'We formed a bucket line and saved most of it. He thanked me with tears in his eyes.'; } }
+    ] };
+  } });
+  def('r_graffiti', { min: 14, w: 3, build: function () {
+    var c = D.country(S().country), who = U.pick(c.male);
+    return { icon: '✍️', title: 'Graffiti', text: 'Someone wrote on the wall of the baths: "' + me().first + ' is ' + U.pick(['a cheapskate', 'a terrible poet', 'in love with ' + who, 'the worst singer in the city']) + '."', choices: [
+      { label: 'Write a reply under it', run: function () { E.stat('happy', 3); E.fame(1); return 'I wrote back something cleverer. The whole street came to read it.'; } },
+      { label: 'Ignore it', run: function () { return 'It was painted over within a month. Mostly.'; } }
+    ] };
+  } });
+  def('r_aqueduct', { notRuler: true, min: 6, w: 2, build: function () {
+    return { icon: '💧', title: 'The aqueduct is broken', text: 'The aqueduct that feeds our part of the city has cracked. The fountains are dry.', choices: [
+      { label: 'Carry water from the river', run: function () { E.stat('health', -U.rand(2, 6)); return 'River water made half the street sick, but we got by until it was fixed.'; } },
+      { label: 'Pay for a private water seller', run: function () { E.addMoney(-Math.min(Math.max(0, S().money), den(U.rand(5, 20)))); return 'Expensive, but clean.'; } }
     ] };
   } });
   sdef('r_vesuvius', { build: function () {
@@ -852,7 +898,7 @@ TL.eras.rome = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['politics in the Senate', [], true], ['the gods', [], true], ['the weather', []]];
   var KID_TOPICS = [['monsters and myths', []], ['games of knucklebones', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['heroes like Hercules', ['Athletic']], ['their drawings', ['Artsy']]];
   // Achievements that fit a Roman life.
-  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor', 'vestal', 'usurper', 'rebel', 'long_reign'];
+  var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff', 'consul', 'centurion', 'rudis', 'charioteer_champ', 'freedom', 'vesuvius', 'sage', 'magnum_opus', 'imperial_tutor', 'vestal', 'usurper', 'rebel', 'long_reign', 'conqueror'];
   // What a Roman would call each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Head Cold', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Sore Throat', 'Asthma': 'Breathlessness',
     'Acne': 'Spots', 'Migraine': 'Headaches', 'PTSD': 'War Terrors', 'Depression': 'Melancholia', 'Anxiety': 'Nervous Dread', 'Insomnia': 'Sleeplessness',
@@ -883,7 +929,18 @@ TL.eras.rome = (function () {
       win: function () { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.emp = emperor(y()); see('Seized the throne', '👑'); E.log('👑 ' + old + ' is dead. The Senate proclaimed me ' + (fem ? 'Empress' : 'Emperor') + '.', 'good'); return 'We struck on the Ides. ' + old + ' is dead, and the Senate has proclaimed me ' + (fem ? 'Empress' : 'Emperor') + ' of Rome! 👑'; },
       lose: { cause: 'execution for treason', text: 'The guard stayed loyal and the plot collapsed.', death: 'I was executed for treason.', spared: 'The emperor spared my life, took most of my fortune and banished me to an island.' },
       caught: { cause: 'an order to open my veins', text: 'The emperor\'s spies uncovered our plot.', death: 'Soldiers brought an order to open my veins.', spared: 'I was stripped of my fortune and exiled to an island.' },
-      rule: { career: 'r_emperor', seat: 'the Palatine Hill', popName: 'The people', guardName: 'The Praetorians', acts: [
+      rule: { career: 'r_emperor', cls: 'patrician', seat: 'the Palatine Hill', popName: 'The people', guardName: 'The Praetorians', realm: 'the empire', spy: den(4000), taxcut: den(12000),
+        neighbors: ['Parthia', 'the Germanic tribes', 'the Dacians', 'the kingdom of Armenia', 'the Garamantes'],
+        brides: ['a princess of Armenia', 'the daughter of a great senatorial house', 'a princess of Commagene'], grooms: ['a prince of Armenia', 'the son of a great senatorial house', 'a famous general'],
+        disaster: ['🔥', 'Rome is burning', 'A fire started near the Circus Maximus and spread across half the city.'],
+        laws: [
+          { id: 'citizens', label: 'Make every free man a citizen', text: 'Every free man in the empire is now a Roman citizen. The provinces rejoiced; the old families sulked.', fx: { pop: 10, fame: 5 } },
+          { id: 'dole', label: 'Double the grain dole', text: 'The poor of Rome eat for free, twice over.', fx: { pop: 12, money: -den(10000) } },
+          { id: 'arena', label: 'Ban fights to the death in the arena', text: 'Gladiators fight with blunt swords now. The crowd booed for a month.', fx: { karma: 8, pop: -8 } },
+          { id: 'christ', label: 'Tolerate the Christians', text: 'No more persecutions. Christians may worship their god in peace.', fx: { karma: 6, pop: 2 } },
+          { id: 'coin', label: 'Debase the silver coinage', text: 'Less silver in every denarius. The treasury is full; prices are rising.', fx: { money: den(30000), pop: -10 } },
+          { id: 'slaves', label: 'Protect slaves from cruel masters', text: 'Masters may no longer kill their slaves at will.', fx: { karma: 8, guard: -4 } }] ,
+        acts: [
         { id: 'games', icon: '🏟️', label: 'Give games for the people', sub: 'Bread and circuses', cost: den(20000), fx: { pop: 16, happy: 4, fame: 2 }, text: 'A hundred days of games! The crowd chanted my name.' },
         { id: 'donative', icon: '💰', label: 'Pay the Praetorians a donative', sub: 'Loyalty is bought', cost: den(15000), fx: { guard: 22 }, text: 'Every guardsman got a purse of gold. They cheered louder than the crowd at the games.' },
         { id: 'build', icon: '🏛️', label: 'Build a great monument', sub: 'Be remembered forever', cost: den(60000), fx: { fame: 10, pop: 6 }, see: ['Built a monument in Rome', '🏛️'], text: U.pick(['A triumphal arch now stands in the Forum with my name on it.', 'My new baths are the largest Rome has ever seen.', 'A column carved with my victories rises over the city.']) },
@@ -903,7 +960,7 @@ TL.eras.rome = (function () {
     me().last = D.gentile(me().last, me().gender);
     S().log[0].entries.forEach(function (e) { e.t = e.t.replace(was, me().first + ' ' + me().last); });
     if (o.patron) a.patron = o.patron;
-    if (o.rule) { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.emp = emperor(y()); E.log('👑 I inherited the throne. I am ' + (me().gender === 'F' ? 'Empress' : 'Emperor') + ' of Rome.', 'good'); return; }
+    if (o.rule && TL.coup.inherits(o.rule)) { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.emp = emperor(y()); E.log('👑 I inherited the throne. I am ' + (me().gender === 'F' ? 'Empress' : 'Emperor') + ' of Rome.', 'good'); return; }
     if ((a.cls === 'patrician' || a.cls === 'equestrian') && me().age >= 14) a.edu = 'letters'; // tutored at home
     if (a.cls === 'slave') E.log('⛓️ Like my parent, I belong to the household of ' + a.master + '.', 'bad');
     else E.log('🏛️ I am ' + E.an(CLASS_NAME[a.cls].toLowerCase()) + ', like my family before me.');
@@ -928,5 +985,5 @@ TL.eras.rome = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    emperor: emperor, birthOptions: birthOptions, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
+    emperor: emperor, birthOptions: birthOptions, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, id: 'rome', land: 'Roman Empire', years: [40, 160], gentile: true, ad: true, illName: illName, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH };
 })();

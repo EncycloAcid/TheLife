@@ -173,5 +173,7 @@ TL.history = (function () {
   }
   function eraName(y) { return y < 1914 ? 'the early 1900s' : y < 1920 ? 'the Great War years' : y < 1930 ? 'the Roaring Twenties' : y < 1940 ? 'the Great Depression' : y < 1946 ? 'World War II' : y < 1960 ? 'the postwar boom' : y < 1970 ? 'the Sixties' : y < 1980 ? 'the Seventies' : y < 1990 ? 'the Eighties' : y < 2000 ? 'the Nineties' : y < 2010 ? 'the 2000s' : 'the modern era'; }
 
-  return { priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
+  // Wars being fought in a year (js/maps.js world map).
+  function wars(yr) { return WARS.filter(function (w) { return yr >= w.from && yr <= w.to; }); }
+  return { wars: wars, priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
 })();

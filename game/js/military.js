@@ -372,7 +372,10 @@ TL.military = (function () {
   }
   function menu() {
     ui().menu('Military 🎖️', function () {
-      var x = m(), s = S(), items = [{ info: true, html: card() }];
+      var x = m(), s = S();
+      // Left the service (quit ROTC, discharged) while this menu was open.
+      if (!x) return [{ info: true, html: '<p class="muted">I\'m no longer in the military.</p>' }];
+      var items = [{ info: true, html: card() }];
       if (x.track === 'rotc' || x.track === 'cadet') {
         items.push({ icon: '🏃', label: 'Cadet training', sub: 'Fitness and leadership', onClick: function () { if (!onceAYear('mil_cadet')) return done(nope('I already trained hard this year.')); me().athl = U.clamp(me().athl + 3, 0, 100); E.stat('smarts', 1); done('I led my squad through a field training exercise. 🧭'); } });
         if (x.track === 'rotc') items.push({ icon: '🚪', label: 'Quit ROTC', danger: true, onClick: function () { S().mil = null; done('I left ROTC.'); } });
