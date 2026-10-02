@@ -23,7 +23,8 @@ A deep, text-based life simulator for Android in the spirit of InstaLife/BitLife
 - **Politics**: run for City Council, then climb to Mayor, Governor, Senator and President. You campaign, give speeches, pass policies, survive scandals, take (or refuse) bribes, win re-elections and hit term limits.
 - **Relationships**: pick what to do together (dinner, a hike, video games, a museum…) and what to talk about; people's traits decide whether they love it or are bored. Parents, siblings, grandparents, friends, classmates, coworkers, partners and kids. You can talk, gift, prank, argue, and ask for or give money. Dating app, nightclubs, vacation romances, proposals, weddings (with prenups), cheating, divorce with asset splits, pregnancy, twins, IVF, surrogacy and adoption. Your adult children marry and give you grandchildren.
 - **Where you live**: stay with your parents (they may start charging rent), rent anything from a shared room to a luxury loft, move into a house you own, or end up evicted and homeless.
-- **Assets**: real estate with mortgages, renovation and rental income; cars, jets and yachts with financing; jewelry; a stock market; and businesses you can start and grow.
+- **Assets**: real estate with mortgages, renovation and rental income; cars, jets and yachts with financing; jewelry; and a stock market.
+- **Running a business**: food trucks, coffee shops, gyms, restaurants, clothing brands, car dealerships, nightclubs and hotels each have their own revenue, costs, staff and margins. Set budget, standard or premium prices; hire and lay off staff; invest in quality; run marketing; and open (or close) locations. Customers leave star ratings that settle toward the quality you deliver for the price you charge, and a dashboard shows revenue, profit, value and a profit chart. Critics, health inspections, employee theft, rival openings, lawsuits, buyout offers and franchising pitches. Three losing years can close the doors. Tech startups work differently: grow users, burn cash, raise Seed through Series D rounds that dilute your stake, and either fold, sell to a big tech company or IPO.
 - **Health**: 29 illnesses, injuries and addictions. Doctors, herbalists, therapy, rehab and plastic surgery.
 - **Activities**: gym, library, meditation, martial arts, instruments, social media, casino (blackjack, slots, roulette, horse racing), lottery, vacations, pets (8 species) and volunteering.
 - **Crime & prison**: from shoplifting to jewelry heists, then trials with lawyers, prison gangs, appeals, escape attempts and good behavior.
@@ -104,6 +105,7 @@ game/                  The game (packaged into the APK as assets)
   js/music.js          Music career: songs, releases, charts, tours, labels, Grammys
   js/prosports.js      Pro sports: football, soccer, baseball, hockey, tennis careers
   js/work.js           Bosses, projects, raises, job offers and performance reviews
+  js/business.js       Running a business: pricing, staff, quality, locations, startups
   js/recap.js          The life recap on the death screen
   js/icons.js          Line icons (SVG) for the dock and menus
   js/motion.js         Screen transitions, count-ups, floating stat changes, confetti

@@ -888,7 +888,7 @@ TL.actions = (function () {
       if (s.assets.length) {
         items.push({ section: 'My stuff' });
         s.assets.forEach(function (a) {
-          items.push({ icon: assetIcon(a), label: a.name, sub: a.type + ' · worth ' + E.fmt(a.value) + (a.loan ? ' · owe ' + E.fmt(a.loan) : '') + (a.kind === 'house' ? (a.rented ? ' · rented out' : '') + ' · condition ' + a.cond + '%' : a.kind === 'car' ? ' · condition ' + a.cond + '%' : a.kind === 'business' ? ' · profit ' + E.fmt(a.lastProfit || 0) + '/yr' : ''), onClick: function () { assetMenu(a); } });
+          items.push({ icon: assetIcon(a), label: a.name, sub: a.kind === 'business' && TL.business ? a.type + ' · ' + TL.business.summary(a) : a.type + ' · worth ' + E.fmt(a.value) + (a.loan ? ' · owe ' + E.fmt(a.loan) : '') + (a.kind === 'house' ? (a.rented ? ' · rented out' : '') + ' · condition ' + a.cond + '%' : a.kind === 'car' ? ' · condition ' + a.cond + '%' : a.kind === 'business' ? ' · profit ' + E.fmt(a.lastProfit || 0) + '/yr' : ''), onClick: function () { assetMenu(a); } });
         });
       }
       var held = Object.keys(s.stocks).filter(function (k) { return s.stocks[k] > 0; });
@@ -912,14 +912,15 @@ TL.actions = (function () {
   function assetIcon(a) {
     if (a.kind === 'house') return a.type === 'Castle' ? '🏰' : a.type === 'Mansion' ? '🏛️' : a.type.indexOf('Apartment') >= 0 || a.type === 'Condo' || a.type === 'Penthouse' ? '🏢' : '🏠';
     if (a.kind === 'car') return a.type === 'Private Jet' ? '🛩️' : a.type === 'Superyacht' ? '🛥️' : a.type === 'Motorcycle' || a.type === 'Scooter' ? '🏍️' : '🚗';
-    if (a.kind === 'business') return '🏢';
+    if (a.kind === 'business') return TL.business && TL.business.TYPES[a.type] ? TL.business.TYPES[a.type].icon : '🏢';
     return '💎';
   }
   function assetMenu(a) {
     ui().menu(a.name, function () {
       var s = S(), items = [];
       var saleValue = Math.round(a.value * (a.kind === 'house' ? (0.85 + a.cond / 700) : a.kind === 'jewelry' ? 0.7 : 0.95));
-      items.push({ info: true, html: '<div class="kv"><b>' + U.esc(a.name) + '</b><br>' + a.type + '<br>Value: ' + E.fmt(a.value) + (a.price ? ' · paid ' + E.fmt(a.price) : '') + (a.loan ? '<br>Loan balance: ' + E.fmt(a.loan) + ' (' + E.fmt(a.payment) + '/yr)' : '') + (a.cond != null && a.kind !== 'business' && a.kind !== 'jewelry' ? '<br>Condition: ' + a.cond + '%' : '') + (a.kind === 'business' ? '<br>Last year\'s profit: ' + E.fmt(a.lastProfit || 0) : '') + '</div>' });
+      if (a.kind === 'business' && TL.business) TL.business.items(a).forEach(function (it) { items.push(it); });
+      else items.push({ info: true, html: '<div class="kv"><b>' + U.esc(a.name) + '</b><br>' + a.type + '<br>Value: ' + E.fmt(a.value) + (a.price ? ' · paid ' + E.fmt(a.price) : '') + (a.loan ? '<br>Loan balance: ' + E.fmt(a.loan) + ' (' + E.fmt(a.payment) + '/yr)' : '') + (a.cond != null && a.kind !== 'business' && a.kind !== 'jewelry' ? '<br>Condition: ' + a.cond + '%' : '') + (a.kind === 'business' ? '<br>Last year\'s profit: ' + E.fmt(a.lastProfit || 0) : '') + '</div>' });
       if (a.kind === 'house') {
         items.push({ icon: '🔨', label: 'Renovate', right: E.fmt(Math.round(a.value * 0.08)), onClick: function () { var c = Math.round(a.value * 0.08); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.cond = 100; a.value = Math.round(a.value * 1.06); done(good('I renovated ' + a.name + '. It looks amazing!')); } });
         items.push({ icon: a.rented ? '🔑' : '🧾', label: a.rented ? 'Stop renting it out' : 'Rent it out', sub: a.rented ? '' : 'Earn ~' + E.fmt(Math.round(a.value * 0.055)) + '/yr', onClick: function () { a.rented = !a.rented; E.validateHome(); done(a.rented ? 'I\'m renting out ' + a.name + '.' : 'I stopped renting out ' + a.name + '.'); } });
@@ -929,10 +930,11 @@ TL.actions = (function () {
         items.push({ icon: '🔧', label: 'Maintenance', right: E.fmt(Math.round(a.price * 0.05)), onClick: function () { var c = Math.round(a.price * 0.05); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.cond = Math.min(100, a.cond + 30); done('My ' + a.type + ' was serviced.'); } });
         items.push({ icon: '🛣️', label: 'Take it for a drive', onClick: function () { var f = diminish('drive'); E.stat('happy', 4 * f); if (U.chance(0.06 + (100 - a.cond) / 800)) { a.cond = Math.max(0, a.cond - 30); E.stat('health', -U.rand(5, 20)); return done(bad('I crashed! I\'m hurt and my ' + a.type + ' is damaged.')); } done('I went for a joyride. 😎'); } });
       }
-      if (a.kind === 'business') {
+      if (a.kind === 'business' && !TL.business) {
         items.push({ icon: '📣', label: 'Marketing campaign', right: E.fmt(Math.round(a.value * 0.05)), onClick: function () { var c = Math.round(a.value * 0.05); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.hype = (a.hype || 0) + U.rand(1, 5); done('I launched a marketing campaign for ' + a.name + '.'); } });
         items.push({ icon: '💵', label: 'Invest more', right: E.fmt(Math.round(a.value * 0.2)), onClick: function () { var c = Math.round(a.value * 0.2); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.value += Math.round(c * U.randf(0.7, 1.3)); done('I invested ' + E.fmt(c) + ' into ' + a.name + '.'); } });
       }
+      if (a.kind === 'business') items.push({ section: ' ' });
       if (a.loan) items.push({ icon: '🏦', label: 'Pay off loan', right: E.fmt(a.loan), onClick: function () { if (!afford(a.loan)) return done(noMoney(a.loan)); E.addMoney(-a.loan); a.loan = 0; done(good('I paid off the loan on ' + a.name + '.')); } });
       items.push({ icon: '🏷️', label: 'Sell', right: E.fmt(saleValue - (a.loan || 0)), danger: true, onClick: function () {
         ui().confirm('Sell ' + a.name + '?', 'You\'ll receive ' + E.fmt(saleValue - (a.loan || 0)) + ' after paying off any loan.', function () {
@@ -1096,12 +1098,16 @@ TL.actions = (function () {
     ui().menu('Start a business', function () {
       return D.BUSINESS_TYPES.map(function (b) {
         var cost = E.$(b.cost);
-        return { icon: '🏢', label: b.type, sub: b.volatile ? 'High risk, high reward' : 'Steady', right: E.fmt(cost), onClick: function () {
+        var bt = TL.business && TL.business.TYPES[b.type];
+        var sub = bt && bt.startup ? 'Burn cash, raise funding, aim for an exit' : bt ? U.plural(bt.staff, 'employee') + ' · ~' + E.fmt(E.$(Math.round(bt.rev / 1000) * 1000)) + ' revenue/yr' : b.volatile ? 'High risk, high reward' : 'Steady';
+        return { icon: bt ? bt.icon : '🏢', label: b.type, sub: sub, right: E.fmt(cost), onClick: function () {
           if (!afford(cost)) return done(noMoney(cost));
           ui().prompt('Name your ' + b.type.toLowerCase(), 'What will you call it?', me().last + '\'s ' + b.type, function (name) {
             if (!name) return;
             E.addMoney(-cost);
-            S().assets.push({ id: U.uid(), kind: 'business', type: b.type, name: name.slice(0, 40), value: cost, price: cost, lastProfit: 0 });
+            var biz = { id: U.uid(), kind: 'business', type: b.type, name: name.slice(0, 40), value: cost, price: cost, lastProfit: 0 };
+            if (TL.business) TL.business.init(biz);
+            S().assets.push(biz);
             E.achieve('entrepreneur');
             ui().back();
             done(good('I opened "' + name.slice(0, 40) + '"! 🎉'));

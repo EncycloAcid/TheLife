@@ -701,6 +701,10 @@ TL.engine = (function () {
         a.value = Math.round(a.value * (a.type === 'Private Jet' || a.type === 'Superyacht' ? 0.93 : 0.86));
         a.cond = U.clamp(a.cond - U.rand(3, 10), 0, 100);
         expense += Math.round(a.price * 0.03);
+      } else if (a.kind === 'business' && TL.business) {
+        // js/business.js runs the books: revenue, costs, staff, reputation.
+        var pr = TL.business.year(a);
+        if (pr >= 0) income += pr; else expense -= pr;
       } else if (a.kind === 'business') {
         var b = D.BUSINESS_TYPES.filter(function (x) { return x.type === a.type; })[0];
         var margin = U.gauss(b.base * 0.35, b.volatile ? 0.35 : 0.15) + (a.hype || 0) * 0.02;

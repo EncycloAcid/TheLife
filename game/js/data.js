@@ -378,6 +378,10 @@ TL.data = (function () {
     { id: 'league_mvp', name: 'Most Valuable', desc: 'Win a league MVP (or finish No. 1 in tennis)', icon: '🥇' },
     { id: 'grand_slam', name: 'Grand Slam', desc: 'Win a tennis Grand Slam', icon: '🎾' },
     { id: 'pro_hof', name: 'Immortal', desc: 'Make a pro sports Hall of Fame', icon: '🏛️' },
+    { id: 'franchise', name: 'Franchise', desc: 'Run a business with 5 locations', icon: '🗺️' },
+    { id: 'five_stars', name: 'Five Stars', desc: 'Earn a 5-star rating for your business', icon: '⭐' },
+    { id: 'unicorn', name: 'Unicorn', desc: 'Build a startup valued at $1 billion', icon: '🦄' },
+    { id: 'ipo', name: 'Ring the Bell', desc: 'Take a company public', icon: '🔔' },
     { id: 'hoops_draft', name: 'First Rounder', desc: 'Get drafted in the first round', icon: '🧢' },
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
@@ -388,7 +392,7 @@ TL.data = (function () {
   ];
 
   var BUSINESS_TYPES = [
-    { type: 'Food Truck', cost: 60000, base: 0.35 }, { type: 'Coffee Shop', cost: 150000, base: 0.3 },
+    { type: 'Food Truck', cost: 100000, base: 0.35 }, { type: 'Coffee Shop', cost: 250000, base: 0.3 },
     { type: 'Gym', cost: 300000, base: 0.28 }, { type: 'Restaurant', cost: 500000, base: 0.25 },
     { type: 'Tech Startup', cost: 250000, base: 0.6, volatile: true }, { type: 'Clothing Brand', cost: 120000, base: 0.35, volatile: true },
     { type: 'Car Dealership', cost: 1500000, base: 0.2 }, { type: 'Nightclub', cost: 900000, base: 0.3, volatile: true },

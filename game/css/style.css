@@ -524,3 +524,13 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .nw-big.neg, .nw .neg { color: var(--red); }
 .nw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; padding-top: 10px; border-top: .5px solid var(--sep); }
 .nw-grid b { display: block; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* business dashboard */
+.bz-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.bz-ico { width: 46px; height: 46px; border-radius: 12px; background: var(--fill); display: grid; place-items: center; font-size: 1.5rem; flex: none; }
+.bz-name { font-weight: 600; font-size: 1.0625rem; }
+.bz-sub { font-size: .8125rem; color: var(--muted); }
+.bz-stars { color: #FF9F0A; font-weight: 600; }
+.bz-spark { display: flex; align-items: flex-end; gap: 4px; height: 44px; margin-top: 14px; }
+.bz-spark i { flex: 1; border-radius: 3px 3px 0 0; background: var(--green); opacity: .85; }
+.bz-spark i.neg { background: var(--red); }
+.bz-cap { font-size: .75rem; color: var(--muted); margin-top: 6px; }
