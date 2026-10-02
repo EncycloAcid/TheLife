@@ -142,6 +142,12 @@ TL.engine = (function () {
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
+    // No two people in one life share a full name (two "James Wilson" classmates was confusing).
+    var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
+    for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
+      var alt = randomName(gender, o.last, o.country);
+      if (o.first) nm.last = o.last ? nm.last : alt.last; else nm = alt;
+    }
     var age = o.age != null ? o.age : 20;
     var p = {
       id: U.uid(), first: o.first || nm.first, last: nm.last, gender: gender, age: age, alive: true,
@@ -737,10 +743,19 @@ TL.engine = (function () {
     addMoney(income - expense);
     if (TL.market && earned) TL.market.autoInvest(Math.round(earned * (1 - c.tax)));
     if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
+    // Debt: say how much, and only when it starts, grows a lot, or ends.
     if (s.money < 0) {
       stat('happy', -8);
       if (s.money < -$(20000) && U.chance(0.35)) bankruptcy();
-      else log('I\'m in debt. Creditors keep calling me.', 'bad');
+      else {
+        var owe = -s.money, last = s.flags.debtLogged || 0;
+        if (!last) log('💳 I\'m ' + fmt(owe) + ' in debt. Creditors keep calling me.', 'bad');
+        else if (owe > last * 1.5) log('💳 My debt has grown to ' + fmt(owe) + '.', 'bad');
+        if (!last || owe > last * 1.5) s.flags.debtLogged = owe;
+      }
+    } else if (s.flags.debtLogged) {
+      delete s.flags.debtLogged;
+      log('🎉 I\'m finally out of debt!', 'good');
     }
     // stock market (fallback without js/market.js)
     if (!TL.market) D.STOCKS.forEach(function (st) {
@@ -753,7 +768,7 @@ TL.engine = (function () {
     log('⚖️ I declared bankruptcy. My assets were seized.', 'bad');
     s.assets = s.assets.filter(function (a) { return a.kind === 'house' && a.loan === 0 && a.value < $(150000); });
     s.stocks = {};
-    s.money = 0; s.flags.bankrupt = (s.flags.bankrupt || 0) + 1;
+    s.money = 0; s.flags.bankrupt = (s.flags.bankrupt || 0) + 1; delete s.flags.debtLogged;
     stat('happy', -25);
     validateHome();
   }
@@ -1099,6 +1114,8 @@ TL.engine = (function () {
       addPerson({ role: 'coworker', age: m.age + U.rand(-10, 15), rel: U.rand(30, 60) });
     }
     if (!s.job) people('coworker').forEach(function (p) { p.role = 'former coworker'; });
+    // Out of school, classmates become old classmates.
+    if (!s.edu) people('classmate').forEach(function (p) { p.role = 'former classmate'; });
 
     TL.events.roll();
     // Yearly snapshot for the life chart.
