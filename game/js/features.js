@@ -240,6 +240,13 @@ TL.features = (function () {
           else { r.popularity = Math.max(0, r.popularity - U.rand(5, 12)); done(bad('I decreed ' + d + '. There were protests in the streets.')); }
         });
         duty('⚔️', 'Knight a friend', 'knight', function () { var f = E.people(['friend', 'best friend'])[0]; if (!f) return done('I don\'t have any friends to knight.'); E.rel(f, 25); done(good('I knighted ' + f.first + '. Arise, ' + (f.gender === 'M' ? 'Sir ' : 'Dame ') + f.first + '!')); });
+        duty('🏛️', 'Open Parliament', 'parliament', function () { r.popularity = Math.min(100, r.popularity + U.rand(2, 5)); E.fame(1); done(U.pick(['I rode to Parliament in the state coach and read the government\'s speech from the throne.', 'Trumpets, robes and a crown that weighs a ton. Parliament is open.'])); });
+        duty('🍽️', 'Host a state banquet', 'banquet', function () { var c = E.$(300000); if (s.money < c) return done(bad('The palace can\'t afford a banquet this year.')); E.addMoney(-c); r.popularity = Math.min(100, r.popularity + U.rand(3, 7)); E.fame(3); done(good('I hosted a state banquet for the president of ' + U.pick(['France', 'Japan', 'Brazil', 'India', 'Nigeria', 'Canada']) + '. 160 guests, 2,000 pieces of silver.')); });
+        duty('🕊️', 'Grant a royal pardon', 'pardon', function () { E.karma(4); if (U.chance(0.75)) { r.popularity = Math.min(100, r.popularity + 4); return done(good('I pardoned a woman wrongly convicted decades ago. The country cheered.')); } r.popularity = Math.max(0, r.popularity - 8); done(bad('The man I pardoned was arrested again a month later. The papers were brutal.')); });
+        var kids = E.people('child').filter(function (k) { return k.age >= 1; });
+        if (kids.length) items.push({ icon: '🎖️', label: 'Name my heir', sub: r.heir && E.person(r.heir) && E.person(r.heir).alive ? 'Heir: ' + E.person(r.heir).first : 'Otherwise the crown goes to my eldest', onClick: function () {
+          ui().choose('Name my heir', 'Who will wear the crown after me?', kids.map(function (k) { return { label: k.first + ' (' + k.age + ')', fn: function () { r.heir = k.id; E.rel(k, 10); done(k.first + ' is my heir. The palace announced it to the nation.'); } }; }));
+        } });
         duty('🎙️', 'Address the nation', 'address', function () { if (U.chance(0.4 + me().smarts / 200)) { r.popularity = Math.min(100, r.popularity + 8); done(good('My address to the nation was moving and widely praised.')); } else { r.popularity = Math.max(0, r.popularity - 4); done(bad('My speech was called "out of touch".')); } });
       }
       // The heir can ask an aging monarch to step down, as Beatrix of the Netherlands and Juan Carlos of Spain did.
@@ -270,6 +277,8 @@ TL.features = (function () {
     var r = prev.royal;
     if (!r) return;
     var kids = c.role === 'child' ? heirs.slice().sort(function (a, b) { return b.age - a.age; }) : [];
+    // A named heir comes first (Royal duties → Name my heir).
+    if (r.heir) kids.sort(function (a, b) { return (b.id === r.heir) - (a.id === r.heir); });
     st.royal = { house: r.house, popularity: U.clamp(r.popularity + U.rand(-10, 10), 20, 90), monarch: false, monarchId: null };
     if (r.monarch && c.role === 'child' && kids.length && kids[0].id === c.id) {
       TL.S = st; crown();
