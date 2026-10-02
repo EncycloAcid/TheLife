@@ -43,7 +43,7 @@ TL.eras.medieval = (function () {
   // ------------------------------------------------------------ history
   var KINGS = [[1154, 'Henry II'], [1189, 'Richard the Lionheart'], [1199, 'John'], [1216, 'Henry III'], [1272, 'Edward I'], [1307, 'Edward II'], [1327, 'Edward III'], [1377, 'Richard II'],
     [1399, 'Henry IV'], [1413, 'Henry V'], [1422, 'Henry VI'], [1461, 'Edward IV'], [1470, 'Henry VI'], [1471, 'Edward IV'], [1483, 'Richard III'], [1485, 'Henry VII'], [1509, 'Henry VIII'], [1547, 'Edward VI']];
-  function king(yr) { var k = KINGS[0][1]; KINGS.forEach(function (x) { if (yr >= x[0]) k = x[1]; }); return k; }
+  function king(yr) { if (TL.S && on() && S().anc && S().anc.rule) return me().first + ' ' + me().last; var k = KINGS[0][1]; KINGS.forEach(function (x) { if (yr >= x[0]) k = x[1]; }); return k; }
   // [year, icon, what happened, short label, only in these towns]
   var MOMENTS = [
     [1170, '🗡️', 'Four knights murdered Archbishop Thomas Becket in Canterbury Cathedral.', 'The murder of Becket'],
@@ -136,9 +136,10 @@ TL.eras.medieval = (function () {
     m_monk: { id: 'm_monk', icon: '📿', name: 'The cloister', levels: [['Novice', 0], ['Monk', 0], ['Prior', 0], ['Abbot', 2400]] },
     m_priest: { id: 'm_priest', icon: '⛪', name: 'The Church', levels: [['Parish Clerk', 200], ['Parish Priest', 600], ['Archdeacon', 2500], ['Bishop', 15000]] },
     m_anchor: { id: 'm_anchor', icon: '🕯️', name: 'The anchorhold', levels: [['Anchorite', 0]] },
+    m_king: { id: 'm_king', icon: '👑', name: 'The crown', levels: [['King of England', 120000]] },
     m_court: { id: 'm_court', icon: '👑', name: 'The royal court', levels: [['Courtier', 500], ['Royal Councillor', 3000], ['Lord Chancellor', 12000]] }
   };
-  var FEMALE = { Anchorite: 'Anchoress', Monk: 'Nun', Prior: 'Prioress', Abbot: 'Abbess', Courtier: 'Lady-in-Waiting', 'Royal Councillor': 'Lady of the Bedchamber', 'Lord Chancellor': 'Mistress of the Queen\'s Household' };
+  var FEMALE = { 'King of England': 'Queen of England', Anchorite: 'Anchoress', Monk: 'Nun', Prior: 'Prioress', Abbot: 'Abbess', Courtier: 'Lady-in-Waiting', 'Royal Councillor': 'Lady of the Bedchamber', 'Lord Chancellor': 'Mistress of the Queen\'s Household' };
   function career(id) { return CAREERS.filter(function (c) { return c.id === id; })[0] || SPECIAL[id] || null; }
   function lvlName(c, l) { var n = c.levels[Math.min(l, c.levels.length - 1)][0]; return !male() && FEMALE[n] ? FEMALE[n] : n; }
   // After the Black Death, laborers were scarce and wages rose.
@@ -175,7 +176,7 @@ TL.eras.medieval = (function () {
     a.king = king(s.year);
     E.log('👑 ' + royal(a.king) + ' rules England.');
   }
-  function royal(k) { return 'King ' + k; }
+  function royal(k) { return (S().anc && S().anc.rule && k === me().first + ' ' + me().last && !male() ? 'Queen ' : 'King ') + k; }
 
   // ------------------------------------------------------------ the year
   function yearly() {
@@ -209,6 +210,8 @@ TL.eras.medieval = (function () {
     if (yr === 1381 && age >= 14 && !gentle() && !a.revolt) { a.revolt = true; s.pending.push({ id: 'm_revolt' }); }
     // Henry VIII closed the monasteries (1536-1540).
     if (yr >= 1536 && j && j.career === 'm_monk') { E.log('🏚️ The king\'s men closed my abbey and sold its lands. I was given a small pension and sent out into the world.', 'bad'); s.pension = pen(j.level >= 3 ? 1200 : 120); E.quitJob(true); s.home = JSON.parse(JSON.stringify(TXT.rentHome)); }
+    if (a.plot) { TL.coup.yearly(coupCfg(a.plot.kind)); if (s.dead) return; }
+    if (a.rule && !(j && j.career === 'm_king')) a.rule = null;
     // The Wars of the Roses: whoever wins, the other side pays.
     if (ROSES[yr] && a.rose) roseTurn(ROSES[yr]);
     if (s.dead) return;
@@ -268,6 +271,7 @@ TL.eras.medieval = (function () {
     if (j.career === 'm_archer') return archerYear(j, c);
     if (j.career === 'm_monk' || j.career === 'm_priest') return churchYear(j, c);
     if (j.career === 'm_anchor') return anchorYear(j);
+    if (j.career === 'm_king') return TL.coup.reignYear(coupCfg('throne'));
     if (j.career === 'm_midwife') midwifeYear(j);
     var stv = j.career === 'm_villein' ? me().athl : E.statValue(c.stat || 'smarts');
     j.perf = U.clamp(Math.round((j.perf || 50) + U.rand(-9, 8) + (stv - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0)), 0, 100);
@@ -378,6 +382,7 @@ TL.eras.medieval = (function () {
       var s = S(), a = st(), j = s.job, age = me().age, items = [];
       items.push({ info: true, html: card() });
       if (age < 7) { items.push({ info: true, html: '<p class="muted">I\'m too young to work. Childhood comes first.</p>' }); return items; }
+      if (j && j.career === 'm_king') { items.push({ section: 'The realm' }); return items.concat(TL.coup.reignItems(coupCfg('throne'))); }
       if (j) {
         items.push({ section: 'My work' });
         var c = career(j.career);
@@ -435,6 +440,8 @@ TL.eras.medieval = (function () {
       items.push({ icon: '🕯️', label: male() ? 'Become an anchorite' : 'Become an anchoress', sub: !single ? 'Not while I\'m married' : serf() ? 'Serfs need their lord\'s leave' : age < 25 ? 'The bishop only encloses those 25 or older' : S().karma < 50 ? 'The bishop doubts my holiness' : 'Walled into a cell for life, to pray and counsel', disabled: anch || !single || serf() || age < 25 || S().karma < 50, onClick: enclose });
       var canCourt = gentle() && a.edu && age >= 17;
       items.push({ icon: '👑', label: 'Seek a place at court', sub: canCourt ? 'Power, riches and danger' : 'Needs a noble or knightly family and letters', disabled: !canCourt || (j && j.career === 'm_court'), onClick: function () { if (!U.chance(0.4 + S().fame / 100 + (a.cls === 'noble' ? 0.3 : 0))) return done(bad('Nobody at court would see me. Perhaps with more friends in high places.')); E.quitJob(true); hire('m_court'); S().job.company = 'the court of ' + royal(king(y())); done(good('I was given a place at ' + S().job.company + '. 👑')); } });
+      var throne = gentle() && age >= 21, revolt = !gentle() && age >= 16, kind = a.plot ? a.plot.kind : throne ? 'throne' : 'revolt';
+      if (j && j.career === 'm_anchor') { /* walled in */ } else items.push({ icon: kind === 'throne' ? '⚔️' : '🔥', label: a.plot ? (kind === 'throne' ? 'The rebellion' : 'The uprising') : kind === 'throne' ? 'Rebel against the king' : 'Lead a peasant uprising', sub: a.plot ? 'Strength ' + Math.round(a.plot.power) + ' · suspicion ' + Math.round(a.plot.heat) : kind === 'throne' ? (throne ? 'Take the crown, or die a traitor' : 'Needs a noble or knightly family, 21+') : (revolt ? 'Free the serfs, or hang' : 'Ages 16 and up'), danger: true, disabled: !a.plot && !throne && !revolt, onClick: function () { TL.coup.menu(coupCfg(kind)); } });
       if (j && j.years >= 15 && age >= 55 && j.career !== 'm_villein' && j.career !== 'm_anchor') items.push({ section: ' ' }, { icon: '🏡', label: 'Retire', onClick: function () { var r = E.retire(); done(r.msg); } });
       return items;
     });
@@ -861,6 +868,8 @@ TL.eras.medieval = (function () {
     if (s.ach.indexOf('knighted') >= 0 || a.tourney) out.push(['🛡️', 'Knighthood', (s.ach.indexOf('knighted') >= 0 ? 'Knighted' : 'Squire') + (a.tourney ? ', ' + U.plural(a.tourney, 'tournament') + ' won' : '') + (a.ransoms ? ', ' + U.plural(a.ransoms, 'prisoner') + ' ransomed' : '')]);
     if (a.campaigns.length) out.push(['⚔️', 'At war', a.campaigns.slice(0, 3).join(', ') + (a.campaigns.length > 3 ? ' and more' : '')]);
     if (a.crusader) out.push(['✝️', 'Crusader', 'Took the cross']);
+    if (a.ruled) out.push(['👑', male() ? 'King' : 'Queen', 'Ruled England for ' + U.plural(a.ruled.years, 'year')]);
+    if (a.revoltWon) out.push(['🔥', 'Rebel', 'Led the rising that freed the serfs']);
     var court = hist.filter(function (h) { return h.career === 'm_court'; });
     if (court.length) out.push(['👑', 'At court', court.map(function (h) { return h.title; }).filter(Boolean).pop() || 'Served the king']);
     if (a.mayor) out.push(['🏛️', 'Lord Mayor', 'Lord Mayor of London']);
@@ -879,7 +888,7 @@ TL.eras.medieval = (function () {
     ['other people\'s scandals', ['Jealous', 'Mean']], ['how they\'re really feeling', ['Moody', 'Shy']], ['the king and his barons', [], true], ['God and the Church', [], true], ['the weather', []]];
   var KID_TOPICS = [['dragons and giants', []], ['games of hoodman blind', ['Lazy']], ['animals', ['Kind']], ['their lessons', ['Nerdy']], ['knights and their deeds', ['Athletic']], ['their drawings', ['Artsy']]];
   var ACH = ['centenarian', 'millionaire', 'married', 'divorced', 'parent', 'bigfamily', 'homeowner', 'mogul', 'famous', 'ceo', 'petlover', 'saint', 'villain', 'gymrat', 'genius', 'heartbreaker', 'dynasty', 'survivor', 'retired', 'timetraveler', 'history_buff',
-    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic'];
+    'knighted', 'crusader', 'black_death', 'master_craftsman', 'abbot', 'town_air', 'tourney_champ', 'neck_verse', 'agincourt', 'mystic', 'usurper', 'rebel', 'long_reign'];
   // What medieval English people called each condition (the game still tracks the modern one).
   var ILL = { 'Common Cold': 'A Rheum', 'Flu': 'A Fever', 'Ear Infection': 'An Earache', 'Chickenpox': 'The Pox', 'Strep Throat': 'A Quinsy', 'Asthma': 'Tightness of the Chest',
     'Acne': 'Pimples', 'Migraine': 'The Megrim', 'PTSD': 'Battle Terrors', 'Depression': 'Melancholy', 'Anxiety': 'Troubled Spirits', 'Insomnia': 'Sleeplessness',
@@ -888,6 +897,36 @@ TL.eras.medieval = (function () {
     'Osteoporosis': 'Brittle Bones', 'Chlamydia': 'The Burning', 'Herpes': 'Sores', 'Broken Arm': 'A Broken Arm', 'Broken Leg': 'A Broken Leg',
     'Concussion': 'A Blow to the Head', 'Alcoholism': 'Drunkenness', 'Gambling Addiction': 'A Love of Dice', 'Nicotine Addiction': 'A Bad Habit' };
   function illName(n) { return ILL[n] || n; }
+  // Plots, revolts and reigns (js/eras.js, TL.coup).
+  function coupCfg(kind) {
+    var j = S().job, fem = !male(), a = st();
+    var exile = function () { S().city = U.pick(TOWNS.filter(function (t) { return t !== S().city; })); };
+    if (kind === 'revolt') return { kind: 'revolt', title: 'Rebellion', men: 'village', begin: 'I started talking about rising up against the lords.', exile: exile,
+      intro: 'The poll tax, the lords\' dues, the price of bread. In 1381 Wat Tyler marched on London with tens of thousands. Rebels who lose are hanged.',
+      recruit: ['📣', 'Rally the villages', '"When Adam delved and Eve span, who was then the gentleman?"', '{n} more villages promised to rise with us.'], bribe: null,
+      army: j && j.career === 'm_archer' ? ['🏹', 'Bring the archers over', 'Men who fought in France know how to fight', 'Veterans of the French wars brought their longbows.'] : null,
+      strike: ['🔥', 'March on London'],
+      win: function () { a.revoltWon = true; if (a.cls === 'villein') freeMe('revolt'); E.fame(20); E.karma(5); see('Led a rebellion that freed the serfs', '🔥'); return 'Tens of thousands marched behind me. The king met us at Smithfield and sealed charters freeing every serf in England. This time he kept his word. 🔥'; },
+      lose: { cause: 'the hangman, after the rebellion', text: 'The king\'s knights scattered our army.', death: 'I was hanged in front of my own village.', spared: 'I was fined everything I had and spent a year in a dungeon.' },
+      caught: { cause: 'the hangman, for plotting rebellion', text: 'The sheriff\'s spies heard about our meetings.', death: 'I was hanged at the crossroads as a warning.', spared: 'I was fined everything I had and thrown in the stocks for a week.' } };
+    var old = king(y());
+    return { kind: 'throne', title: 'Rebellion', men: 'baron', begin: 'I began plotting against ' + royal(old) + '.', exile: exile,
+      intro: 'Kings have been overthrown before: Edward II, Richard II, Henry VI, Richard III. You need the barons, an army and luck.' + (a.rule ? '' : ' ' + royal(old) + ' rules today.'),
+      recruit: ['🤝', 'Win over the barons', 'More strength, and a harder secret to keep', '{n} more lords pledged their men to my cause.'],
+      bribe: ['💰', 'Hire mercenaries', 'Flemish crossbowmen and Welsh spearmen', pen(4000), 'Mercenary captains took my silver and promised their men.'],
+      army: j && ((j.career === 'm_knight' && j.level >= 2) || j.career === 'm_court') ? ['🛡️', 'Call out my knights and archers', 'Men sworn to me personally', 'My knights and their archers swore to ride with me.'] : null,
+      strike: ['⚔️', 'Raise my banner against the king'],
+      win: function () { TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); see('Seized the crown of England', '👑'); E.log('👑 I was crowned ' + (fem ? 'Queen' : 'King') + ' of England at Westminster Abbey.', 'good'); return 'We met the king\'s army and broke it. ' + royal(old) + ' was taken to the Tower, and I was crowned at Westminster Abbey! 👑'; },
+      lose: { cause: 'being hanged, drawn and quartered for treason', text: 'The king\'s army routed mine.', death: 'I was hanged, drawn and quartered as a traitor.', spared: 'The king spared my life for a vast fine and banished me from court.' },
+      caught: { cause: 'the axe on Tower Hill', text: 'A spy betrayed the plot to the king.', death: 'I was beheaded on Tower Hill.', spared: 'I lost my lands and was banished from court.' },
+      rule: { career: 'm_king', seat: 'Westminster', popName: 'The people', guardName: 'The barons', acts: [
+        { id: 'feast', icon: '🍗', label: 'Feast the barons', sub: 'Keep the great lords sweet', cost: pen(8000), fx: { guard: 20, happy: 3 }, text: 'A week of feasting at Westminster. Every baron went home with a gift.' },
+        { id: 'tax', icon: '💰', label: 'Raise a new tax', sub: 'Fills the treasury, angers everyone', fx: { money: pen(30000), pop: -14 }, text: 'Parliament grumbled and granted the tax. The people grumbled louder.' },
+        { id: 'build', icon: '⛪', label: 'Build a great cathedral', sub: 'For God, and to be remembered', cost: pen(50000), fx: { fame: 10, karma: 5, pop: 6 }, see: ['Built a cathedral', '⛪'], text: 'Masons from all over Europe came to raise my cathedral. It will take a hundred years to finish.' },
+        { id: 'purge', icon: '🪓', label: 'Execute a rival lord', sub: 'Fear works, for a while', danger: true, fx: { guard: 12, pop: -8, karma: -12 }, text: 'My most dangerous rival lost his head on Tower Hill. The other barons bowed lower.' },
+        { id: 'war', icon: '⚔️', label: 'Invade France', sub: 'Glory and plunder, or disaster', cost: pen(20000), war: true, win: 'We crushed the French. I rode through London in triumph and the bells rang all day.', lose: 'The campaign was a disaster. We came home with nothing but dysentery.', death: 'a French lance in battle' }],
+        threat: { icon: '⚔️', title: 'The barons rebel', text: 'A rival lord has raised an army and claims my crown.', fight: 'Meet them in battle', won: 'We won. The rebel lord\'s head is on a spike on London Bridge.', cause: 'battle against rebel barons', died: 'I was cut down in the battle, like Richard at Bosworth.', flee: 'Flee across the sea to France', fled: 'I fled to France. Someone else sits on my throne now.', caught: 'My ship was caught in the Channel.' } } };
+  }
   // Continuing as my heir: the family keeps its standing (engine.continueAs).
   // Lords and knights keep the family seat when their parents die; serfs hold their cottage from the lord.
   function housed() { return gentle() || serf(); }
@@ -895,6 +934,7 @@ TL.eras.medieval = (function () {
     var a = st(), o = old || {};
     a.cls = o.cls || 'free';
     if (a.cls === 'villein') { a.lord = o.lord; if (o.fled) { a.fled = o.fled; a.village = o.village; a.fledTo = o.fledTo; } }
+    if (o.rule) { a.cls = 'noble'; TL.coup.crown(coupCfg('throne')); a.ruled = a.rule; a.king = king(y()); E.log('👑 I inherited the crown. I am ' + (male() ? 'King' : 'Queen') + ' of England.', 'good'); return; }
     a.king = king(y());
     if ((a.cls === 'noble' || a.cls === 'gentry') && me().age >= 14) a.edu = 'letters'; // tutored at home
     var lines = { noble: '🏰 I am heir to my family\'s lands and titles.', gentry: '🛡️ The family manor passes to my generation.', burgher: '🏘️ I carry on my family\'s place among the townsfolk.', free: '🌾 Like my parents, I am a free peasant.', villein: '🌾 Like my parents, I am a serf on the manor of ' + a.lord + '.' };
@@ -919,6 +959,6 @@ TL.eras.medieval = (function () {
 
   return { on: on, st: st, setup: setup, yearly: yearly, jobYear: jobYear, salary: salary, title: title, career: career, npcJob: npcJob, homeLabel: homeLabel,
     occupationMenu: occupationMenu, assetsMenu: assetsMenu, activitiesMenu: activitiesMenu, acts: acts, WEDDINGS: WEDDINGS, aboutRows: aboutRows, recapRow: recapRow,
-    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
+    king: king, birthOptions: birthOptions, illName: illName, txt: txt, heir: heir, housed: housed, coupCfg: coupCfg, CLASS_NAME: CLASS_NAME, TOPICS: TOPICS, KID_TOPICS: KID_TOPICS, ACH: ACH,
     id: 'medieval', land: 'Kingdom of England', years: [1150, 1420], gentile: false };
 })();

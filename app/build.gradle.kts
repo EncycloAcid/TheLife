@@ -11,8 +11,8 @@ android {
         applicationId = "com.thelife.game"
         minSdk = 24
         targetSdk = 35
-        versionCode = 41
-        versionName = "1.27.0"
+        versionCode = 42
+        versionName = "1.28.0"
     }
 
     // The game itself is the web app in /game; it is packaged as the APK's assets.
