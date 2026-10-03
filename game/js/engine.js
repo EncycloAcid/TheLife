@@ -160,8 +160,9 @@ TL.engine = (function () {
     var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
       var alt = randomName(gender, o.last, o.country);
-      if (o.first) nm.last = o.last ? nm.last : alt.last; else nm = alt;
+      if (o.first) nm.last = o.last ? nm.last : alt.last; else { alt.last = nm.last; nm = alt; }
     }
+    for (var t2 = 0; t2 < 6 && !o.first && nm.first === nm.last; t2++) nm.first = randomName(gender, null, o.country).first;
     var age = o.age != null ? o.age : 20;
     var p = {
       id: U.uid(), first: o.first || nm.first, last: nm.last, gender: gender, age: age, alive: true,
@@ -203,6 +204,8 @@ TL.engine = (function () {
     };
     TL.S = st;
     if (ctry.ancient) { st.me.last = D.surname(st.me.last, gender, ctry.ancient); st.flags.noSchool = true; }
+    // Same rule as makePerson: a Roman girl of the Tullii isn't "Tullia Tullia".
+    for (var t1 = 0; t1 < 6 && !opts.first && st.me.first === st.me.last; t1++) st.me.first = randomName(gender, null, ctry.name).first;
     // Share prices start near real levels, in local currency.
     D.STOCKS.forEach(function (s) { st.prices[s.sym] = Math.round($(s.price || U.randf(20, 300)) * U.randf(0.75, 1.3) * 100) / 100; });
     st.log.push({ age: 0, year: startYear, entries: [] });

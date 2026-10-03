@@ -355,7 +355,8 @@ TL.ui = (function () {
     var key = y.age + ':' + y.year, from = logSeen && logSeen.key === key ? logSeen.n : logSeen ? 0 : y.entries.length;
     var fresh = y.entries.slice(from);
     logSeen = { key: key, n: y.entries.length };
-    if (fresh.some(function (e) { return e.c !== 'bad' && CELEBRATE.test(String(e.t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
+    // Only my own milestones: "My brother got promoted" is news, not a party.
+    if (fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
   }
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
