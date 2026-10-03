@@ -126,7 +126,7 @@ TL.nba = (function () {
   // Seasons past our data get a league of invented stars who age and retire.
   var ORIGINS = ['United States', 'United States', 'United States', 'Canada', 'France', 'Spain', 'Nigeria', 'Serbia', 'Australia', 'Germany', 'Greece', 'Slovenia'];
   function fake(g) {
-    var x = S().hoops, y = S().year, key = g === 'F' ? 'wfake' : 'fake';
+    var x = S().hoops || (S().league = S().league || {}), y = S().year, key = g === 'F' ? 'wfake' : 'fake';
     var L = x[key] = x[key] || [];
     // Age the league one season at a time.
     if (x[key + 'Y'] !== y) {

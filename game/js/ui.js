@@ -296,6 +296,7 @@ TL.ui = (function () {
     $('#h-avatar').textContent = avatar();
     $('#h-name').textContent = m.first + ' ' + m.last;
     $('#h-sub').textContent = c.flag + ' ' + statusLine();
+    var ph = $('#h-phone'); if (ph) { ph.hidden = !(TL.phone && TL.phone.available()); ph.setAttribute('aria-label', TL.phone ? TL.phone.device() : 'Phone'); }
     var cash = E.fmt(s.money), mEl = $('#h-money');
     if (lastMoney != null && lastMoney !== s.money && TL.motion) TL.motion.countTo(mEl, lastMoney, s.money, function (v) { return E.fmt(Math.round(v)); });
     else { mEl._count = (mEl._count || 0) + 1; mEl.textContent = cash; }
@@ -781,6 +782,7 @@ TL.ui = (function () {
     $('#sheet-scrim').onclick = closeAll;
     $('#stats').onclick = moreStats;
     $('#h-menu').onclick = function () { E.save(); home(); };
+    if ($('#h-phone')) $('#h-phone').onclick = function () { if (TL.phone) TL.phone.open(); };
     $('#c-random').onclick = randomName;
     $('#c-country').onchange = randomName;
     if ($('#c-year')) $('#c-year').onchange = function () {

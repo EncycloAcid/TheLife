@@ -1562,6 +1562,6 @@ TL.actions = (function () {
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
     activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet,
-    achievementsMenu: achievementsMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
+    achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

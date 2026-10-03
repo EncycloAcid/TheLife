@@ -590,3 +590,4 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .mk-spark.up polyline { stroke: var(--green); }
 .mk-spark.down polyline { stroke: var(--red); }
 .bz-ico.mk-logo { background: none; }
+.gh #h-phone[hidden] { display: none; }
