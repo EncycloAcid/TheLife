@@ -107,7 +107,10 @@ TL.actions = (function () {
   }
 
   function personMenu(p) {
-    ui().menu(p.first + ' ' + p.last, function () {
+    ui().menu(p.first + ' ' + p.last, function () { var its = personItems(p); return TL.mind ? TL.mind.wrap(p, its) : its; });
+  }
+  function personItems(p) {
+    return (function () {
       var items = [{ info: true, html: personCard(p) }];
       if (!p.alive) {
         items.push({ icon: '💐', label: 'Visit grave', onClick: function () { E.stat('happy', 3); done('I laid flowers at ' + p.first + '\'s grave and shared some memories.'); } });
@@ -160,13 +163,13 @@ TL.actions = (function () {
       if ((r === 'mother' || r === 'father') && me().age >= 16 && me().age < 25 && p.money > E.$(40000) && !S().assets.some(function (a) { return a.kind === 'car'; }))
         if (!(TL.ancient && TL.ancient.on())) items.push({ icon: '🚗', label: 'Ask for a car', onClick: function () { askCar(p); } });
       return items;
-    });
+    })();
   }
   function personCard(p) {
     var bars = [['Relationship', p.rel], ['Happiness', p.happy], ['Health', p.health], ['Smarts', p.smarts], ['Looks', p.looks]];
     var html = '<div class="pcard"><div class="pcard-top"><div class="pcard-emoji">' + personIcon(p) + '</div><div><div class="pcard-name">' + U.esc(E.fullName(p)) + '</div><div class="pcard-sub">' + roleLabel(p) + ' · Age ' + p.age + (p.alive ? '' : ' (deceased)') + '</div><div class="pcard-sub">' + U.esc(p.job || '') + (p.traits && p.traits.length ? ' · ' + p.traits.join(', ') : '') + '</div></div></div>';
     bars.forEach(function (b) { html += '<div class="minibar"><span>' + b[0] + '</span><div class="track"><div class="fill ' + barClass(b[1]) + '" style="width:' + b[1] + '%"></div></div></div>'; });
-    return html + '</div>';
+    return html + (TL.mind ? TL.mind.card(p) : '') + '</div>';
   }
   function barClass(v) { return v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo'; }
 

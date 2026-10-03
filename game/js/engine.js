@@ -1046,6 +1046,7 @@ TL.engine = (function () {
       if (pt.role === 'spouse') queue('spouse_leaves', { pid: pt.id });
       else { log(pt.first + ' broke up with me. 💔', 'bad'); pt.role = 'ex'; s.counts.exes++; stat('happy', -15); }
     }
+    if (TL.mind) TL.mind.yearly(); // the people in my life act on their own (js/mind.js)
   }
   function inherit(p) {
     var s = S(), share;
@@ -1437,7 +1438,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, makePerson: makePerson, addPerson: addPerson, randomName: randomName,
+    achieve: achieve, netWorth: netWorth, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
