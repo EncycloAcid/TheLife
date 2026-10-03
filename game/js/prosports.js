@@ -105,6 +105,39 @@ TL.pro = (function () {
     return x;
   }
   function hasJob() { var j = S().job; return !!(j && j.pro); }
+
+  // ------------------------------------------------------------ profile
+  // Four attributes kept as offsets from my overall rating (they average
+  // zero): my position sets the starting shape and training shifts it.
+  var AK = ['spd', 'pwr', 'tec', 'iq'];
+  var ANAMES = { Football: ['Speed', 'Power', 'Technique', 'Football IQ'], Soccer: ['Pace', 'Physical', 'Technique', 'Vision'], Baseball: ['Speed', 'Power', 'Contact', 'Baseball IQ'], Hockey: ['Skating', 'Physical', 'Hands', 'Hockey IQ'], Tennis: ['Movement', 'Power', 'Touch', 'Mental game'] };
+  var PSHAPE = { Quarterback: [-5, -3, 4, 6], 'Running Back': [6, 4, -3, -5], 'Wide Receiver': [7, -4, 3, -4], Linebacker: [-2, 6, -5, 3], Cornerback: [6, -4, -2, 2], Kicker: [-6, 3, 7, -2],
+    Striker: [2, 0, 5, -5], Winger: [6, -4, 3, -3], Midfielder: [-2, -3, 3, 5], Defender: [-3, 5, -4, 3], Goalkeeper: [-5, 2, -1, 4],
+    Pitcher: [-6, 5, 4, -1], Catcher: [-6, 2, -1, 5], Shortstop: [4, -5, 4, -1], Outfielder: [5, 2, -3, -3], 'First Baseman': [-6, 7, 0, -1],
+    Center: [-1, -2, 3, 4], Defenseman: [-3, 5, -4, 2], Goalie: [-4, -3, 4, 5], Singles: [0, 0, 0, 0] };
+  function prof(x) {
+    if (!x.off) {
+      var t = PSHAPE[x.pos] || [0, 0, 0, 0], a = (me().athl || 60) - 70;
+      x.off = {}; AK.forEach(function (k, i) { x.off[k] = t[i] + U.rand(-4, 4) + (k === 'spd' ? Math.round(a / 6) : 0); });
+      pnorm(x);
+    }
+    return x.off;
+  }
+  function pnorm(x) { var o = x.off, m = (o.spd + o.pwr + o.tec + o.iq) / 4; AK.forEach(function (k) { o[k] = U.clamp(Math.round((o[k] - m) * 10) / 10, -15, 15); }); }
+  function attr(x, k) { return U.clamp(Math.round(x.ovr + prof(x)[k]), 20, 99); }
+  function aname(x, k) { if (x.sport === 'Baseball' && x.pos === 'Pitcher') return { spd: 'Stamina', pwr: 'Velocity', tec: 'Command', iq: 'Pitch IQ' }[k]; return ANAMES[x.sport][AK.indexOf(k)]; }
+  function archetype(x) {
+    var o = prof(x), ks = AK.slice().sort(function (a, b) { return o[b] - o[a]; });
+    if (o[ks[0]] - o[ks[3]] < 6) return 'Complete player';
+    return { 'pwr+spd': 'Physical freak', 'spd+tec': 'Dynamic playmaker', 'iq+spd': 'Instinctive speedster', 'pwr+tec': 'Power technician', 'iq+pwr': 'Enforcer', 'iq+tec': 'Field general' }[[ks[0], ks[1]].sort().join('+')];
+  }
+  // How much my profile suits my position (it nudges my stat lines).
+  function posFit(x) { var t = PSHAPE[x.pos] || [0, 0, 0, 0], o = prof(x); return AK.reduce(function (sum, k, i) { return sum + o[k] * t[i]; }, 0) / 300; }
+  // Team strength carries over: contenders stay good, rebuilds take time.
+  function tq(t) { var x = h(), m = x.tq || (x.tq = {}); if (m[t] == null) m[t] = U.rand(32, 68); return m[t]; }
+  function outlook(q) { return q >= 60 ? 'contender' : q >= 49 ? 'playoff team' : q >= 39 ? 'middle of the pack' : 'rebuilding'; }
+  function award(x, name, rec) { var a = x.aw || (x.aw = {}); (a[name] = a[name] || []).push(S().year); if (rec) rec.award = (rec.award ? rec.award + ', ' : '') + name; }
+  function nAwards(x) { var a = x.aw || {}; return Object.keys(a).reduce(function (t, k) { return t + a[k].length; }, 0); }
   function role(o) { return o >= 90 ? ['Superstar', 1] : o >= 82 ? ['All-Star', 0.95] : o >= 72 ? ['Starting', 0.85] : o >= 64 ? ['Rotation', 0.5] : ['Backup', 0.2]; }
   function rank(o) { return Math.max(1, Math.round(Math.exp((99 - o) / 6))); }
   function title() {
@@ -217,17 +250,18 @@ TL.pro = (function () {
     }
     s.flags.proRehab = 0;
     var bigLg = x.stage === 'pro', firstBig = bigLg && !x.seasons.some(function (q) { return q.big; });
-    var rec = { year: s.year, age: a, team: x.team, league: x.league, big: bigLg, ovr: x.ovr };
+    var rec = { year: s.year, age: a, team: x.team, league: x.league, big: bigLg, ovr: x.ovr, injured: injured ? 1 : 0 };
+    var prev = x.seasons[x.seasons.length - 1];
     var msg;
     if (x.sport === 'Tennis') tennis(x, rec, played);
     else {
       var r = role(bigLg ? x.ovr : Math.min(99, x.ovr + 14)), sh = r[1] * played;
-      var k = U.clamp((x.ovr - (bigLg ? 55 : 40)) / 42 + U.randf(-0.06, 0.06), 0.02, 1);
+      var k = U.clamp((x.ovr - (bigLg ? 55 : 40)) / 42 + posFit(x) / 10 + U.randf(-0.06, 0.06), 0.02, 1);
       rec.line = sh < 0.05 ? 'Did not play' : C.line(k, sh, x.pos);
-      var gp = C.games, pct = U.clamp(U.randf(0.3, 0.68) + (x.ovr - 75) / 100 * r[1] * played * 0.8, 0.12, 0.88), w = Math.round(gp * pct);
+      var gp = C.games, pct = U.clamp(0.49 + (tq(x.team) - 50) / 100 + U.randf(-0.12, 0.12) + (x.ovr - 75) / 100 * r[1] * played * 0.8, 0.12, 0.88), w = Math.round(gp * pct);
       rec.rec = w + '-' + (gp - w);
       var champ = false, playoffs = pct >= 0.55 || (pct >= 0.48 && U.chance(0.4));
-      if (playoffs && U.chance(U.clamp(0.04 + (pct - 0.55) * 0.5 + (x.ovr - 82) / 300 * r[1], 0.01, 0.3))) champ = true;
+      if (playoffs && U.chance(U.clamp(0.03 + (pct - 0.58) * 0.45 + (x.ovr - 82) / 300 * r[1], 0.01, 0.28))) champ = true;
       rec.result = champ ? 'Won ' + champName(x) : playoffs ? 'Made the playoffs' : 'Missed the playoffs';
       msg = C.icon + ' ' + (bigLg ? '' : x.league + ' ') + 'Season with ' + x.team + ': ' + rec.line + '. We went ' + rec.rec + (champ ? ' and won ' + champName(x) + '! 🏆' : playoffs ? ' and made the playoffs.' : '.');
       if (injured) msg += ' I missed part of the year with ' + injured[0] + '.';
@@ -238,8 +272,16 @@ TL.pro = (function () {
         if (x.ovr >= 82 && r[1] * played >= 0.85 && U.chance(0.25 + (x.ovr - 82) / 20)) { x.allstar++; aw.push(starName(x)); }
         if (x.ovr >= 91 && pct >= 0.55 && played > 0.85 && U.chance(0.12 + (x.ovr - 91) / 25)) { x.mvp++; aw.push(mvpName(x)); s.awards = s.awards || []; s.awards.push({ award: mvpName(x), cat: x.team, year: s.year }); E.achieve('league_mvp'); E.achieve('award'); E.fame(10); }
         if (aw.length) { rec.award = aw.join(', '); msg += ' Honors: ' + rec.award + '.'; }
+        moreAwards(x, rec, r, played, prev);
+        if (rec.award && rec.award !== aw.join(', ')) msg += aw.length ? ' Also: ' + rec.award.slice(aw.join(', ').length + 2) + '.' : ' Honors: ' + rec.award + '.';
       }
       E.log(msg, champ || rec.award ? 'good' : injured ? 'bad' : '');
+      if (bigLg && played > 0.5 && U.chance(0.12 + (x.ovr - 75) / 100)) moment(x, rec);
+      // Some playoff runs come down to one moment.
+      if (bigLg && playoffs && !champ && r[1] >= 0.85 && U.chance(0.3)) s.pending.push({ id: 'pro_clutch', data: { year: s.year } });
+      // The World Cup and the Olympics, for the best.
+      var wc = x.sport === 'Soccer' && s.year % 4 === (female() ? 3 : 2), oly = x.sport === 'Hockey' && s.year % 4 === 2 && s.year >= (female() ? 1998 : 1998);
+      if (bigLg && (wc || oly) && x.ovr >= 80 && a <= 35 && U.chance(0.8)) s.pending.push({ id: 'pro_intl', data: { year: s.year } });
     }
     x.seasons.push(rec);
     var earned = E.$(x.contract ? x.contract.salary : 0);
@@ -250,8 +292,40 @@ TL.pro = (function () {
     if (s.fame < target) E.fame((target - s.fame) / 4);
     if (s.fame >= 80) E.achieve('famous');
     yearAfter(x);
+    Object.keys(x.tq || {}).forEach(function (t) { var q = x.tq[t]; x.tq[t] = U.clamp(Math.round(q + (50 - q) * 0.12 + U.rand(-6, 6)), 25, 75); });
     if (j) { j.salary = earned; j.title = title(); j.perf = U.clamp(x.ovr, 0, 100); j.company = x.team + (x.sport === 'Tennis' ? '' : ' (' + x.league + ')'); }
     return earned;
+  }
+  function moreAwards(x, rec, r, played, prev) {
+    var full = r[1] * played >= 0.85, p = x.pos, A = function (n) { award(x, n, rec); };
+    if (x.sport === 'Football') {
+      if (full && x.ovr >= 85 && U.chance(0.5)) A('First-Team All-Pro');
+      if ((p === 'Linebacker' || p === 'Cornerback') && full && x.ovr >= 88 && U.chance(0.3)) A('Defensive Player of the Year');
+    } else if (x.sport === 'Soccer') {
+      if ((p === 'Striker' || p === 'Winger') && full && x.ovr >= 86 && U.chance(0.3)) A('Golden Boot');
+      if (p === 'Goalkeeper' && full && x.ovr >= 86 && U.chance(0.3)) A('Golden Glove');
+    } else if (x.sport === 'Baseball' && p !== 'Pitcher') {
+      if (full && attr(x, 'pwr') >= 88 && U.chance(0.4)) A('Silver Slugger');
+      if (full && (attr(x, 'spd') + attr(x, 'iq')) / 2 >= 85 && U.chance(0.35)) A('Gold Glove');
+    } else if (x.sport === 'Hockey') {
+      if (full && x.ovr >= 88 && U.chance(0.35)) A(p === 'Defenseman' ? 'Norris Trophy' : p === 'Goalie' ? 'Vezina Trophy' : 'Art Ross Trophy');
+    }
+    if (prev && prev.injured && prev.big && played > 0.85 && x.ovr >= 75 && U.chance(0.3)) A('Comeback Player of the Year');
+  }
+  // A signature game, remembered forever.
+  function moment(x, rec) {
+    var foe = bigLeague(x.sport).team, p = x.pos, t;
+    if (x.team === foe) foe = 'our biggest rival';
+    var P = U.pick, M = {
+      Football: { Quarterback: ['threw five touchdown passes against ', 'led a 99-yard game-winning drive against ', 'threw for 450 yards against '], 'Running Back': ['ran for 220 yards against ', 'broke an 80-yard touchdown run against ', 'scored four touchdowns against '], 'Wide Receiver': ['caught three touchdowns against ', 'made a one-handed catch for the win against ', 'had 200 receiving yards against '], Linebacker: ['had three sacks and a forced fumble against ', 'made a goal-line stand to beat '], Cornerback: ['returned an interception for a touchdown against ', 'picked off three passes against '], Kicker: ['hit a 58-yard game-winner against ', 'kicked six field goals to beat '] },
+      Soccer: { Striker: ['scored a hat trick against ', 'scored a bicycle-kick winner against ', 'scored twice in stoppage time against '], Winger: ['scored a hat trick against ', 'beat four defenders and scored against ', 'set up three goals against '], Midfielder: ['scored a 30-yard screamer to beat ', 'ran the whole midfield in a 4-0 win over ', 'scored a free-kick winner against '], Defender: ['scored a last-minute header to beat ', 'made a goal-line clearance to beat '], Goalkeeper: ['saved two penalties against ', 'kept a clean sheet with ten saves against '] },
+      Baseball: { Pitcher: ['struck out 15 against ', 'threw a complete-game shutout against ', 'threw a no-hitter against '], other: ['hit a walk-off grand slam against ', 'went 5-for-5 with two homers against ', 'hit for the cycle against ', 'made a home-run-robbing catch against '] },
+      Hockey: { Goalie: ['made 50 saves for a shutout against ', 'stopped every shot in a shootout against '], other: ['scored a hat trick against ', 'scored the overtime winner against ', 'had five points against '] }
+    }[x.sport];
+    if (M) { var list = M[p] || M.other; if (list) { t = P(list); if (/no-hitter|cycle/.test(t) && U.chance(0.6)) t = list[0]; t += foe; } }
+    if (!t) return;
+    (x.moments = x.moments || []).push({ year: S().year, text: t }); if (x.moments.length > 20) x.moments.shift();
+    rec.moment = t; E.fame(2); E.log('🔥 I ' + t + '!', 'good');
   }
   function tennis(x, rec, played) {
     var s = S(), r = Math.max(1, Math.round(rank(x.ovr) * U.randf(0.7, 1.3) / Math.max(0.35, played)));
@@ -302,7 +376,7 @@ TL.pro = (function () {
   function yearly() {
     var s = S(), x = h();
     if (!x || s.dead) return;
-    if (x.stage === 'retired' && !x.hof && x.retiredYear && s.year - x.retiredYear >= 5 && (x.mvp >= 1 || x.allstar >= 8 || (x.titles >= 2 && x.allstar >= 5) || x.slams >= 2)) {
+    if (x.stage === 'retired' && !x.hof && x.retiredYear && s.year - x.retiredYear >= 5 && (x.mvp >= 1 || x.allstar >= 8 || (x.titles >= 2 && x.allstar >= 5) || x.slams >= 2 || nAwards(x) >= 6 || ((x.aw || {})['Olympic gold'] || Object.keys(x.aw || {}).some(function (k) { return /World Cup winner/.test(k); })) && x.allstar >= 4)) {
       x.hof = s.year;
       var hall = { Football: 'the Pro Football Hall of Fame', Soccer: 'the Hall of Fame', Baseball: 'the Baseball Hall of Fame in Cooperstown', Hockey: 'the Hockey Hall of Fame', Tennis: 'the International Tennis Hall of Fame' }[x.sport];
       E.log('🏛️ I was inducted into ' + hall + '!', 'good'); E.fame(10); E.achieve('pro_hof');
@@ -320,8 +394,8 @@ TL.pro = (function () {
       var t = x.sport === 'Soccer' && !female() && x.ovr >= 80 && U.chance(0.5) ? bigLeague('Soccer', U.pick(['United Kingdom', 'Spain', 'Italy', 'Germany', 'France'])) : bigLeague(x.sport);
       if (seen[t.team]) continue; seen[t.team] = 1;
       (function (t) {
-        var yrs = U.clamp(Math.round(U.rand(1, 5) - Math.max(0, a - 30) / 2), 1, 5), sal = salaryFor(x.ovr + U.rand(-2, 3), t);
-        ch.push({ label: (t.team === x.team ? 'Re-sign with ' : '') + t.team + (t.league !== x.league ? ' (' + t.league + ')' : '') + ': ' + E.fmt(E.$(sal)) + '/yr · ' + U.plural(yrs, 'year'), run: function () {
+        var q = x.sport === 'Tennis' ? 50 : tq(t.team), yrs = U.clamp(Math.round(U.rand(1, 5) - Math.max(0, a - 30) / 2), 1, 5), sal = Math.round(salaryFor(x.ovr + U.rand(-2, 3), t) * (q >= 60 ? U.randf(0.8, 1) : q < 39 ? U.randf(1.05, 1.25) : 1) / 1000) * 1000;
+        ch.push({ label: (t.team === x.team ? 'Re-sign with ' : '') + t.team + (t.league !== x.league ? ' (' + t.league + ')' : '') + (x.sport === 'Tennis' ? '' : ', ' + outlook(q)) + ': ' + E.fmt(E.$(sal)) + '/yr · ' + U.plural(yrs, 'year'), run: function () {
           var moved = t.team !== x.team; sign(t, yrs, sal, 'pro'); E.stat('happy', 8);
           return good((moved ? 'I signed with ' : 'I re-signed with ') + t.team + ' for ' + U.plural(yrs, 'year') + ' at ' + E.fmt(E.$(sal)) + ' a year. ✍️');
         } });
@@ -330,6 +404,50 @@ TL.pro = (function () {
     if (!ch.length) { var mi = placeFor({ sport: x.sport, ovr: 0 }); ch.push({ label: 'Take a ' + mi.t.league.toLowerCase() + ' deal', run: function () { sign(mi.t, 1, salaryFor(x.ovr, mi.t), 'minors'); return 'No big-league team wanted me. I signed with ' + mi.t.team + ' to keep my dream alive.'; } }); }
     ch.push({ label: 'Retire', run: function () { return retire(); } });
     return { icon: '✍️', title: 'Free agency', text: 'My contract with ' + x.team + ' is up. I\'m ' + a + ', rated ' + x.ovr + ' overall. ' + (nOff ? 'Here are my offers:' : 'The phone isn\'t ringing.'), choices: ch };
+  } });
+  var CLUTCH = {
+    Football: ['Fourth and goal from the 6, four seconds left, down by four.', [['spd', 'Take it to the edge myself'], ['pwr', 'Run it straight up the middle'], ['iq', 'Read the defense and audible']]],
+    Soccer: ['The semifinal goes to a penalty shootout. I take the decisive kick.', [['pwr', 'Smash it down the middle'], ['tec', 'Place it in the top corner'], ['iq', 'Wait for the keeper to move']]],
+    Baseball: ['Bottom of the ninth, bases loaded, down by one, full count.', [['pwr', 'Swing for the fences'], ['tec', 'Shorten up and go the other way'], ['iq', 'Sit on the pitch I want']]],
+    Hockey: ['Overtime of Game 7. The puck lands on my stick in the slot.', [['tec', 'Snipe it top shelf'], ['pwr', 'Crash the net'], ['iq', 'Find the open man back door']]]
+  };
+  function lastRec(x, year) { var q = x && x.seasons[x.seasons.length - 1]; return q && q.year === year ? q : null; }
+  def('pro_clutch', { cond: function () { var x = h(); return !!(x && x.stage === 'pro' && CLUTCH[x.sport]); }, build: function (d) {
+    var x = h(), q = lastRec(x, d && d.year), c = CLUTCH[x.sport];
+    if (!q || q.clutch || !c) return null;
+    var pitcher = x.sport === 'Baseball' && x.pos === 'Pitcher';
+    var text = pitcher ? 'Top of the ninth in the deciding game, bases loaded, one-run lead. The count is full.' : c[0];
+    var opts = pitcher ? [['pwr', 'Blow a fastball by him'], ['tec', 'Paint the outside corner'], ['iq', 'Throw the pitch he won\'t expect']] : c[1];
+    return { icon: '⏱️', title: 'The big moment', text: text, choices: opts.map(function (o) { return { label: o[1] + ' (' + aname(x, o[0]).toLowerCase() + ' ' + attr(x, o[0]) + ')', run: function () { return clutch(d, o[0]); } }; }) };
+  } });
+  function clutch(d, k) {
+    var x = h(), q = lastRec(x, d.year);
+    if (!q || q.clutch) return 'The moment had passed.';
+    q.clutch = 1;
+    if (!U.chance(U.clamp(0.25 + (attr(x, k) - 75) / 60, 0.1, 0.6))) { E.stat('happy', -6); q.result = 'Lost in the playoffs'; return bad('I came up short in the biggest moment of my career. Our season is over.'); }
+    x.clutch = (x.clutch || 0) + 1; E.fame(4); E.stat('happy', 10);
+    if (U.chance(0.3)) { x.titles++; q.result = 'Won ' + champName(x); E.achieve('champion'); E.fame(8); E.stat('happy', 10); return good('I came through! We rode that moment all the way and won ' + champName(x) + '! 🏆'); }
+    q.result = 'Lost in the final';
+    return good('I came through and we advanced, but we lost in the final.');
+  }
+  var INTL_POWERS = { Soccer: ['Brazil', 'Argentina', 'France', 'Germany', 'Spain', 'United Kingdom', 'Italy', 'Netherlands', 'Portugal'], Hockey: ['Canada', 'United States', 'Sweden', 'Finland', 'Czech Republic'] };
+  def('pro_intl', { cond: function () { var x = h(); return !!(x && x.stage === 'pro'); }, build: function (d) {
+    var x = h(), yr = d && d.year;
+    if (!yr || (x.intl || []).some(function (i) { return i.year === yr; })) return null;
+    var c = S().country, ev = x.sport === 'Soccer' ? (female() ? 'FIFA Women\'s World Cup' : 'FIFA World Cup') : 'Winter Olympics';
+    return { icon: x.sport === 'Soccer' ? '🌍' : '🏅', title: ev, text: 'My national team called me up for the ' + yr + ' ' + ev + '.', choices: [
+      { label: 'Play for my country', run: function () {
+        var strong = (INTL_POWERS[x.sport] || []).indexOf(c) >= 0, usw = female() && c === 'United States' && x.sport === 'Soccer';
+        var win = usw ? 0.35 : strong ? (x.sport === 'Hockey' && c === 'Canada' ? 0.35 : 0.16) : 0.03, r = U.rand(1, 1000) / 1000;
+        var res = r < win ? 'won' : r < win * 2.2 ? 'final' : r < win * 4 + 0.15 ? 'semis' : 'out';
+        (x.intl = x.intl || []).push({ year: yr, res: res });
+        if (res === 'won') { award(x, x.sport === 'Soccer' ? ev + ' winner' : 'Olympic gold'); E.fame(12); E.stat('happy', 20); E.achieve('champion'); return good('🏆 We won the ' + ev + '! The whole country partied for a week.'); }
+        if (res === 'final') { if (x.sport === 'Hockey') award(x, 'Olympic silver'); E.fame(5); return 'We reached the final of the ' + ev + ' but lost. So close.'; }
+        if (res === 'semis') { if (x.sport === 'Hockey' && U.chance(0.5)) { award(x, 'Olympic bronze'); return 'We won bronze at the ' + ev + '. 🥉'; } E.fame(2); return 'We made the semifinals of the ' + ev + '.'; }
+        return 'We went out early at the ' + ev + '. Still, wearing my country\'s colors meant everything.';
+      } },
+      { label: 'Rest my body instead', run: function () { E.stat('health', 3); return 'I skipped the tournament to rest for the season.'; } }
+    ] };
   } });
   def('pro_retire', { cond: function () { var x = h(); return !!(x && (x.stage === 'pro' || x.stage === 'minors')); }, build: function () {
     var x = h();
@@ -347,7 +465,7 @@ TL.pro = (function () {
   } });
 
   // ------------------------------------------------------------ menus
-  function bar(label, v) { return '<div class="minibar"><span>' + label + '</span><span class="track"><span class="fill ' + (v >= 80 ? 'hi' : v >= 62 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }
+  function bar(label, v) { return '<div class="minibar wide"><span>' + label + '</span><span class="track"><span class="fill ' + (v >= 80 ? 'hi' : v >= 62 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }
   function card(x) {
     var C = SP[x.sport], acc = [];
     if (x.titles) acc.push('🏆 ' + U.plural(x.titles, x.sport === 'Tennis' ? 'title' : 'championship'));
@@ -357,14 +475,16 @@ TL.pro = (function () {
     if (x.roy) acc.push('🌱 Rookie of the Year');
     if (x.best && x.sport === 'Tennis') acc.push('Career-high No. ' + x.best);
     if (x.hof) acc.push('🏛️ Hall of Fame');
-    var where = x.stage === 'retired' ? 'Retired' : (x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league);
+    var where = x.stage === 'retired' ? 'Retired' : (x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league + (x.stage === 'pro' && x.team ? ' · ' + U.cap(outlook(tq(x.team))) : ''));
+    var n2 = nAwards(x); if (n2) acc.push('🏅 ' + U.plural(n2, 'other honor'));
     return '<div class="pr-card"><div class="pr-top"><span class="pr-ico">' + (x.team && x.stage !== 'retired' && TL.logos ? TL.logos.badge(x.team, { shape: 'team' }) : C.icon) + '</span><div><div class="pr-name">' + U.esc(x.stage === 'retired' ? 'Retired ' + x.pos : title()) + '</div><div class="pr-sub">' + U.esc(where) + '</div></div></div>' +
-      bar('Overall', x.ovr) + (x.stage !== 'retired' ? bar('Potential', x.pot) : '') +
+      '<div class="hb-arch">' + archetype(x) + '</div>' + bar('Overall ' + x.ovr, x.ovr) + AK.map(function (k) { return bar(aname(x, k) + ' ' + attr(x, k), attr(x, k)); }).join('') + (x.stage !== 'retired' ? bar('Potential ' + x.pot, x.pot) : '') +
       (x.contract && x.sport !== 'Tennis' ? '<div class="pr-line">✍️ ' + E.fmt(E.$(x.contract.salary)) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left</div>' : '') +
       (x.endorse ? '<div class="pr-line">' + (TL.logos ? TL.logos.badge(x.endorse.brand, { size: 'xs' }) + ' ' : '👟 ') + U.esc(x.endorse.brand) + ' · ' + E.fmt(E.$(x.endorse.pay)) + '/yr</div>' : '') +
       (acc.length ? '<div class="pr-line">' + acc.join(' · ') + '</div>' : '') + '</div>';
   }
   var TRAIN = [['str', '🏋️', 'Strength & conditioning', function (x) { me().athl = U.clamp(me().athl + 2, 0, 100); E.stat('health', 2); return 1; }],
+    ['speed', '⚡', 'Speed & agility drills', function () { me().athl = U.clamp(me().athl + 1, 0, 100); return 1; }],
     ['skill', '🎯', 'Skill work', function () { return 1; }],
     ['film', '🎥', 'Film study', function () { E.stat('smarts', 1); return U.chance(0.6) ? 1 : 0; }],
     ['rehab', '🧊', 'Recovery & rehab', function () { S().flags.proRehab = 1; E.stat('health', 6); return 0; }]];
@@ -372,13 +492,14 @@ TL.pro = (function () {
     var x = h();
     if (count('pro_' + t[0])) return done(nope('I already did that this year.'));
     bump('pro_' + t[0]);
-    var g = t[3](x), s = S(), raised = false;
+    var g = t[3](x), s = S(), raised = false, ak = { str: 'pwr', speed: 'spd', skill: 'tec', film: 'iq' }[t[0]];
+    if (ak) { prof(x)[ak] += 2; pnorm(x); }
     // At my ceiling, hard work slowly raises the ceiling itself (it used to do nothing at all).
     var ceil = s.flags.proCeil && s.flags.proCeil.y === s.year ? s.flags.proCeil.n : 0;
     if (g && x.ovr >= x.pot - 1 && me().age < SP[x.sport].old - 2 && x.pot < 99 && ceil < 2 && U.chance(0.55)) { s.flags.proCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
     if (g && x.ovr < x.pot && me().age < SP[x.sport].old) { s.flags.proTrain = Math.min(2, (s.flags.proTrain || 0) + (U.chance(0.5) ? 1 : 0)); }
     // Work done now shows in next season's rating; say where I stand.
-    return done(t[2] + ' ' + SP[x.sport].icon + (t[0] === 'rehab' ? ' I feel fresh. Less chance of getting hurt this season.' : ' I\'m sharpening my game. (overall ' + x.ovr + ', potential ' + x.pot + (raised ? ', raised by my hard work' : x.ovr >= x.pot ? ', at my ceiling' : '') + ')'));
+    return done(t[2] + ' ' + SP[x.sport].icon + (t[0] === 'rehab' ? ' I feel fresh. Less chance of getting hurt this season.' : ' I\'m sharpening my game. (' + (ak ? aname(x, ak).toLowerCase() + ' ' + attr(x, ak) + ', ' : '') + 'overall ' + x.ovr + ', potential ' + x.pot + (raised ? ', raised by my hard work' : x.ovr >= x.pot ? ', at my ceiling' : '') + ')'));
   }
   function menu() {
     var x = h();
@@ -388,7 +509,7 @@ TL.pro = (function () {
       var items = [{ info: true, html: card(x) }];
       if (x.stage === 'pro' || x.stage === 'minors') {
         items.push({ section: 'Train' });
-        TRAIN.forEach(function (t) { items.push({ icon: t[1], label: t[2], disabled: count('pro_' + t[0]) > 0, onClick: function () { train(t); } }); });
+        TRAIN.forEach(function (t) { var ak = { str: 'pwr', speed: 'spd', skill: 'tec', film: 'iq' }[t[0]]; items.push({ icon: t[1], label: t[2], sub: ak ? aname(x, ak) + ' ' + attr(x, ak) : 'Fewer injuries this season', disabled: count('pro_' + t[0]) > 0, onClick: function () { train(t); } }); });
         items.push({ section: 'Off the field' });
         items.push({ icon: '🎤', label: 'Press conference', disabled: count('pro_press') > 0, onClick: function () {
           bump('pro_press');
@@ -400,7 +521,7 @@ TL.pro = (function () {
           if (!U.chance(x.ovr >= 80 ? 0.6 : 0.3)) return done(nope('The front office said no. They\'re not trading me.'));
           var t = bigLeague(x.sport); if (t.team === x.team) return done(nope('No deal came together.'));
           x.team = t.team; x.league = t.league; S().job.company = t.team + ' (' + t.league + ')';
-          return done(good('I got my wish: I\'ve been traded to ' + t.team + '. 🔁'));
+          return done(good('I got my wish: I\'ve been traded to ' + t.team + ', a ' + outlook(tq(t.team)) + (outlook(tq(t.team)) === 'middle of the pack' ? ' team' : '') + '. 🔁'));
         } });
         if (S().fame >= 30) items.push({ icon: '💝', label: 'Start a charity foundation', right: E.fmt(E.$(100000)), disabled: !!x.charity, onClick: function () {
           if (S().money < E.$(100000)) return done(nope('That takes ' + E.fmt(E.$(100000)) + ' to set up.'));
@@ -412,7 +533,26 @@ TL.pro = (function () {
         if (me().age <= 40) items.push({ icon: '🔄', label: 'Attempt a comeback', disabled: count('pro_try') > 0, onClick: function () { x.stage = null; tryout(x.sport); } });
       }
       items.push({ icon: '📊', label: 'Season history', sub: U.plural(x.seasons.length, 'season'), onClick: history });
+      items.push({ icon: '🏆', label: 'Trophy case', sub: 'Titles, awards and big moments', onClick: trophies });
       return items;
+    });
+  }
+  function trophies() {
+    ui().menu('Trophy case', function () {
+      var x = h(), rows = [], aw = x.aw || {};
+      var wins = x.seasons.filter(function (q) { return /^Won /.test(q.result || ''); });
+      if (x.titles) rows.push({ icon: '🏆', label: U.plural(x.titles, x.sport === 'Tennis' ? 'title' : 'championship'), sub: wins.map(function (q) { return q.year; }).join(', ') });
+      if (x.slams) rows.push({ icon: '🎾', label: U.plural(x.slams, 'Grand Slam') });
+      if (x.mvp) rows.push({ icon: '🥇', label: x.sport === 'Tennis' ? U.plural(x.mvp, 'year') + ' at World No. 1' : x.mvp + '× ' + mvpName(x) });
+      if (x.allstar) rows.push({ icon: '⭐', label: x.allstar + '× ' + starName(x) });
+      if (x.roy) rows.push({ icon: '🌱', label: 'Rookie of the Year' });
+      Object.keys(aw).forEach(function (k) { rows.push({ icon: /gold|winner/.test(k) ? '🥇' : /silver/.test(k) ? '🥈' : /bronze/.test(k) ? '🥉' : '🏅', label: (aw[k].length > 1 ? aw[k].length + '× ' : '') + k, sub: aw[k].join(', ') }); });
+      (x.intl || []).forEach(function (i) { if (i.res !== 'won') rows.push({ icon: '🌍', label: i.year + ' ' + (x.sport === 'Soccer' ? 'World Cup' : 'Olympics'), sub: { final: 'Runner-up', semis: 'Semifinalist', out: 'Group stage' }[i.res] }); });
+      if (x.clutch) rows.push({ icon: '⏱️', label: 'Came through in ' + U.plural(x.clutch, 'big moment') });
+      (x.moments || []).slice().reverse().forEach(function (m) { rows.push({ icon: '🔥', label: U.cap(m.text), sub: String(m.year) }); });
+      if (x.hof) rows.push({ icon: '🏛️', label: 'Hall of Fame', sub: 'Inducted in ' + x.hof });
+      if (!rows.length) rows.push({ info: true, html: '<p class="muted">No hardware yet. Go win something.</p>' });
+      return rows;
     });
   }
   function history() {
@@ -420,7 +560,7 @@ TL.pro = (function () {
     ui().menu('Season history', function () {
       if (!x.seasons.length) return [{ info: true, html: '<p class="muted">No seasons yet.</p>' }];
       return x.seasons.slice().reverse().map(function (q) {
-        return { icon: TL.logos && q.team ? TL.logos.badge(q.team, { shape: 'team' }) : SP[x.sport].icon, label: q.year + ' · ' + (q.team || '').replace(/^the /, '') + ' (age ' + q.age + ')', sub: q.line + (q.rec && x.sport !== 'Tennis' ? ' · ' + q.rec : '') + (q.award ? ' · ' + q.award : ''), right: q.ovr ? String(q.ovr) : '' };
+        return { icon: TL.logos && q.team ? TL.logos.badge(q.team, { shape: 'team' }) : SP[x.sport].icon, label: q.year + ' · ' + (q.team || '').replace(/^the /, '') + ' (age ' + q.age + ')', sub: q.line + (q.rec && x.sport !== 'Tennis' ? ' · ' + q.rec : '') + (q.result && x.sport !== 'Tennis' ? ' · ' + q.result : '') + (q.award ? ' · ' + q.award : '') + (q.moment ? ' · 🔥 ' + q.moment : ''), right: q.ovr ? String(q.ovr) : '' };
       });
     });
   }
