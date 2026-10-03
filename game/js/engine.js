@@ -1163,7 +1163,8 @@ TL.engine = (function () {
       if (par && U.chance(0.5)) { var al = $(U.rand(50, 600)) * (s.flags.wealth === 'rich' ? 10 : 1); addMoney(al); }
     }
     // social media passive growth
-    if (s.social.platform && s.followers > 0) {
+    if (TL.social) TL.social.yearly(); // platforms, deals, DMs and drama (js/social.js)
+    else if (s.social.platform && s.followers > 0) {
       s.followers = Math.max(0, Math.round(s.followers * U.randf(0.9, 1.2) + s.fame * U.rand(50, 500)));
     }
     if (m.age >= 18 && people('friend').length < 1 && U.chance(0.3)) {

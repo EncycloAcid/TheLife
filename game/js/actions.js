@@ -1276,6 +1276,7 @@ TL.actions = (function () {
     ]);
   }
   function socialMenu() {
+    if (TL.social) return TL.social.menu(); // the full version lives in js/social.js
     var s = S();
     ui().menu('Social media', function () {
       if (!s.social.platform) return [{ icon: '📲', label: 'Create an account', onClick: function () { s.social.platform = true; s.followers = U.rand(5, 60); done('I created a social media account! @' + (me().first + me().last).toLowerCase().replace(/[^a-z]/g, '') + U.rand(1, 99)); } }];
