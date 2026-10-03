@@ -495,6 +495,8 @@ TL.dynasty = (function () {
     if (royal() && c.allowance) { var amt = Math.round(c.allowance * (me().age < 16 ? 0.25 : 1)); E.addMoney(amt); E.log('🏰 An allowance from ' + c.treasury + ': ' + E.fmt(amt), 'money'); }
     if (y.regent) {
       if (me().age >= 16) take(c, '👑 I turned sixteen and took ' + c.realm + ' into my own hands. The regency is over.');
+      // A regent can grow too fond of power (Richard of Gloucester and the boy Edward V, 1483).
+      else if (me().age >= 8 && !y.regentTested && U.chance(0.08)) { y.regentTested = true; s.pending.push({ id: 'dy_regent' }); }
       return;
     }
     if (y.how === 'adopted') {
@@ -619,6 +621,26 @@ TL.dynasty = (function () {
     if (!y || a.ruled || !c) return [];
     return [y.how === 'adopted' ? ['👑', 'Caesar', 'Adopted heir of Emperor ' + y.hist] : ['👑', c.heir[gi(me())], y.heir ? 'Born heir to ' + c.realm + ', but never crowned' : 'Born to the royal family, passed over for the crown']];
   }
+
+  // The regent who rules for a child king may want the crown for himself (v1.43).
+  function ousted(c) {
+    fallen(); E.stat('happy', -20); E.fame(5);
+    var s = S(); if (s.home && s.home.type === 'palace') s.home = JSON.parse(JSON.stringify(TL.ancient.txt('rentHome')));
+    return bad('My regent had himself crowned in my place. I was sent away from court, a ' + (me().gender === 'M' ? 'king' : 'queen') + ' without a throne. I am alive. Many boy kings were not so lucky.');
+  }
+  TL.events.defs.dy_regent = { id: 'dy_regent', scripted: true, build: function () {
+    var y = dyn(), c = cfg();
+    if (!y || !y.regent || !c) return null;
+    var odds = U.clamp(0.3 + y.support / 150 + y.craft / 300, 0.1, 0.85);
+    return { icon: '🗡️', title: 'A greedy regent', text: U.cap(c.regent) + ' has started signing decrees in ' + (c.regent.indexOf('council') >= 0 || c.regent.indexOf('jarls') >= 0 ? 'their own name' : 'his own name') + ' and filling the court with friends. People whisper that I may never be allowed to rule.', choices: [
+      { label: 'Win the great men to my side (' + Math.round(odds * 100) + '%)', run: function () {
+        if (U.chance(odds)) { grow('support', 10); grow('craft', 5); return good('The great men of ' + c.realm + ' rallied to me. The regent was dismissed, and a loyal council will rule for me until I come of age.'); }
+        if (U.chance(0.5)) return ousted(c);
+        grow('support', -8); return bad('Few dared to stand with me. The regent is watching me more closely now.');
+      } },
+      { label: 'Keep my head down until I turn 16', run: function () { if (U.chance(0.25)) return ousted(c); return 'I smiled, said little and grew older. The regent decided a quiet child was no threat.'; } }
+    ] };
+  } };
 
   // ---- an heir's life has its own events (v1.38), in every early era
   function hdef(id, o) {
