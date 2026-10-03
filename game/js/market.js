@@ -85,7 +85,7 @@ TL.market = (function () {
     var r = Math.exp(lr) - 1;
     // The year in markets, for anyone paying attention (adults, or anyone invested).
     var hn = TL.history && TL.history.marketNews(s.year);
-    if (hn && (me().age >= 18 || held().length)) E.log('📈 ' + hn + (TL.history.marketTotal(s.year) != null ? ' (S&P 500 ' + pct(TL.history.marketTotal(s.year)) + ')' : ''));
+    if (hn && (me().age >= 18 || held().length)) E.log('📈 ' + hn + (TL.history.marketTotal(s.year) != null && !/%/.test(hn) ? ' (S&P 500 ' + pct(TL.history.marketTotal(s.year)) + ')' : ''));
     m.hist.push({ year: s.year, r: r }); if (m.hist.length > 12) m.hist.shift();
     var divs = 0, news = [];
     D.STOCKS.forEach(function (x) {

@@ -23,7 +23,7 @@ TL.mind = (function () {
   function they(p) { return p.gender === 'M' ? 'he' : 'she'; }
   function them(p) { return p.gender === 'M' ? 'him' : 'her'; }
   function their(p) { return p.gender === 'M' ? 'his' : 'her'; }
-  function my(p) { var r = p.role; return r === 'best friend' ? 'my best friend ' + p.first : r === 'friend' ? 'my friend ' + p.first : ['mother', 'father', 'sibling', 'grandparent', 'spouse', 'partner', 'fiance', 'child', 'stepmother', 'stepfather', 'ex', 'coworker'].indexOf(r) >= 0 ? (r === 'sibling' ? (p.gender === 'M' ? 'my brother ' : 'my sister ') : r === 'child' ? (p.gender === 'M' ? 'my son ' : 'my daughter ') : r === 'grandparent' ? (p.gender === 'M' ? 'my grandfather ' : 'my grandmother ') : r === 'fiance' ? 'my fiancé' + (p.gender === 'F' ? 'e ' : ' ') : 'my ' + r + ' ') + p.first : p.first; }
+  function my(p) { var r = p.role; return ['mother', 'father', 'sibling', 'grandparent', 'grandchild', 'in-law', 'spouse', 'partner', 'fiance', 'child', 'stepmother', 'stepfather', 'ex', 'coworker', 'friend', 'best friend'].indexOf(r) >= 0 ? 'my ' + E.relWord(p) + ' ' + p.first : p.first; }
   function My(p) { var t = my(p); return t.charAt(0).toUpperCase() + t.slice(1); }
 
   var CLOSE = ['mother', 'father', 'stepmother', 'stepfather', 'sibling', 'grandparent', 'spouse', 'partner', 'fiance', 'friend', 'best friend', 'child', 'ex', 'coworker'];

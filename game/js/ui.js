@@ -263,10 +263,10 @@ TL.ui = (function () {
     var sp = E.people('spouse')[0], kids = E.people('child'), gk = E.people('grandchild');
     var surv = [];
     if (sp) surv.push(their + ' ' + (sp.gender === 'M' ? 'husband' : 'wife') + ' ' + sp.first);
-    if (kids.length) surv.push(U.plural(kids.length, 'child').replace('childs', 'children'));
-    if (gk.length) surv.push(U.plural(gk.length, 'grandchild').replace('grandchilds', 'grandchildren'));
+    if (kids.length) surv.push(kids.length === 1 ? their + ' ' + E.relWord(kids[0]) + ' ' + kids[0].first : kids.length + ' children');
+    if (gk.length) surv.push(gk.length === 1 ? 'a ' + E.relWord(gk[0]) : gk.length + ' grandchildren');
     var sib = E.people('sibling');
-    if (!surv.length && sib.length) surv.push(their + ' ' + U.plural(sib.length, 'sibling'));
+    if (!surv.length && sib.length) surv.push(sib.length === 1 ? their + ' ' + E.relWord(sib[0]) + ' ' + sib[0].first : their + ' ' + sib.length + ' siblings');
     parts.push(surv.length ? they + ' is survived by ' + surv.join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : they + ' left no surviving family.');
     return parts.join(' ');
   }
@@ -356,7 +356,7 @@ TL.ui = (function () {
     var fresh = y.entries.slice(from);
     logSeen = { key: key, n: y.entries.length };
     // Only my own milestones: "My brother got promoted" is news, not a party.
-    if (fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
+    if (!S().dead && fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
   }
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
@@ -733,6 +733,7 @@ TL.ui = (function () {
 
   // ---------------------------------------------------------------- death
   function deathScreen() {
+    Array.prototype.forEach.call(document.querySelectorAll('.confetti'), function (el) { el.remove(); }); // no party at a funeral
     var s = S(), m = s.me, rb = E.ribbon(), deg = E.highestDegree();
     $('#death-name').textContent = m.first + ' ' + m.last;
     $('#death-sub').textContent = E.yearLabel(s.year - m.age) + ' – ' + E.yearLabel(s.year) + ' · Died at ' + m.age + ' from ' + s.cause;

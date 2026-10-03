@@ -42,16 +42,7 @@ TL.actions = (function () {
   var ROLE_ORDER = ['spouse', 'fiance', 'partner', 'mother', 'father', 'stepmother', 'stepfather', 'grandparent', 'sibling', 'child', 'in-law', 'grandchild', 'friend', 'best friend', 'classmate', 'coworker', 'ex', 'former classmate', 'former coworker'];
   var ROLE_ICON = { spouse: '💍', fiance: '💎', partner: '❤️', mother: '👩', father: '👨', grandparent: '👴', sibling: '🧒', child: '👶', grandchild: '👶', 'in-law': '🧑', friend: '🙂', 'best friend': '🤝', classmate: '🎒', coworker: '💼', ex: '💔', 'former classmate': '🎒', 'former coworker': '💼' };
   function roleLabel(p) {
-    var r = p.role;
-    if (r === 'sibling') return p.gender === 'M' ? 'Brother' : 'Sister';
-    if (r === 'child') return p.gender === 'M' ? 'Son' : 'Daughter';
-    if (r === 'grandparent') return p.gender === 'M' ? 'Grandfather' : 'Grandmother';
-    if (r === 'grandchild') return p.gender === 'M' ? 'Grandson' : 'Granddaughter';
-    if (r === 'in-law') return p.gender === 'M' ? 'Son-in-law' : 'Daughter-in-law';
-    if (r === 'spouse') return p.gender === 'M' ? 'Husband' : 'Wife';
-    if (r === 'fiance') return p.gender === 'M' ? 'Fiancé' : 'Fiancée';
-    if (r === 'partner') return p.gender === 'M' ? 'Boyfriend' : 'Girlfriend';
-    return U.cap(r);
+    return U.cap(E.relWord(p));
   }
   function personIcon(p) {
     if (!p.alive) return '🪦';
@@ -1030,7 +1021,7 @@ TL.actions = (function () {
       if (s.prison) return items.concat([{ info: true, html: '<p class="muted">I live in a prison cell for now.</p>' }]);
       if (h.type !== 'parents' && E.parentsAround().length) items.push({ icon: '👪', label: 'Move back in with my parents', sub: 'No rent, but less freedom', onClick: function () {
         var p = E.parentsAround().sort(function (a, b) { return b.rel - a.rel; })[0];
-        if (!U.chance(p.rel / 100 + 0.25)) { E.rel(p, -3); return done(bad('My ' + p.role + ' said there\'s no room for me.')); }
+        if (!U.chance(p.rel / 100 + 0.25)) { E.rel(p, -3); return done(bad('My ' + E.relWord(p) + ' said there\'s no room for me.')); }
         done(E.moveHome({ type: 'parents' }, 'I moved back in with my parents.'));
       } });
       if (s.royal && h.type !== 'palace') items.push({ icon: '🏰', label: 'Move back into the palace', onClick: function () { done(E.moveHome({ type: 'palace' }, 'I moved back into the royal palace.')); } });

@@ -32,7 +32,7 @@ TL.events = (function () {
     build: function (d) {
       var p = E.person(d.pid);
       return {
-        icon: '⚰️', title: 'Funeral', text: 'The funeral for my ' + p.role + ' ' + E.fullName(p) + ' is being held. Will I attend?',
+        icon: '⚰️', title: 'Funeral', text: 'The funeral for my ' + E.relWord(p) + ' ' + E.fullName(p) + ' is being held. Will I attend?',
         choices: [
           { label: 'Attend and give a eulogy', run: function () { E.stat('happy', 5); E.karma(2); return 'I gave a moving eulogy for ' + p.first + '. Everyone was in tears.'; } },
           { label: 'Attend quietly', run: function () { E.stat('happy', 2); return 'I paid my respects to ' + p.first + '.'; } },
@@ -381,7 +381,7 @@ TL.events = (function () {
   def('family_loan', { min: 22, max: 80, w: 4, cond: function () { return S().money > E.$(5000) && E.people(['sibling', 'mother', 'father', 'child']).filter(function (p) { return p.age >= 18; }).length; }, build: function () {
     var p = U.pick(E.people(['sibling', 'mother', 'father', 'child']).filter(function (p) { return p.age >= 18; }));
     var amt = E.$(U.pick([1000, 3000, 8000, 15000]));
-    return { icon: '🤲', title: 'Family favor', text: 'My ' + p.role + ' ' + p.first + ' is broke and is asking to borrow ' + E.fmt(amt) + '.', choices: [
+    return { icon: '🤲', title: 'Family favor', text: 'My ' + E.relWord(p) + ' ' + p.first + ' is broke and is asking to borrow ' + E.fmt(amt) + '.', choices: [
       { label: 'Lend it', run: function () { E.addMoney(-amt); E.rel(p, 15); E.karma(2); if (U.chance(0.4)) { E.addMoney(amt); return good(p.first + ' paid me back in full!'); } return p.first + ' thanked me. I doubt I\'ll see that money again.'; } },
       { label: 'Give it as a gift', run: function () { E.addMoney(-amt); E.rel(p, 25); E.karma(4); return good(p.first + ' burst into tears of gratitude.'); } },
       { label: 'Refuse', run: function () { E.rel(p, -15); return p.first + ' is upset with me.'; } }
@@ -660,7 +660,7 @@ TL.events = (function () {
   } });
   def('babysit_grandkids', { min: 45, max: 100, w: 5, cond: function () { return E.people('grandchild').filter(function (g) { return g.age < 12; }).length; }, build: function () {
     var g = U.pick(E.people('grandchild').filter(function (g) { return g.age < 12; }));
-    return { icon: '🧸', title: 'Grandparent duty', text: 'My grandchild ' + g.first + ' is staying with me for the weekend.', choices: [
+    return { icon: '🧸', title: 'Grandparent duty', text: 'My ' + E.relWord(g) + ' ' + g.first + ' is staying with me for the weekend.', choices: [
       { label: 'Spoil them rotten', run: function () { E.addMoney(-E.$(200)); E.rel(g, 15); E.stat('happy', 8); return good('We ate ice cream for dinner. ' + g.first + ' adores me.'); } },
       { label: 'Teach them something', run: function () { g.smarts = Math.min(100, g.smarts + 5); E.rel(g, 8); return 'I taught ' + g.first + ' how to ' + U.pick(['fish', 'bake bread', 'play chess', 'ride a bike', 'whistle']) + '.'; } },
       { label: 'Nap the whole time', run: function () { E.rel(g, -5); return g.first + ' watched TV all weekend.'; } }
@@ -773,7 +773,7 @@ TL.events = (function () {
   def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent && E.parentsAround().length > 0 && !(S().job && S().job.mil); }, build: function () {
     var rent = E.$(U.pick([3000, 5000, 8000]));
     var p = E.parentsAround()[0];
-    return { icon: '🏠', title: 'House rules', text: 'My ' + p.role + ' says it\'s time I either pay rent or move out.', choices: [
+    return { icon: '🏠', title: 'House rules', text: 'My ' + E.relWord(p) + ' says it\'s time I either pay rent or move out.', choices: [
       { label: 'Pay rent (' + E.fmt(rent) + '/yr)', run: function () { S().flags.parentRent = rent; E.rel(p, 8); return 'I agreed to pay my parents rent.'; } },
       { label: 'Move into a studio apartment', run: function () { var dep = Math.round(E.$(12000) / 6); if (S().money < dep) { E.rel(p, -5); return bad('I couldn\'t afford the deposit. Awkward.'); } E.addMoney(-dep); E.moveHome({ type: 'rent', tier: 1 }); E.rel(p, 5); return good('I finally moved out! 📦'); } },
       { label: 'Beg to stay rent-free', run: function () { if (U.chance(p.rel / 120)) return good(p.first + ' caved. I can stay for free.'); E.rel(p, -12); return bad(p.first + ' is not happy with me.'); } }
@@ -877,7 +877,7 @@ TL.events = (function () {
   def('grandkid_tuition', { min: 55, max: 110, w: 5, cond: function () { return E.people('grandchild').some(function (g) { return g.age >= 17 && g.age <= 19; }) && S().money > E.$(10000); }, build: function () {
     var g = E.people('grandchild').filter(function (g) { return g.age >= 17 && g.age <= 19; })[0];
     var amt = E.$(U.pick([5000, 20000, 60000]));
-    return { icon: '🎓', title: 'College fund', text: 'My grandchild ' + g.first + ' got into college and asks if I can help with tuition (' + E.fmt(amt) + ').', choices: [
+    return { icon: '🎓', title: 'College fund', text: 'My ' + E.relWord(g) + ' ' + g.first + ' got into college and asks if I can help with tuition (' + E.fmt(amt) + ').', choices: [
       { label: 'Pay it', run: function () { E.addMoney(-amt); E.rel(g, 30); E.karma(4); g.job = 'University Student'; return good(g.first + ' hugged me and cried. Best money I ever spent.'); } },
       { label: 'Pay half', run: function () { E.addMoney(-Math.round(amt / 2)); E.rel(g, 12); return g.first + ' was grateful for the help.'; } },
       { label: 'Tell them to take out loans', run: function () { E.rel(g, -10); return g.first + ' said they understood. They didn\'t.'; } }

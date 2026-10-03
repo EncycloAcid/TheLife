@@ -32,6 +32,12 @@ TL.engine = (function () {
   }
   function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
   function fullName(p) { return p.first + ' ' + p.last; }
+  // "my grandmother", not "my grandparent": the role in everyday words.
+  function relWord(p) {
+    var r = p.role, M = p.gender === 'M';
+    var w = { sibling: M ? 'brother' : 'sister', child: M ? 'son' : 'daughter', grandparent: M ? 'grandfather' : 'grandmother', grandchild: M ? 'grandson' : 'granddaughter', 'in-law': M ? 'son-in-law' : 'daughter-in-law', spouse: M ? 'husband' : 'wife', fiance: M ? 'fiancé' : 'fiancée', partner: M ? 'boyfriend' : 'girlfriend' }[r];
+    return w || r;
+  }
   function he(p, cap) { var w = p.gender === 'M' ? 'he' : 'she'; return cap ? U.cap(w) : w; }
   function his(p, cap) { var w = p.gender === 'M' ? 'his' : 'her'; return cap ? U.cap(w) : w; }
   function him(p) { return p.gender === 'M' ? 'him' : 'her'; }
@@ -373,7 +379,7 @@ TL.engine = (function () {
       if (!rich || rich.rel < 40 || !U.chance(rich.rel / 100 + (rich.money > tuition * 3 ? 0.3 : 0))) return { ok: false, msg: 'My parents said they can\'t pay for my education.' };
       rich.money -= tuition;
       enroll('uni', Object.assign({ major: major, funding: 'parents' }, at));
-      return { ok: true, msg: 'My ' + rich.role + ' agreed to pay my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '.' };
+      return { ok: true, msg: 'My ' + relWord(rich) + ' agreed to pay my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '.' };
     }
     if (funding === 'gibill') {
       enroll('uni', Object.assign({ major: major, funding: 'gibill' }, at));
@@ -905,7 +911,9 @@ TL.engine = (function () {
       if (ill.looks) stat('looks', ill.looks / 2);
       if (ill.smarts) stat('smarts', ill.smarts / 2);
       var heal = ill.selfHeal != null ? ill.selfHeal : (ill.incurable || ill.addiction ? 0 : 0.2);
-      if (heal && U.chance(heal)) { removeCondition(n); log('I recovered from ' + illName(n).toLowerCase() + '.'); }
+      // Cancer that has spread doesn't just go away on its own.
+      if (n === 'Cancer' && TL.health && (TL.health.st().stage || {}).Cancer >= 2) heal = 0;
+      if (heal && U.chance(heal)) { removeCondition(n); log(n === 'Cancer' ? '🎗️ Against the odds, my cancer went into remission.' : 'I recovered from ' + illName(n).toLowerCase() + '.', n === 'Cancer' ? 'good' : ''); }
     });
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
@@ -966,7 +974,7 @@ TL.engine = (function () {
     var s = S();
     p.alive = false; p.died = s.year;
     var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
-    log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
+    log('⚰️ My ' + relWord(p) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
     if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
     if (TL.features) TL.features.onDeath(p);
     if (TL.health && TL.health.familyDeath) TL.health.familyDeath(p, cause); // family history (js/health.js)
@@ -1445,7 +1453,7 @@ TL.engine = (function () {
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
-    S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, he: he, his: his, him: him,
+    S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, relWord: relWord, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
