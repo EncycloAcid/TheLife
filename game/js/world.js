@@ -177,7 +177,7 @@ TL.world = (function () {
   }
   def('natural_disaster', { min: 6, max: 110, w: 3, cond: function () { return !S().prison; }, build: function () {
     var d = U.pick(DISASTERS);
-    return { icon: d[0], title: 'A ' + d[1] + '!', text: d[2], choices: [
+    return { icon: d[0], title: (/^[aeiou]/.test(d[1]) ? 'An ' : 'A ') + d[1] + '!', text: d[2], choices: [
       { label: 'Evacuate right away', run: function () { var c = E.$(U.rand(200, 1500)); E.addMoney(-c); E.stat('happy', -3); return 'I evacuated in time. The hotel stay cost me ' + E.fmt(c) + '.' + (U.chance(0.4) ? damageHome(0.1) : ''); } },
       { label: 'Ride it out at home', run: function () { if (U.chance(0.5)) { E.stat('health', -U.rand(10, 25)); E.stat('happy', -8); return bad('I rode out the ' + d[1] + ' and got hurt.' + damageHome(0.25)); } return 'I rode out the ' + d[1] + '. Scary, but I\'m okay.' + (U.chance(0.5) ? damageHome(0.12) : ''); } },
       { label: 'Help my neighbors first', run: function () { E.karma(6); if (U.chance(0.25)) { E.stat('health', -12); return 'I helped my neighbors escape the ' + d[1] + ' and got injured. Worth it.'; } E.stat('happy', 6); return good('I helped my neighbors to safety. The local news called me a hero. 🦸'); } }

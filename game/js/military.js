@@ -470,7 +470,7 @@ TL.military = (function () {
       }
       if (!x.active) {
         items.push({ icon: '📜', label: 'Service record', onClick: record });
-        items.push({ icon: '🏳️', label: 'Veteran benefits', sub: x.discharge === 'Honorable' ? 'GI Bill · VA healthcare · hiring preference' : 'Lost with a ' + String(x.discharge || 'general').toLowerCase() + ' discharge', disabled: x.discharge !== 'Honorable', onClick: function () { done('As a veteran I can use the GI Bill for college, and employers give me preference for police, fire and federal jobs.'); } });
+        items.push({ icon: '🏳️', label: 'Veteran benefits', sub: x.discharge === 'Honorable' ? 'GI Bill · VA healthcare · hiring preference' : 'Lost with ' + (/^[aeiou]/i.test(String(x.discharge || 'general')) ? 'an ' : 'a ') + String(x.discharge || 'general').toLowerCase() + ' discharge', disabled: x.discharge !== 'Honorable', onClick: function () { done('As a veteran I can use the GI Bill for college, and employers give me preference for police, fire and federal jobs.'); } });
         return items;
       }
       items.push({ section: 'Duty' });

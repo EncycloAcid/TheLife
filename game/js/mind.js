@@ -208,7 +208,7 @@ TL.mind = (function () {
   def('mind_favor', { build: function (d) {
     var p = pof(d); if (!p) return null;
     var f = anc() ? U.pick(['help bring in ' + their(p) + ' harvest', 'help repair ' + their(p) + ' roof', 'look after ' + their(p) + ' animals for a week']) : U.pick(['help ' + them(p) + ' move apartments', 'drive ' + them(p) + ' to the airport at 5 a.m.', 'watch ' + their(p) + ' kids for the weekend', 'help ' + them(p) + ' paint ' + their(p) + ' living room', 'be ' + their(p) + ' wingman at a wedding', 'look over ' + their(p) + ' résumé']);
-    return { icon: '🙏', title: 'A favor', text: My(p) + ' asked me to ' + f + '.', choices: [
+    return { icon: '🙏', title: 'A favor', text: My(p) + ' asked me to ' + f + (/\.$/.test(f) ? '' : '.'), choices: [
       { label: 'Help out', run: function () { E.stat('happy', -1); E.stat('health', -1); E.rel(p, 8); note(p, 8, 'helped ~ when ' + they(p) + ' asked'); return good('I helped ' + p.first + ' out. ' + U.pick(['' + U.cap(they(p)) + ' owes me one.', 'It felt good to be there for ' + them(p) + '.', 'Exhausting, but worth it.'])); } },
       { label: 'Make an excuse', run: function () { var caught = U.chance(0.35); E.rel(p, caught ? -8 : -3); note(p, caught ? -8 : -3, caught ? 'lied to get out of helping ~' : 'bailed when ' + they(p) + ' needed help'); return caught ? bad(p.first + ' found out my excuse was made up.') : 'I said I was busy. ' + p.first + ' found someone else.'; } }
     ] };
@@ -235,7 +235,7 @@ TL.mind = (function () {
     var p = pof(d); if (!p) return null;
     var what = anc() ? U.pick(['trading venture', 'new workshop', 'tavern']) : U.pick(['startup', 'food truck', 'coffee shop', 'clothing brand', 'app', 'fitness studio', 'restaurant']);
     var amt = E.$(U.pick([5000, 10000, 25000, 50000])); if (amt > S().money * 0.4) amt = Math.max(E.$(1000), Math.round(S().money * 0.2 / 1000) * 1000);
-    return { icon: '💼', title: 'Business pitch', text: My(p) + ' is starting a ' + what + ' and wants me to invest ' + E.fmt(amt) + '. ' + (p.smarts >= 70 ? U.cap(they(p)) + '\'s sharp, and the plan looks solid.' : p.smarts < 40 ? 'The plan is… mostly vibes.' : 'It could work.'), choices: [
+    return { icon: '💼', title: 'Business pitch', text: My(p) + ' is starting ' + (/^[aeiou]/.test(what) ? 'an ' : 'a ') + what + ' and wants me to invest ' + E.fmt(amt) + '. ' + (p.smarts >= 70 ? U.cap(they(p)) + '\'s sharp, and the plan looks solid.' : p.smarts < 40 ? 'The plan is… mostly vibes.' : 'It could work.'), choices: [
       { label: 'Invest ' + E.fmt(amt), run: function () { if (S().money < amt) return 'I didn\'t have the cash.'; E.addMoney(-amt); p.venture = { amt: amt, year: S().year, due: S().year + U.rand(2, 4), what: what }; E.rel(p, 8); note(p, 8, 'believed in ' + their(p) + ' ' + what); return good('I\'m an investor in ' + p.first + '\'s ' + what + '. 📈'); } },
       { label: 'Wish ' + them(p) + ' luck', run: function () { E.rel(p, has(p, 'Moody') ? -4 : -1); return 'I passed on investing but wished ' + p.first + ' luck.'; } }
     ] };

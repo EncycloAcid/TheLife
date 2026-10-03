@@ -96,7 +96,7 @@ TL.recap = (function () {
     var kids = E.people('child', true), gk = E.people('grandchild');
     var careers = s.jobHistory.map(function (j) { return j.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
     var rows = [
-      ['Born', born + (s.city ? ' · ' + s.city : '') + (s.birthCountry ? ', ' + s.birthCountry : '')],
+      ['Born', born + (s.birthCity || (s.city && s.country === s.birthCountry ? s.city : '') ? ' · ' + (s.birthCity || s.city) : '') + (s.birthCountry ? ', ' + s.birthCountry : '')],
       ['Lived', U.plural(m.age, 'year')],
       ['Net worth', E.fmt(E.netWorth())],
       ['Peak wealth', pk ? E.fmt(pk[1]) + ' at ' + pk[0] : '—'],

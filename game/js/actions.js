@@ -522,7 +522,7 @@ TL.actions = (function () {
   function petMenu(pet) {
     ui().menu(pet.name, function () {
       return [
-        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + ' ' + pet.species.toLowerCase() + ', ' + pet.age + ' years old.</p>' },
+        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + pet.age + ' years old.</p>' },
         { icon: '🎾', label: 'Play', onClick: function () { var f = diminish('pet' + pet.id); pet.rel = U.clamp(pet.rel + 10 * f, 0, 100); E.stat('happy', 4 * f); done('I played with ' + pet.name + '.'); } },
         { icon: '🦮', label: 'Go for a walk', onClick: function () { var f = diminish('walkpet' + pet.id); pet.rel = U.clamp(pet.rel + 8 * f, 0, 100); E.stat('health', 3 * f); done('I took ' + pet.name + ' for a walk.'); } },
         { icon: '🏥', label: 'Take to the vet', right: E.fmt(E.$(200)), onClick: function () { E.addMoney(-E.$(200)); pet.life += U.chance(0.5) ? 1 : 0; done(pet.name + ' got a clean bill of health.'); } },
@@ -1474,7 +1474,7 @@ TL.actions = (function () {
             s.pension = Math.round(s.pension * ratio);
             Object.keys(s.prices).forEach(function (k) { s.prices[k] = Math.max(0.01, Math.round(s.prices[k] * ratio * 100) / 100); });
             if (TL.market) TL.market.convert(ratio);
-            s.people.forEach(function (p) { p.money = Math.round(p.money * ratio); });
+            s.people.forEach(function (p) { p.money = Math.round(p.money * ratio); if (p.owe) p.owe.amt = Math.round(p.owe.amt * ratio); if (p.venture) p.venture.amt = Math.round(p.venture.amt * ratio); }); // loans and stakes from js/mind.js too
             if ((s.lived = s.lived || []).indexOf(s.country) < 0) s.lived.push(s.country); // js/maps.js world map
             s.country = c.name;
             s.city = TL.real ? TL.real.city(c.name) : null;

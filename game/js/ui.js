@@ -553,6 +553,7 @@ TL.ui = (function () {
 
   // ---------------------------------------------------------------- dialogs
   function showDialog(cfg) {
+    if (typeof cfg.text === 'string') cfg.text = cfg.text.replace(/([^.])\.\.(?!\.)/g, '$1.'); // Warner Bros., not Warner Bros..
     dialogQueue.push(cfg);
     if (!dialogOpen) nextDialog();
   }

@@ -396,7 +396,7 @@ TL.hoops = (function () {
     var team = U.pick(teams());
     x.draft = { year: yr, pick: pick, team: team };
     // Lottery picks usually land on rebuilding teams.
-    if (pick <= 14) { var q0 = tq(team); x.tq[team] = Math.min(q0, U.rand(30, 45)); }
+    if (pick <= 14) { var q0 = tq(team); (x.tq = x.tq || {})[team] = Math.min(q0, U.rand(30, 45)); }
     sign(team, league(), pick <= (me().gender === 'F' ? 12 : 30) ? 4 : 2, salaryFor(x.ovr, pick), 'Rookie');
     E.stat('happy', 15); E.fame(pick <= 5 ? 15 : pick <= 14 ? 8 : 4);
     if (pick <= (me().gender === 'F' ? 12 : 30)) E.achieve('hoops_draft');

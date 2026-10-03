@@ -598,7 +598,7 @@ TL.events = (function () {
   def('headhunter', { min: 24, max: 62, w: 4, cond: function () { return hasJob() && !S().job.fame && !S().job.politics; }, build: function () {
     var j = S().job, boost = U.randf(1.12, 1.35);
     return { icon: '📞', title: 'Recruiter call', text: 'A headhunter offers me the same role at a competitor for ' + Math.round((boost - 1) * 100) + '% more money.', choices: [
-      { label: 'Take the offer', run: function () { j.mult = (j.mult || 1) * boost; j.perf = 55; j.levelYears = 0; j.company = U.pick(['Apex', 'Summit', 'Nova', 'Atlas', 'Pioneer']) + ' ' + U.pick(['Group', 'Inc.', 'Partners']); return good('I switched to ' + j.company + '. New salary: ' + E.fmt(E.jobSalary(j)) + '.'); } },
+      { label: 'Take the offer', run: function () { j.mult = (j.mult || 1) * boost; j.perf = 55; j.levelYears = 0; j.company = U.pick(['Apex', 'Summit', 'Nova', 'Atlas', 'Pioneer']) + ' ' + U.pick(['Group', 'Inc.', 'Partners']); return good('I switched to ' + j.company.replace(/\.$/, '') + '. New salary: ' + E.fmt(E.jobSalary(j)) + '.'); } },
       { label: 'Use it to get a raise', run: function () { if (U.chance(0.5)) { j.mult = (j.mult || 1) * (1 + (boost - 1) / 2); return good('My boss matched part of the offer!'); } j.perf = Math.max(0, j.perf - 10); return bad('My boss called my bluff.'); } },
       { label: 'Stay loyal', run: function () { j.perf = Math.min(100, j.perf + 4); return 'I turned it down.'; } }
     ] };

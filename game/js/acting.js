@@ -173,7 +173,7 @@ TL.acting = (function () {
     if (count('ac_aud') >= (x.agent ? 6 : 4)) return done(nope('I\'ve been to every audition I could this year.'));
     if (busy(x) >= 2 && c.kind !== 'commercial') return done(nope('My schedule is full. I can\'t shoot another big project this year.'));
     if (KINDS[c.kind].series && x.series) return done(nope('I\'m already a regular on ' + x.series.title + '.'));
-    ui().choose('🎬 ' + c.title, KINDS[c.kind].name + ' · ' + c.part + ' · ' + c.studio + '. How do I prepare for the audition?', [
+    ui().choose('🎬 ' + c.title, KINDS[c.kind].name + ' · ' + c.part + ' · ' + c.studio.replace(/\.$/, '') + '. How do I prepare for the audition?', [
       { label: 'Prepare for weeks', fn: function () { E.stat('happy', -2); go(c, 0.08, 'I prepared for weeks'); } },
       { label: 'Take a bold risk in the room', fn: function () { go(c, U.chance(0.5) ? 0.2 : -0.15, 'I took a bold risk'); } },
       { label: 'Wing it', fn: function () { go(c, -0.1, 'I winged it'); } }

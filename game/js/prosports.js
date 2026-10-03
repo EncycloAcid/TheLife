@@ -263,7 +263,7 @@ TL.pro = (function () {
       var champ = false, playoffs = pct >= 0.55 || (pct >= 0.48 && U.chance(0.4));
       if (playoffs && U.chance(U.clamp(0.03 + (pct - 0.58) * 0.45 + (x.ovr - 82) / 300 * r[1], 0.01, 0.28))) champ = true;
       rec.result = champ ? 'Won ' + champName(x) : playoffs ? 'Made the playoffs' : 'Missed the playoffs';
-      msg = C.icon + ' ' + (bigLg ? '' : x.league + ' ') + 'Season with ' + x.team + ': ' + rec.line + '. We went ' + rec.rec + (champ ? ' and won ' + champName(x) + '! 🏆' : playoffs ? ' and made the playoffs.' : '.');
+      msg = C.icon + ' ' + (bigLg || /\(/.test(x.team) ? 'Season' : x.league + ' season') + ' with ' + x.team + ': ' + rec.line + '. We went ' + rec.rec + (champ ? ' and won ' + champName(x) + '! 🏆' : playoffs ? ' and made the playoffs.' : '.');
       if (injured) msg += ' I missed part of the year with ' + injured[0] + '.';
       if (champ) { x.titles++; if (bigLg) E.achieve('champion'); E.fame(bigLg ? 8 : 2); E.stat('happy', 15); }
       if (bigLg) {

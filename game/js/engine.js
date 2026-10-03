@@ -41,6 +41,7 @@ TL.engine = (function () {
   function logKey(t) { return t.replace(/\(.*?\)/g, '').replace(/[\d.,]+/g, '#'); }
   function log(text, cls) {
     if (typeof text !== 'string' || !text) return;
+    text = text.replace(/([^.])\.\.(?!\.)/g, '$1.'); // names ending in a period, like Pioneer Inc., don't double up
     var s = S();
     var y = s.log[s.log.length - 1];
     var last = y.entries[y.entries.length - 1];
@@ -134,7 +135,9 @@ TL.engine = (function () {
   // ---------- people ----------
   function randomName(gender, lastName, ctry) {
     var c = ctry ? D.country(ctry) : country();
-    return { first: U.pick(gender === 'M' ? c.male : c.female), last: lastName || U.pick(c.last) };
+    var first = U.pick(gender === 'M' ? c.male : c.female), last = lastName || U.pick(c.last);
+    for (var i = 0; i < 6 && !lastName && last === first; i++) last = U.pick(c.last); // no "Carter Carter"
+    return { first: first, last: last };
   }
   function npcJob(age) {
     if (TL.S && country().ancient && TL.ancient) return TL.ancient.npcJob(age);
@@ -239,6 +242,7 @@ TL.engine = (function () {
 
     if (opts.royal && TL.features && !ctry.ancient) TL.features.makeRoyal(st); // earlier eras crown their own (TL.dynasty)
     var m = st.me;
+    st.birthCity = st.city;
     log('I was born a ' + (gender === 'M' ? 'boy' : 'girl') + ' in ' + (st.city ? st.city + ', ' : '') + countryName(ctry.name) + ' ' + ctry.flag + ' on ' + D.MONTHS[month - 1] + ' ' + U.ordinal(day) + ', ' + yearLabel(startYear) + '.');
     log('My name is ' + m.first + ' ' + m.last + '. I am a ' + zodiac + '.');
     log('My mother is ' + fullName(mom) + ', ' + jobPhrase(mom.job) + ' (age ' + mom.age + ').');
@@ -1243,7 +1247,7 @@ TL.engine = (function () {
       }
     });
     st.year = s.year;
-    if (s.city) st.city = s.city; // the family stays in the same city
+    if (s.city) st.city = st.birthCity = s.city; // the family stays in the same city
     st.log[0] = { age: c.age, year: s.year, entries: [] };
     log('👑 Generation ' + gen + ': I am ' + c.first + ' ' + c.last + ', age ' + c.age + '.');
     log('My ' + (viaGrandchild ? 'grand' : '') + (dead.gender === 'M' ? 'father' : 'mother') + ', ' + dead.first + ', died from ' + s.cause + '.');
