@@ -73,7 +73,7 @@ TL.engine = (function () {
     // Habits count: taking care of myself (exercise, meditation, reading, hobbies) lifts my baseline.
     var la = acts || {}, care = ['med', 'walk', 'gym', 'karate', 'diet', 'lib'].filter(function (k) { return la[k]; }).length + Object.keys(la).filter(function (k) { return /^skill/.test(k); }).length;
     function add(v, why) { if (v) parts.push([v, why]); return v; }
-    var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.length * 3, 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
+    var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.reduce(function (t, n) { var il = D.illness(n); return t + (!il ? 3 : il.happy || il.selfHeal >= 0.5 ? 1 : 3); }, 0), 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
     return { t: U.clamp(Math.round(t), 0, 100), parts: parts };
   }
   function addMoney(n) { if (isFinite(n)) S().money = Math.round(S().money + n); }
@@ -591,13 +591,13 @@ TL.engine = (function () {
     if (j.partTime) return earned;
     if (j.politics) return politicsYear(j, earned);
     var c = D.career(j.career);
-    j.perf = U.clamp(Math.round(j.perf + U.rand(-10, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0) + (TL.features ? TL.features.skillBonus(j.career) * 12 : 0)), 0, 100);
+    j.perf = U.clamp(Math.round(j.perf + U.rand(-8, 8) + (statValue(c.stat) - 50) / 15 + (j.workHard || 0) * 4 - (me().happy < 20 ? 6 : 0) - (hasCondition('Alcoholism') ? 8 : 0) + (TL.features ? TL.features.skillBonus(j.career) * 12 : 0)), 0, 100);
     j.workHard = 0;
     if (j.fame) return earned;
     var promoted = false;
     // My boss and a big project win (js/work.js) sway promotions.
     if (j.level < c.levels.length - 1 && j.perf >= 70 && j.levelYears >= 2 && U.chance(0.35 + (j.perf - 70) / 60 + (TL.work ? TL.work.promoBonus(j) : 0))) {
-      j.level++; j.levelYears = 0; j.perf = Math.max(45, j.perf - 20); promoted = true;
+      j.level++; j.levelYears = 0; j.perf = Math.max(50, j.perf - 12); promoted = true; // a new role resets expectations, but not all the way
       log('📈 I was promoted to ' + jobTitle(j) + '! New salary: ' + fmt(jobSalary(j)) + '.', 'good');
       stat('happy', 10);
       if (j.level === c.levels.length - 1) achieve('ceo');

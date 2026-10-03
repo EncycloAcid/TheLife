@@ -339,8 +339,8 @@ TL.acting = (function () {
     bump('ac_party');
     var r = U.rand(1, 100);
     if (r <= 12) { x.rep = Math.max(0, x.rep - 2); E.stat('happy', -5); return done(bad('I had one too many and told a producer exactly what I thought of their last movie.')); }
-    if (r >= 85) { x.rep += 3; x.calls = null; return done(good('I hit it off with a famous director at a Hollywood party. New auditions are coming my way! 🥂')); }
-    x.rep += 1; E.stat('happy', 4);
+    if (r >= 85) { x.rep = Math.min(100, x.rep + 3); x.calls = null; return done(good('I hit it off with a famous director at a Hollywood party. New auditions are coming my way! 🥂')); }
+    x.rep = Math.min(100, x.rep + 1); E.stat('happy', 4);
     return done('I mingled at an industry party and made a few useful connections. 🥂');
   }
   function talk() {
