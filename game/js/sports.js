@@ -66,11 +66,13 @@ TL.sports = (function () {
     // edu.team is the source of truth for "on a team right now".
     if (x.team && !(e && e.team === x.team)) { x.team = null; x.captain = false; }
     if (!x.team && e && e.team && SPORTS[e.team]) { x.team = e.team; if (!x.pos || x.sport !== e.team) { x.pos = U.pick(SPORTS[e.team].pos); x.sport = e.team; } if (x.skill < 10) x.skill = start(); }
-    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.5 + U.rand(15, 50)), 35, 99);
+    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58)), 40, 99);
+    // Talent part of my ceiling; the rest grows with my athleticism.
+    if (x.potB == null) x.potB = x.pot - Math.round(me().athl * 0.4);
     return x;
   }
   // Growth slows as I near my ceiling.
-  function grow(x, g) { return U.clamp(Math.round((x.skill + g * Math.max(0.15, (x.pot - x.skill) / 25)) * 10) / 10, 0, 100); }
+  function grow(x, g) { return U.clamp(Math.round((x.skill + g * Math.max(0.2, (x.pot - x.skill) / 20)) * 10) / 10, 0, 100); }
   function start() { var m = me(); return U.clamp(Math.round(m.athl * 0.45 + U.rand(0, 15)), 5, 60); }
   function onTeam() { var e = S().edu; return !!(e && e.team && SPORTS[e.team]); }
   // Basketball in high school (and college, if recruited) is the hoops career.
@@ -89,7 +91,7 @@ TL.sports = (function () {
     var x = st(), e = S().edu;
     e.team = t;
     if (x.sport !== t) { x.sport = t; x.pos = U.pick(SPORTS[t].pos); x.skill = start(); x.captain = false; }
-    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.5 + U.rand(15, 50)), 35, 99);
+    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58)), 40, 99);
     x.team = t;
     me().athl = U.clamp(me().athl + 3, 0, 100);
     if (me().athl > 80 && me().age >= 15) S().flags.athleteScholar = true;
@@ -118,12 +120,15 @@ TL.sports = (function () {
     var x = st(), f = 1 / (1 + count('sp_practice'));
     if (f < 0.25) return done(nope('Coach says I need rest. I\'ve practiced a lot this year.'));
     bump('sp_practice');
-    x.skill = grow(x, U.randf(1, 3) * f);
+    x.skill = grow(x, U.randf(1.5, 3.5) * f);
+    // Hard work near my ceiling raises it a little, once a year, while I'm young.
+    var raised = false;
+    if (x.skill >= x.pot - 3 && x.pot < 99 && me().age <= 22 && S().flags.spCeil !== S().year && U.chance(0.6)) { S().flags.spCeil = S().year; var up = U.rand(1, 3); x.pot = Math.min(99, x.pot + up); x.potB += up; raised = true; }
     me().athl = U.clamp(me().athl + Math.max(1, Math.round(2 * f)), 0, 100);
     E.stat('health', 1); E.stat('happy', -1);
     if (S().hoops) S().flags.hoopsTrain = 1;
     if (U.chance(0.03)) { E.stat('health', -8); return done(bad('I rolled my ankle at practice. Ouch.')); }
-    return done('I put in extra work at ' + SPORTS[x.team].name.toLowerCase() + ' practice. ' + SPORTS[x.team].icon + ' (skill ' + Math.round(x.skill) + ')');
+    return done('I put in extra work at ' + SPORTS[x.team].name.toLowerCase() + ' practice. ' + SPORTS[x.team].icon + ' (skill ' + Math.round(x.skill) + (raised ? ', and I feel like I can get even better' : x.skill >= x.pot - 1 ? ', near my ceiling' : '') + ')');
   }
   function bigGame() {
     var x = st(), sp = SPORTS[x.team], e = S().edu;
@@ -149,7 +154,7 @@ TL.sports = (function () {
   function card(x) {
     var sp = SPORTS[x.team || x.sport], e = S().edu, last = x.seasons[x.seasons.length - 1];
     return '<div class="sp-card"><div class="sp-top"><span class="sp-ico">' + sp.icon + '</span><div><div class="sp-name">' + U.esc(U.cap(teamLabel(x.team))) + '</div><div class="sp-sub">' + U.esc(x.pos) + (x.captain ? ' · Captain' : '') + ' · ' + (LEVEL[e.stage] || '') + '</div></div></div>' +
-      '<div class="minibar"><span>Skill</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + x.skill + '%"></span></span></div>' +
+      '<div class="minibar"><span>Skill ' + Math.round(x.skill) + '</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + x.skill + '%"></span></span></div>' +
       (last ? '<div class="sp-last">Last season: ' + U.esc(last.line) + ' · ' + last.rec + (last.award ? ' · ' + U.esc(last.award) : '') + '</div>' : '<div class="sp-last">My first season starts this year.</div>') +
       (x.titles || x.honors.length ? '<div class="sp-last">' + (x.titles ? '🏆 ' + U.plural(x.titles, 'title') : '') + (x.titles && x.honors.length ? ' · ' : '') + (x.honors.length ? '🎖️ ' + U.esc(x.honors.slice(-2).join(', ')) : '') + '</div>' : '') + '</div>';
   }
@@ -180,6 +185,7 @@ TL.sports = (function () {
   function season() {
     var x = st(), e = S().edu, s = S(), sp = SPORTS[x.team], m = me();
     // Growth: young players improve every year; practice and fitness help.
+    x.pot = U.clamp(Math.max(x.pot, Math.round(x.potB + m.athl * 0.4)), 40, 99);
     x.skill = grow(x, U.randf(1.5, 4) + (m.athl - 60) / 20 - (m.health < 40 ? 3 : 0));
     var lvl = e.stage === 'uni' ? 40 : e.stage === 'high' ? 18 : 0;   // tougher competition at each level
     var k = U.clamp((x.skill - lvl) / (100 - lvl) + U.randf(-0.15, 0.1), 0.02, 1);
@@ -221,19 +227,19 @@ TL.sports = (function () {
     if (s.prison) return;
     if (onTeam() && !hoopsRuns()) season();
     // Recruiting: a strong high school career earns scholarship offers.
-    if (!e && E.hasDegree('hs') && x.sport && !x.recruitDone && x.skill >= 70 && x.sport !== 'Basketball Team' && x.seasons.some(function (z) { return z.level === 'high'; }) && me().age <= 20) {
+    if (!e && E.hasDegree('hs') && x.sport && !x.recruitDone && x.skill >= 65 && x.sport !== 'Basketball Team' && x.seasons.some(function (z) { return z.level === 'high'; }) && me().age <= 20) {
       x.recruitDone = true; s.pending.push({ id: 'sp_recruit', data: {} });
     }
     // College stars get drafted; graduates who played in college get a shot too.
     var pro = SPORTS[x.sport] && SPORTS[x.sport].pro;
     if (pro && pro !== 'Basketball' && !x.drafted && x.seasons.some(function (z) { return z.level === 'uni'; }) && !(s.job && s.job.career === 'athlete')) {
-      if ((e && e.stage === 'uni' && e.year >= 3 && x.skill >= 93) || (!e && x.skill >= 88 && me().age <= 25)) { x.drafted = true; s.pending.push({ id: 'sp_draft', data: {} }); }
+      if ((e && e.stage === 'uni' && e.year >= 3 && x.skill >= 85) || (!e && x.skill >= 80 && me().age <= 25)) { x.drafted = true; s.pending.push({ id: 'sp_draft', data: {} }); }
     }
   }
   def('sp_recruit', { cond: function () { var x = st(); return !S().edu && !!(x && SPORTS[x.sport]); }, build: function () {
     var x = st(), sp = SPORTS[x.sport], unis = TL.real ? TL.real.universities(S().country) : [{ name: 'State University', tier: 1 }];
     var womens = /Spelman|Wellesley|Barnard|Smith College|Bryn Mawr|Mount Holyoke|Ochanomizu|Ewha/;
-    var good3 = x.skill >= 82, pool = U.shuffle(unis.filter(function (u) { return (good3 ? u.tier >= 2 : u.tier <= 2) && !(me().gender === 'M' && womens.test(u.name)); })).slice(0, x.skill >= 82 ? 3 : x.skill >= 72 ? 2 : 1);
+    var good3 = x.skill >= 80, pool = U.shuffle(unis.filter(function (u) { return (good3 ? u.tier >= 2 : u.tier <= 2) && !(me().gender === 'M' && womens.test(u.name)); })).slice(0, x.skill >= 80 ? 3 : x.skill >= 70 ? 2 : 1);
     var ch = pool.map(function (u) { return { label: '🎓 ' + u.name + (u.tier === 3 ? ' (elite)' : ''), run: function () {
       E.enroll('uni', { major: U.pick(['Business', 'Communications', 'Psychology', 'Biology', 'Education']), funding: 'scholarship', school: u.name, tier: u.tier, team: x.sport });
       x.team = x.sport;
@@ -245,7 +251,7 @@ TL.sports = (function () {
   } });
   def('sp_draft', { cond: function () { var x = st(); return !!(x && SPORTS[x.sport]); }, build: function () {
     var x = st(), sp = SPORTS[x.sport], team = TL.real && TL.real.team(sp.pro, S().country, me().gender) || 'a pro team';
-    var round = x.skill >= 95 ? 'the first round' : x.skill >= 91 ? 'the second round' : x.skill >= 87 ? 'a late round' : 'as an undrafted free agent';
+    var round = x.skill >= 92 ? 'the first round' : x.skill >= 87 ? 'the second round' : x.skill >= 82 ? 'a late round' : 'as an undrafted free agent';
     var tour = /Tour$/.test(team);
     return { icon: sp.icon, title: tour ? 'Turning pro' : 'Pro draft', text: tour ? 'My college results earned me a wildcard into ' + team + '.' : (round.indexOf('free agent') >= 0 ? 'I went undrafted, but ' + team + ' offered me a tryout contract.' : team + ' picked me in ' + round + '!'), choices: [
       { label: 'Go pro', run: function () {
@@ -254,7 +260,7 @@ TL.sports = (function () {
         s.edu = null;
         E.fame(x.skill >= 90 ? 12 : 6); E.stat('happy', 15); E.achieve('drafted');
         if (TL.pro) { var p = TL.pro.fromDraft(sp.pro, x.pos, x.skill, round); return good('I\'m a professional ' + sp.name.toLowerCase() + ' player with ' + p.team + (p.stage === 'minors' ? ' (' + p.league + ')' : '') + '! ' + sp.icon); }
-        s.job = { career: 'athlete', level: x.skill >= 95 ? 2 : x.skill >= 91 ? 1 : 0, perf: 65, years: 0, levelYears: 0, fame: true, mult: 1, company: team };
+        s.job = { career: 'athlete', level: x.skill >= 92 ? 2 : x.skill >= 87 ? 1 : 0, perf: 65, years: 0, levelYears: 0, fame: true, mult: 1, company: team };
         return good('I\'m a professional ' + sp.name.toLowerCase() + ' player with ' + team + '! ' + sp.icon);
       } },
       { label: 'Pass and get a regular job', run: function () { return 'I turned down pro ' + sp.name.toLowerCase() + '. Time for real life.'; } }

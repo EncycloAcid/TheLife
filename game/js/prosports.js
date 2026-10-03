@@ -151,7 +151,8 @@ TL.pro = (function () {
     return { Forward: 'Striker', Doubles: 'Singles' }[p] || U.pick(SP[sport].pos);
   }
   function schoolSkill(sport) { var s = S().sports, k = SP[sport].school; return s && s.sport === k ? s.skill : 0; }
-  function tryoutOdds(sport) { var m = me(); return U.clamp((m.athl - 55) / 70 + (schoolSkill(sport) - 40) / 120 - Math.max(0, m.age - 26) * 0.04, 0.02, 0.55); }
+  // Athleticism matters most; school experience helps but no longer sinks an athlete who never played it in school.
+  function tryoutOdds(sport) { var m = me(); return U.clamp((m.athl - 50) / 60 + Math.max(0, schoolSkill(sport) - 35) / 100 - Math.max(0, m.age - 26) * 0.04, 0.03, 0.6); }
   function tryout(sport) {
     var m = me();
     if (m.age < 17 || m.age > 32) return done(nope('Open tryouts are for ages 17 to 32.'));
@@ -371,9 +372,13 @@ TL.pro = (function () {
     var x = h();
     if (count('pro_' + t[0])) return done(nope('I already did that this year.'));
     bump('pro_' + t[0]);
-    var g = t[3](x);
-    if (g && x.ovr < x.pot && me().age < SP[x.sport].old) { S().flags.proTrain = Math.min(2, (S().flags.proTrain || 0) + (U.chance(0.5) ? 1 : 0)); }
-    return done(t[2] + ' ' + SP[x.sport].icon + (t[0] === 'rehab' ? ' I feel fresh. Less chance of getting hurt this season.' : ' I\'m sharpening my game.'));
+    var g = t[3](x), s = S(), raised = false;
+    // At my ceiling, hard work slowly raises the ceiling itself (it used to do nothing at all).
+    var ceil = s.flags.proCeil && s.flags.proCeil.y === s.year ? s.flags.proCeil.n : 0;
+    if (g && x.ovr >= x.pot - 1 && me().age < SP[x.sport].old - 2 && x.pot < 99 && ceil < 2 && U.chance(0.55)) { s.flags.proCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
+    if (g && x.ovr < x.pot && me().age < SP[x.sport].old) { s.flags.proTrain = Math.min(2, (s.flags.proTrain || 0) + (U.chance(0.5) ? 1 : 0)); }
+    // Work done now shows in next season's rating; say where I stand.
+    return done(t[2] + ' ' + SP[x.sport].icon + (t[0] === 'rehab' ? ' I feel fresh. Less chance of getting hurt this season.' : ' I\'m sharpening my game. (overall ' + x.ovr + ', potential ' + x.pot + (raised ? ', raised by my hard work' : x.ovr >= x.pot ? ', at my ceiling' : '') + ')'));
   }
   function menu() {
     var x = h();
