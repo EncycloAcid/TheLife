@@ -50,6 +50,35 @@ TL.acting = (function () {
   var W2 = ['Summer', 'Kingdom', 'Hearts', 'Harbor', 'Hours', 'River', 'Signal', 'Season', 'Road', 'Witness', 'Empire', 'Promise', 'Orbit', 'Garden', 'Frontier'];
   var AGENCIES = [['a boutique talent agency', 1, 0, 25], ['Gersh', 2, 20, 35], ['UTA', 3, 40, 50], ['WME', 4, 58, 60], ['CAA', 4, 62, 60]];
   var TIERS = [[0, 'Aspiring'], [10, 'Working'], [25, 'Character'], [42, 'Rising Star'], [58, 'Star'], [74, 'A-List'], [90, 'Hollywood Legend']];
+  // Directors I can work with again (and again).
+  var DIRECTORS = ['Mara Lindqvist', 'Dev Okafor', 'Julian Reyes', 'Sofia Marchetti', 'Theo Nakamura', 'Hannah Brooks', 'Omar Haddad', 'Claire Dumont', 'Rafael Ortiz', 'Ingrid Holm', 'Marcus Bell', 'Yuki Tanaka', 'Priya Raman', 'Elliot Shaw'];
+
+  // ------------------------------------------------------------ range
+  // Four skills kept as offsets from my overall craft (they average zero):
+  // what I train and the parts I play shape the kind of actor I become.
+  var CRAFT = [['dra', 'Drama'], ['com', 'Comedy'], ['act', 'Action'], ['pre', 'Presence']];
+  var GENRE_CRAFT = { 'drama': 'dra', 'crime drama': 'dra', 'period drama': 'dra', 'thriller': 'dra', 'horror': 'dra', 'comedy': 'com', 'musical': 'com', 'action': 'act', 'sci-fi': 'act', 'romance': 'pre' };
+  var TYPE = { dra: ['Dramatic actor', 'Dramatic actress'], com: ['Comedic actor', 'Comedic actress'], act: ['Action star', 'Action star'], pre: ['Leading man', 'Leading lady'] };
+  function craft(x) {
+    if (!x.craft) {
+      var m = me(); x.craft = { dra: U.rand(-4, 4), com: U.rand(-4, 4) + ((S().skills || {}).comedy || 0) / 10, act: U.rand(-4, 4) + (m.athl - 55) / 8, pre: U.rand(-4, 4) + (m.looks - 55) / 6 };
+      cnorm(x);
+    }
+    return x.craft;
+  }
+  function cnorm(x) { var o = x.craft, m = (o.dra + o.com + o.act + o.pre) / 4; CRAFT.forEach(function (c) { o[c[0]] = U.clamp(Math.round((o[c[0]] - m) * 10) / 10, -12, 12); }); }
+  function shiftCraft(x, k, n) { if (!k) return; craft(x)[k] += n; cnorm(x); }
+  function ca(x, k) { return U.clamp(Math.round(x.skill + craft(x)[k]), 1, 100); }
+  function strongest(x) { var o = craft(x); return ['dra', 'com', 'act', 'pre'].sort(function (a, b) { return o[b] - o[a]; })[0]; }
+  function typeName(k) { return TYPE[k][me().gender === 'F' ? 1 : 0]; }
+  // Play the same kind of part too often and that's all anyone sees.
+  function typecast(x) {
+    var recent = x.credits.filter(function (r) { return r.genre && GENRE_CRAFT[r.genre]; }).slice(-8), n = {};
+    recent.forEach(function (r) { var k = GENRE_CRAFT[r.genre]; n[k] = (n[k] || 0) + 1; });
+    var top = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; })[0];
+    return top && n[top] >= 5 ? top : null;
+  }
+  function collabs(x, d) { return d ? x.credits.filter(function (r) { return r.director === d; }).length : 0; }
 
   function st() {
     var s = S(), x = s.acting;
@@ -86,9 +115,12 @@ TL.acting = (function () {
   // How well a part's genre suits me: comedy chops, athleticism for action,
   // a singing voice for musicals, looks for romance.
   function fit(c) {
-    var m = me(), sk = S().skills || {}, g = c && c.genre;
-    var f = g === 'comedy' ? (sk.comedy || 0) / 8 - 1 : g === 'action' ? (m.athl - 55) / 5 : g === 'musical' ? (sk.singing || 0) / 8 - 2 : g === 'romance' ? (m.looks - 55) / 6 : 0;
-    return U.clamp(Math.round(f), -4, 8);
+    var m = me(), sk = S().skills || {}, g = c && c.genre, x = S().acting, k = GENRE_CRAFT[g];
+    if (!x || !k) return 0;
+    var f = craft(x)[k] / 2.5 + (g === 'action' ? (m.athl - 55) / 10 : g === 'musical' ? (sk.singing || 0) / 8 - 2 : g === 'romance' ? (m.looks - 55) / 10 : g === 'comedy' ? (sk.comedy || 0) / 20 : 0);
+    // Typecast actors struggle to sell anything else.
+    var tc = typecast(x); if (tc && tc !== k) f -= 2;
+    return U.clamp(Math.round(f), -5, 8);
   }
   function fitWord(c) { var f = fit(c); return f >= 4 ? ' · Perfect fit' : f <= -3 ? ' · Not my type' : ''; }
   function power(x, c) {
@@ -112,7 +144,9 @@ TL.acting = (function () {
       var p = k.parts[part], studio = U.pick(kid && kind === 'series' ? STUDIOS.kids : STUDIOS[kind] || ['a studio']);
       var pay = Math.round(U.randf(p[0], p[1]) * (0.7 + x.rep / 120) / 100) * 100;
       if (kid) pay = Math.round(pay * 0.4);
-      list.push({ kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: studio, genre: kind === 'commercial' ? 'ad' : U.pick(GENRES), pay: pay, diff: p[2] + (kid ? -6 : 0), rep: p[3] });
+      var tc = typecast(x), genre = kind === 'commercial' ? 'ad' : tc && U.chance(0.5) ? U.pick(GENRES.filter(function (g) { return GENRE_CRAFT[g] === tc; })) : U.pick(GENRES);
+      var dir = kind === 'commercial' || kind === 'student' || kind === 'theater' ? null : x.muse && i === 0 && U.chance(0.6) ? x.muse : U.pick(DIRECTORS);
+      list.push({ kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: studio, genre: genre, director: dir, pay: pay, diff: p[2] + (kid ? -6 : 0) - (dir && dir === x.muse ? 6 : 0), rep: p[3] });
     }
     x.calls = { year: s.year, list: list };
     return list;
@@ -138,7 +172,14 @@ TL.acting = (function () {
       return done(bad(how + ', but I didn\'t get the part in "' + c.title + '". ' + U.pick(['They went another direction.', 'The casting director said I was too ' + U.pick(['young', 'old', 'tall', 'intense', 'nice']) + '.', 'They gave it to someone famous.', 'I never heard back.'])));
     }
     book(c);
-    return done(good(how + ' and booked it! ' + phrase(c) + ' ' + KINDS[c.kind].icon));
+    var msg = how + ' and booked it! ' + phrase(c) + ' ' + KINDS[c.kind].icon;
+    if (/Lead/.test(c.part) && GENRE_CRAFT[c.genre] === 'dra' && !KINDS[c.kind].series && c.kind !== 'student' && c.kind !== 'theater') {
+      return ui().choose('🎭 Preparing for the role', msg + ' How far do I go to become this character?', [
+        { label: 'Go method: live as the character for months', fn: function () { c.method = true; E.stat('health', -8); E.stat('happy', -5); shiftCraft(st(), 'dra', 1.5); done(good(msg + ' I went full method. My family barely recognized me.')); } },
+        { label: 'Prepare like a professional', fn: function () { done(good(msg)); } }
+      ]);
+    }
+    return done(good(msg));
   }
   function phrase(c) {
     if (c.kind === 'commercial') return 'I\'m in a national commercial for ' + (c.brand = c.brand || U.pick(['a soda brand', 'a car company', 'a phone carrier', 'a burger chain', 'a cereal', 'an insurance company'])) + '.';
@@ -172,10 +213,11 @@ TL.acting = (function () {
 
   // ------------------------------------------------------------ training
   var CLASSES = [
-    ['community', '🎭', 'Community acting class', 300, 8, [2, 4]],
-    ['groundlings', '😂', 'Improv at The Groundlings', 1200, 14, [2, 4]],
-    ['coach', '🧑‍🏫', 'Private acting coach', 3000, 14, [3, 6]],
-    ['strasberg', '🎓', 'Lee Strasberg Institute', 8000, 18, [5, 8]]
+    ['community', '🎭', 'Community acting class', 300, 8, [2, 4], 'pre'],
+    ['groundlings', '😂', 'Improv at The Groundlings', 1200, 14, [2, 4], 'com'],
+    ['stunt', '🤸', 'Stunt and fight training', 2000, 16, [1, 3], 'act'],
+    ['coach', '🧑‍🏫', 'Private acting coach', 3000, 14, [3, 6], 'dra'],
+    ['strasberg', '🎓', 'Lee Strasberg Institute', 8000, 18, [5, 8], null]
   ];
   function train(cl) {
     var x = st(), cost = E.$(cl[3]);
@@ -185,9 +227,10 @@ TL.acting = (function () {
     // Stacking classes in one year has diminishing returns.
     grow(x, U.rand(cl[5][0], cl[5][1]) / (1 + count('ac_trained')));
     bump('ac_trained');
+    shiftCraft(x, cl[6], 2);
     if (cl[0] === 'groundlings') { S().skills = S().skills || {}; S().skills.comedy = Math.min(100, (S().skills.comedy || 0) + 3); }
     S().flags.acting = (S().flags.acting || 0) + 1;
-    return done(cl[2] + ': I worked on my craft. 🎭 (craft ' + Math.round(x.skill) + ')');
+    return done(cl[2] + ': I worked on my craft. 🎭 (' + (cl[6] ? CRAFT.filter(function (c) { return c[0] === cl[6]; })[0][1].toLowerCase() + ' ' + ca(x, cl[6]) + ', ' : '') + 'craft ' + Math.round(x.skill) + ')');
   }
   function headshots() {
     var x = st(), cost = E.$(600);
@@ -272,8 +315,10 @@ TL.acting = (function () {
   function card(x) {
     var aw = (S().awards || []).filter(function (a) { return /Academy|Emmy|Golden Globe|Tony/.test(a.award); });
     return '<div class="ac-card"><div class="ac-top"><span class="ac-ico">' + (x.agent && x.agent.tier >= 2 && TL.logos ? TL.logos.badge(x.agent.name) : '🎬') + '</span><div><div class="ac-name">' + U.esc(title()) + '</div><div class="ac-sub">' + (x.agent ? 'Repped by ' + U.esc(x.agent.name) : 'No agent') + ' · ' + U.plural(x.credits.length, 'credit') + (aw.length ? ' · 🏆 ' + aw.length : '') + '</div></div></div>' +
-      '<div class="minibar"><span>Craft</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
-      '<div class="minibar"><span>Star power</span><span class="track"><span class="fill ' + (x.rep >= 60 ? 'hi' : x.rep >= 25 ? 'mid' : 'lo') + '" style="width:' + Math.min(100, Math.round(x.rep)) + '%"></span></span></div>' +
+      '<div class="hb-arch">' + typeName(strongest(x)) + (typecast(x) ? (typecast(x) === strongest(x) ? ' · typecast' : ' · typecast as ' + typeName(typecast(x)).toLowerCase()) : '') + (x.muse ? ' · ' + U.esc(x.muse) + '\'s muse' : '') + '</div>' +
+      '<div class="minibar wide"><span>Craft ' + Math.round(x.skill) + '</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
+      CRAFT.map(function (c) { var v = ca(x, c[0]); return '<div class="minibar wide"><span>' + c[1] + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('') +
+      '<div class="minibar wide"><span>Star power ' + Math.round(x.rep) + '</span><span class="track"><span class="fill ' + (x.rep >= 60 ? 'hi' : x.rep >= 25 ? 'mid' : 'lo') + '" style="width:' + Math.min(100, Math.round(x.rep)) + '%"></span></span></div>' +
       (x.series ? '<div class="ac-line">📺 Series regular on "' + U.esc(x.series.title) + '" (' + U.esc(x.series.network) + ')' + (x.series.seasons ? ', ' + U.plural(x.series.seasons, 'season') : '') + '</div>' : '') +
       (x.slate.length ? '<div class="ac-line">🎞️ Coming out this year: ' + x.slate.map(function (r) { return '"' + U.esc(r.title) + '"'; }).join(', ') + '</div>' : '') + '</div>';
   }
@@ -286,16 +331,17 @@ TL.acting = (function () {
       if (x.retired) {
         items.push({ icon: '🎬', label: 'Come out of retirement', onClick: function () { x.retired = null; done('I\'m back. Hollywood loves a comeback story. 🎬'); } });
         items.push({ icon: '🎞️', label: 'Filmography', sub: U.plural(x.credits.length, 'credit'), onClick: filmography });
+        items.push({ icon: '🏆', label: 'Career highlights', onClick: highlights });
         return items;
       }
       items.push({ section: 'Casting calls · ' + Math.max(0, left) + ' auditions left' });
       calls().forEach(function (c) {
         var k = KINDS[c.kind], p = odds(x, c);
-        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + ' · ' + c.studio + ' · ' + oddsWord(p) + fitWord(c), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
+        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + (c.genre && c.genre !== 'ad' ? ' · ' + c.genre : '') + (c.director ? ' · dir. ' + c.director.split(' ').pop() + (collabs(x, c.director) ? ' (' + collabs(x, c.director) + '× before)' : '') : '') + ' · ' + oddsWord(p) + fitWord(c), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
       });
       if (!x.calls.list.length) items.push({ info: true, html: '<p class="muted">No more casting calls this year.</p>' });
       items.push({ section: 'Career' });
-      CLASSES.forEach(function (cl) { if (me().age >= cl[4]) items.push({ icon: cl[1], label: cl[2], right: E.fmt(E.$(cl[3])), disabled: count('ac_' + cl[0]) > 0, onClick: function () { train(cl); } }); });
+      CLASSES.forEach(function (cl) { if (me().age >= cl[4]) items.push({ icon: cl[1], label: cl[2], sub: cl[6] ? CRAFT.filter(function (c) { return c[0] === cl[6]; })[0][1] + ' ' + ca(x, cl[6]) : 'Everything, a little', right: E.fmt(E.$(cl[3])), disabled: count('ac_' + cl[0]) > 0, onClick: function () { train(cl); } }); });
       if (!x.headshots || S().year - x.headshots >= 10) items.push({ icon: '📸', label: 'Get headshots', right: E.fmt(E.$(600)), onClick: headshots });
       if (me().age >= 16) items.push({ icon: '🤝', label: x.agent ? 'Look for a bigger agency' : 'Find an agent', sub: x.agent ? 'Now: ' + x.agent.name : 'Better auditions, 10% fee', disabled: count('ac_agent') > 0, onClick: findAgent });
       if (me().age >= 18) items.push({ icon: '🥂', label: 'Go to an industry party', disabled: count('ac_party') > 0, onClick: party });
@@ -304,8 +350,31 @@ TL.acting = (function () {
       if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
       if (x.series) items.push({ icon: '🚪', label: 'Leave "' + x.series.title + '"', onClick: leaveShow });
       items.push({ icon: '🎞️', label: 'Filmography', sub: U.plural(x.credits.length, 'credit'), onClick: filmography });
+      items.push({ icon: '🏆', label: 'Career highlights', sub: 'Awards, box office and milestones', onClick: highlights });
       if (x.credits.length) items.push({ icon: '🌅', label: 'Retire from acting', danger: true, onClick: retire });
       return items;
+    });
+  }
+  function highlights() {
+    ui().menu('Career highlights', function () {
+      var x = st(), rows = [], aws = (S().awards || []).filter(function (a) { return /Academy|Emmy|Golden Globe|Tony/.test(a.award); });
+      var films = x.credits.filter(function (r) { return r.gross; }), total = films.reduce(function (t, r) { return t + r.gross; }, 0);
+      var top = films.slice().sort(function (a, b) { return b.gross - a.gross; })[0], best = x.credits.filter(function (r) { return r.review != null && r.kind !== 'commercial'; }).sort(function (a, b) { return b.review - a.review; })[0];
+      var dirs = {}; x.credits.forEach(function (r) { if (r.director) dirs[r.director] = (dirs[r.director] || 0) + 1; });
+      var fav = Object.keys(dirs).sort(function (a, b) { return dirs[b] - dirs[a]; })[0];
+      aws.forEach(function (a) { rows.push({ icon: '🏆', label: a.award + ' (' + a.year + ')', sub: a.cat }); });
+      if (x.noms) rows.push({ icon: '🎗️', label: U.plural(x.noms, 'major nomination') });
+      var bil = films.filter(function (r) { return r.gross >= 1000; }).length;
+      if (bil) rows.push({ icon: '🍿', label: U.plural(bil, 'billion-dollar film') });
+      if (total) rows.push({ icon: '🎟️', label: big(total * 1e6) + ' career box office', sub: U.plural(films.length, 'film') });
+      if (top) rows.push({ icon: '🎬', label: 'Biggest hit: "' + top.title + '"', sub: big(top.gross * 1e6) + ' worldwide (' + top.year + ')' });
+      if (best) rows.push({ icon: '⭐', label: 'Best reviewed: "' + best.title + '"', sub: best.review + '% on Rotten Tomatoes (' + best.year + ')' });
+      if (fav && dirs[fav] >= 2) rows.push({ icon: '🎥', label: 'Favorite director: ' + fav, sub: U.plural(dirs[fav], 'project') + ' together' + (x.muse === fav ? ' · their muse' : '') });
+      if (x.produced) rows.push({ icon: '🎥', label: 'Produced ' + U.plural(x.produced, 'film') });
+      if (x.walk) rows.push({ icon: '⭐', label: 'Star on the Hollywood Walk of Fame', sub: 'Unveiled in ' + x.walk });
+      if (x.honorary) rows.push({ icon: '🏆', label: 'Honorary Academy Award', sub: 'For lifetime achievement, ' + x.honorary });
+      rows.push({ icon: '🎞️', label: U.plural(x.credits.length, 'credit'), sub: 'Range: ' + CRAFT.map(function (c) { return c[1] + ' ' + ca(x, c[0]); }).join(' · ') });
+      return rows;
     });
   }
   function filmography() {
@@ -314,7 +383,7 @@ TL.acting = (function () {
       if (!x.credits.length) return [{ info: true, html: '<p class="muted">No credits yet.</p>' }];
       return x.credits.slice().reverse().map(function (r) {
         var k = KINDS[r.kind];
-        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : '' };
+        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.director ? ' · dir. ' + r.director : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : '' };
       });
     });
   }
@@ -323,9 +392,13 @@ TL.acting = (function () {
   // Everything I shot this year comes out; returns this year's acting pay.
   function release(r, x) {
     var k = KINDS[r.kind], s = S();
-    var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (x.press === s.year ? 4 : 0);
+    var tc = typecast(x), again = collabs(x, r.director);
+    var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (x.press === s.year ? 4 : 0) + Math.min(4, again * 1.5) + (r.method ? 5 : 0);
     var review = U.clamp(Math.round(q), 4, 99);
-    var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review };
+    var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review, genre: r.genre, director: r.director };
+    if (r.kind !== 'commercial') shiftCraft(x, GENRE_CRAFT[r.genre], 0.4);
+    if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than a ' + typeName(tc).toLowerCase() + '. Critics are calling it a revelation.', 'good');
+    if (r.director && again >= 2 && review >= 85 && x.muse !== r.director) { x.muse = r.director; E.log('🎬 ' + r.director + ' calls me their muse. Expect more of their scripts.', 'good'); }
     var lead = /Lead/.test(r.part), msg, cls = '';
     // Every credit builds my name; good reviews and leading parts build it faster, flops can cost me.
     var dr = r.rep * U.clamp(0.5 + (review - 50) / 40, 0.15, 1.8) * (lead ? 1.2 : 1);
@@ -412,6 +485,11 @@ TL.acting = (function () {
     var earned = x.earn; x.earn = 0;
     if (j && j.acting) { j.salary = earned; j.title = title(); j.perf = U.clamp(Math.round(x.rep), 0, 100); }
     if (x.rep >= 74) E.achieve('famous');
+    // Lifetime honors.
+    if (!x.walk && x.rep >= 70 && x.credits.length >= 25) { x.walk = s.year; E.log('⭐ I got a star on the Hollywood Walk of Fame!', 'good'); E.fame(5); E.achieve('walk_of_fame'); }
+    if (!x.honorary && me().age >= 60 && x.credits.length >= 30 && x.best >= 85 && (x.wins >= 1 || x.noms >= 3) && U.chance(0.15)) {
+      x.honorary = s.year; (s.awards = s.awards || []).push({ award: 'Honorary Academy Award', cat: 'lifetime achievement', year: s.year }); E.log('🏆 The Academy gave me an Honorary Oscar for my lifetime of work.', 'good'); E.fame(8);
+    }
     return earned;
   }
   // Child actors and actors with day jobs still release their projects.
