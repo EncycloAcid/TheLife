@@ -179,5 +179,5 @@ TL.history = (function () {
 
   // Wars being fought in a year (js/maps.js world map).
   function wars(yr) { return WARS.filter(function (w) { return yr >= w.from && yr <= w.to; }); }
-  return { wars: wars, priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, marketTotal: marketTotal, marketNews: marketNews, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
+  return { wars: wars, priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, marketTotal: marketTotal, marketNews: marketNews, moments: function (y) { var c = S() && S().country; return MOMENTS.filter(function (m) { return m[0] === y && (!m[3] || m[3].indexOf(c) >= 0); }); }, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
 })();

@@ -59,6 +59,8 @@ TL.social = (function () {
   function best() { var y = S().year; var l = ['tt', 'ig', 'tw', 'fb', 'myspace'].filter(function (id) { return live(id, y); }); return l[0] || null; }
   function accounts() { var c = st(); return Object.keys(c.acc).filter(function (id) { return c.acc[id]; }); }
   function main() { var c = st(); return accounts().sort(function (a, b) { return c.acc[b].f - c.acc[a].f; })[0]; }
+  // Where a post goes: my biggest account on a platform that still exists.
+  function liveMain(prefer) { var c = st(); if (prefer && c.acc[prefer] && live(prefer)) return prefer; return accounts().filter(function (id) { return live(id); }).sort(function (a, b) { return c.acc[b].f - c.acc[a].f; })[0] || null; }
   function total() { var c = st(); return accounts().reduce(function (t, id) { return t + c.acc[id].f; }, 0); }
   // Other parts of the game add to S().followers; that growth lands on my main account.
   function sync() {
@@ -161,6 +163,108 @@ TL.social = (function () {
     return done(good('I posted a sponsored post for ' + o.b + ' and earned ' + E.fmt(E.$(pay)) + '. 💰'));
   }
 
+  // ------------------------------------------------------------ the world
+  // What everyone is posting about this year: real news, trends, movies,
+  // sports, elections, markets, and the big moments of history.
+  function topics() {
+    var s = S(), c = st(), y = s.year;
+    if (c.topics && c.topics.y === y) return c.topics.l;
+    var l = [], H = TL.history, P = TL.phone;
+    if (trend()) l.push({ k: 'trend', icon: '🔥', t: trend(), what: 'the ' + (/^the /.test(trend()) ? trend().slice(4) : trend()) + ' trend' });
+    if (H && H.moments) H.moments(y).forEach(function (m) { l.push({ k: 'news', icon: m[1], t: m[4], what: (/^The /.test(m[4]) || !/(pandemic|crisis|disaster|landing|boom|tsunami|assassination|Wall|Union|Web|millennium)/i.test(m[4]) ? '' : 'the ') + m[4].replace(/^The /, 'the '), serious: /🕯️|📉|😷|🌊|☢️/.test(m[1]) }); });
+    if (H && H.marketNews && H.marketNews(y)) l.push({ k: 'money', icon: '📈', t: H.marketNews(y).replace(/\.$/, ''), what: 'the stock market' });
+    if (P && P.HITS && P.HITS[y]) l.push({ k: 'pop', icon: '🍿', t: '"' + P.HITS[y] + '" is the movie of the year', what: '"' + P.HITS[y] + '"' });
+    if (P && P.OSCARS && P.OSCARS[y - 1]) l.push({ k: 'pop', icon: '🏆', t: '"' + P.OSCARS[y - 1] + '" won Best Picture', what: 'the Oscars' });
+    ['M', 'F'].forEach(function (g) { var champ = TL.nba && TL.nba.exists(g, y - 1) && (g === 'M' || me().gender === 'F' || U.chance(0.3)) ? TL.nba.champOf(g, y - 1) : null; if (champ) l.push({ k: 'sports', icon: '🏀', t: 'The ' + champ + ' won the ' + (g === 'F' ? 'WNBA' : 'NBA') + ' title', what: 'the ' + champ }); });
+    if (y % 4 === 0 && E.country().name === 'United States') l.push({ k: 'politics', icon: '🗳️', t: 'The presidential election', what: 'the election', risky: true });
+    if (y % 4 === 0 && y !== 2020) l.push({ k: 'sports', icon: '🥇', t: 'The Summer Olympics', what: 'the Olympics' });
+    if (y === 2021) l.push({ k: 'sports', icon: '🥇', t: 'The delayed Tokyo Olympics', what: 'the Olympics' });
+    if (y % 4 === 2) l.push({ k: 'sports', icon: '⚽', t: 'The World Cup', what: 'the World Cup' });
+    l.push(U.pick([{ k: 'pop', icon: '💔', t: 'A celebrity breakup everyone has opinions on', what: 'the celebrity breakup' }, { k: 'tech', icon: '📱', t: 'A new phone everyone is arguing about', what: 'the new phone' }, { k: 'pop', icon: '🐱', t: 'A cat video with 50 million views', what: 'the cat video' }, { k: 'pop', icon: '🎤', t: 'A pop star\'s surprise album drop', what: 'the surprise album' }]));
+    c.topics = { y: y, l: l.slice(0, 6) };
+    return c.topics.l;
+  }
+  // Post about something happening in the world.
+  function topicPost(t) {
+    var c = st(), id = liveMain('tw');
+    if (!id) return done(nope('All my accounts are on platforms nobody uses anymore. Time to join a new one.'));
+    if (count('sp_topic') >= 2) return done(nope('I\'ve posted enough takes this year.'));
+    var takes = [
+      { label: 'Share my honest take', stat: 'smarts', risk: t.risky ? 0.08 : 0.01, line: 'shared my honest take on ' + t.what },
+      { label: t.serious ? 'Post a respectful tribute' : 'Make a joke about it', stat: t.serious ? null : 'smarts', risk: t.serious ? 0 : 0.05, joke: !t.serious, line: t.serious ? 'posted a tribute about ' + t.what : 'joked about ' + t.what },
+      { label: 'Post a spicy hot take', stat: 'smarts', risk: t.serious ? 0.5 : t.risky ? 0.35 : 0.18, spicy: true, line: 'posted a hot take about ' + t.what }
+    ];
+    ui().choose(t.icon + ' ' + t.t, 'Everyone on ' + pname(id) + ' is talking about it. What do I post?', takes.map(function (k) { return { label: k.label, fn: function () {
+      bump('sp_topic');
+      var s = S(), a = c.acc[id], q = k.stat ? E.statValue(k.stat) : 60, fit = (c.niche && ((t.k === 'sports' && c.niche === 'Sports') || (t.k === 'politics' && c.niche === 'Politics') || (t.k === 'money' && c.niche === 'Tech') || (t.k === 'pop' && /Lifestyle|Comedy|Music/.test(c.niche)) || (k.joke && c.niche === 'Comedy')) ? 20 : 0);
+      var score = U.clamp(q * 0.5 + fit + U.rand(5, 40) + (id === 'tw' ? 10 : 0) + (k.spicy ? 15 : 0), 1, 100), viral = U.chance(0.03 + score / 1200 + (k.spicy ? 0.05 : 0));
+      if (k.risk && U.chance(k.risk * ((s.karma || 50) < 35 ? 1.5 : 1))) { var lost = Math.round(a.f * U.randf(0.04, 0.15)); a.f -= lost; c.drama = s.year; E.karma(-2); E.stat('happy', -6); feed({ y: s.year, p: id, t: U.cap(k.line), l: Math.round(a.f * engagement()), c: U.pick(['read the room', 'this is why you\'re muted', 'deleted in 3… 2…']), bad: 1 }); sync(); return done(bad('I ' + k.line + ' on ' + pname(id) + '. It did not land. ' + (lost ? 'Lost ' + big(lost) + ' followers.' : 'Even my mom unfollowed me.'))); }
+      var likes = Math.round((a.f * engagement() * 1.6 + U.rand(3, 40)) * (0.5 + score / 60) * (viral ? U.rand(15, 80) : 1)), gain = Math.round(likes * U.randf(0.04, 0.1) * (score >= 50 ? 1 : 0.3));
+      a.f += gain; if (viral) { E.fame(U.rand(1, 4)); react('viral'); }
+      feed({ y: s.year, p: id, t: U.cap(k.line), l: likes, c: comment(score, id), v: viral ? 1 : 0 }); sync();
+      return done((viral ? good : function (x) { return x; })((viral ? '🚀 It went viral! ' : '') + 'I ' + k.line + ' on ' + pname(id) + '. ' + big(likes) + ' likes, +' + big(gain) + ' followers.'));
+    } }; }));
+  }
+  // Big things that just happened to me, worth sharing.
+  var LIFE = [[/graduated/i, '🎓', 'my graduation'], [/got engaged|said yes/i, '💍', 'our engagement'], [/married|wedding/i, '💒', 'our wedding'], [/(gave birth|had a baby|welcomed|adopted a baby)/i, '👶', 'the new baby'], [/bought .*(house|home|apartment|condo|mansion|villa)/i, '🏡', 'my new home'], [/(got the job|was hired|I got a job|I'm now a|new job)/i, '💼', 'my new job'], [/promoted/i, '📈', 'my promotion'], [/adopted (a|an) (?!baby)/i, '🐾', 'my new pet'], [/(vacation|trip to|traveled to|backpacked)/i, '✈️', 'my trip'], [/(championship|won the|named an All-Star|Academy Award|Grammy|Emmy|elected)/i, '🏆', 'my big win'], [/bought a .*(car|truck|motorcycle)/i, '🚗', 'my new car'], [/finished (a|my) marathon|ran a marathon/i, '🏃', 'my marathon']];
+  function lifeUpdates() {
+    var s = S(), c = st(), out = [], seen = {};
+    s.log.slice(-2).forEach(function (e) {
+      (e.entries || []).forEach(function (x) {
+        var t = x.t || '';
+        if (/^(📣|💒 My|👶 My|🧳|🏥|🎉 My|📰|💬|🛡️|🗡️)/.test(t) || /\bMy (friend|best friend|brother|sister|mother|father|son|daughter|coworker|partner|ex|grand\w+)\b/.test(t)) return;
+        LIFE.forEach(function (L) { var key = L[2] + e.year; if (L[0].test(t) && !seen[L[2]] && !(c.shared || {})[key]) { seen[L[2]] = 1; out.push({ icon: L[1], what: L[2], key: key }); } });
+      });
+    });
+    return out.slice(0, 3);
+  }
+  function shareLife(u) {
+    var s = S(), c = st(), id = liveMain(c.acc.ig && live('ig') ? 'ig' : 'fb'), a = c.acc[id];
+    if (!id) return done(nope('All my accounts are on platforms nobody uses anymore. Time to join a new one.'));
+    (c.shared = c.shared || {})[u.key] = 1;
+    var close = s.people.filter(function (p) { return p.alive && p.age >= 10 && /friend|sibling|mother|father|grand|partner|spouse|child|fiance/.test(p.role); });
+    close.slice(0, 6).forEach(function (p) { E.rel(p, 2); });
+    var likes = Math.round(a.f * engagement() * 2.2 + close.length * 3 + U.rand(5, 40)), gain = Math.round(likes * U.randf(0.03, 0.08));
+    a.f += gain; E.stat('happy', 5); sync();
+    var who = close.filter(function (p) { return p.rel >= 50; })[0];
+    feed({ y: s.year, p: id, t: 'Posted about ' + u.what, l: likes, c: who ? who.first + ': so proud of you ❤️' : 'congrats!!' });
+    return done(good('I posted about ' + u.what + ' on ' + pname(id) + '. ' + big(likes) + ' likes' + (who ? ', and ' + who.first + ' left the sweetest comment' : '') + '. ' + u.icon));
+  }
+  // Use my following for my actual work.
+  function promos() {
+    var s = S(), out = [], x;
+    if ((x = s.acting) && x.slate && x.slate.length) out.push({ icon: '🎬', label: 'Promote "' + x.slate[0].title + '"', sub: 'Better buzz when it comes out this year', fn: function () { x.press = s.year; return 'I posted behind-the-scenes clips from "' + x.slate[0].title + '". The fans are hyped.'; } });
+    if ((x = s.music) && x.fans) out.push({ icon: '🎵', label: 'Tease my new music', sub: 'Turn followers into fans', fn: function () { var n = Math.round(total() * U.randf(0.02, 0.06) + 50); x.fans += n; return 'I teased a snippet of a new song. ' + big(n) + ' new fans started streaming me.'; } });
+    s.assets.filter(function (a) { return a.kind === 'business'; }).slice(0, 2).forEach(function (b) { out.push({ icon: '🏪', label: 'Promote ' + b.name, sub: 'More customers this year', fn: function () { b.hype = (b.hype || 0) + 2 + Math.min(4, Math.round(Math.log10(1 + total()) - 2)); return 'I posted about ' + b.name + '. My followers are showing up in person.'; } }); });
+    if (s.job && s.job.politics) out.push({ icon: '🗳️', label: 'Post a campaign message', sub: 'Approval, if it lands', fn: function () { var j = S().job; if (U.chance(0.7)) { j.perf = Math.min(100, (j.perf || 50) + 2); return 'My message to voters got shared thousands of times.'; } j.perf = Math.max(0, (j.perf || 50) - 3); return bad('Someone dug up an old post that contradicted it. Oops.'); } });
+    if ((s.hoops && s.hoops.stage === 'pro') || (s.pro && s.pro.team)) out.push({ icon: '🏟️', label: 'Hype up the season', sub: 'Fans love it', fn: function () { E.fame(1); return 'I posted my training montage. The fans are fired up for the season.'; } });
+    return out;
+  }
+  // What the people in my life (and the world) are posting.
+  function timeline() {
+    var c = st();
+    ui().menu('My timeline', function () {
+      var s = S(), y = s.year, items = [], liked = c.liked && c.liked.y === y ? c.liked : (c.liked = { y: y, ids: {} });
+      var NEWS_POSTS = { promo: 'Some personal news: I got promoted! 🥂', laidoff: 'Laid off today. If anyone hears of anything, let me know 🙏', newjob: 'First day at the new job! 💼', married: 'Just married 💍', baby: 'Welcome to the world, little one 👶', moved: 'New city, new me 🧳', health: 'Rough few weeks, but I\'m on the mend. Thanks for the love 💛', retired: 'Officially retired! 🎉' };
+      s.people.filter(function (p) { return p.alive && p.age >= 13 && /friend|sibling|mother|father|partner|spouse|child|ex|coworker|cousin|grand/.test(p.role); }).slice(0, 12).forEach(function (p) {
+        var news = p.news && y - p.news[0] <= 1 ? NEWS_POSTS[p.news[1]] : null, md = TL.mind ? TL.mind.mood(p) : 'Content';
+        var text = news || (md === 'Happy' ? U.pick(['Best weekend in a long time ☀️', 'Grateful for the little things.', 'Tried a new recipe and nailed it 🍝']) : md === 'Miserable' ? U.pick(['Some days are just hard.', 'Not doing great, ngl.']) : U.pick(['Monday again 😩', 'Who else is watching the game tonight?', 'Coffee first, people later ☕', 'Throwback to the good old days 📸']));
+        var done1 = liked.ids[p.id];
+        items.push({ icon: TL.actions.personIcon ? TL.actions.personIcon(p) : '👤', label: text, sub: p.first + ' ' + p.last + ' · ' + (TL.actions.roleLabel ? TL.actions.roleLabel(p) : p.role) + (done1 ? ' · you ' + done1 : ''), disabled: !!done1, onClick: function () {
+          ui().choose('💬 ' + p.first + '\'s post', '“' + text + '”', [
+            { label: '❤️ Like it', fn: function () { liked.ids[p.id] = 'liked it'; E.rel(p, 1); done('I liked ' + p.first + '\'s post.'); } },
+            { label: '💬 Leave a kind comment', fn: function () { liked.ids[p.id] = 'commented'; E.rel(p, news && /laidoff|health/.test(p.news[1]) ? 5 : 3); if (TL.mind) TL.mind.note(p, 4, 'showed up in my comments when it mattered', true); done(good('I left ' + p.first + ' a kind comment. ' + U.cap(p.gender === 'M' ? 'he' : 'she') + ' hearted it right away.')); } },
+            { label: '😈 Leave a snarky comment', fn: function () { liked.ids[p.id] = 'roasted them'; E.rel(p, -8); E.karma(-1); if (TL.mind) TL.mind.note(p, -8, 'roasted ~ in the comments'); done(bad('I roasted ' + p.first + ' in the comments. Everyone saw.')); } }
+          ]);
+        } });
+      });
+      if (!items.length) items.push({ info: true, html: '<p class="muted">Nobody I know is posting yet.</p>' });
+      items.push({ section: 'Trending' });
+      topics().forEach(function (t) { items.push({ icon: t.icon, label: t.t, sub: 'Trending on ' + pname(main()) }); });
+      return items;
+    });
+  }
+
   // ------------------------------------------------------------ menus
   function menu() {
     if (TL.history && !TL.history.exists('social')) return done(nope(TL.history.notYet('social')));
@@ -185,7 +289,15 @@ TL.social = (function () {
       items.push({ icon: '🤝', label: 'Brand deals', sub: ol.length ? U.plural(ol.length, 'offer') + ' this year' : f < 5000 ? 'Brands start calling around 5K followers' : 'No offers right now', disabled: !ol.length, onClick: deals });
       if (f >= 1000) items.push({ icon: '🤖', label: 'Buy followers', sub: 'Cheap, fast, and it shows', disabled: count('sp_buy') > 0, onClick: buy });
       if (c.acc.tw && s.year >= 2023 && !c.acc.tw.ver) items.push({ icon: '✔️', label: 'Buy a blue check on X', right: E.fmt(E.$(96)) + '/yr', onClick: function () { E.addMoney(-E.$(96)); c.acc.tw.ver = s.year; c.paidCheck = 1; done('I paid for a blue check. Some people respect it; most people roast it.'); } });
+      items.push({ section: 'Trending now' });
+      topics().forEach(function (t) { items.push({ icon: t.icon, label: t.t, sub: 'Post about ' + t.what + (t.serious ? ' · handle with care' : t.risky ? ' · divisive' : ''), disabled: count('sp_topic') >= 2 || c.breakY === s.year || !liveMain(), onClick: function () { topicPost(t); } }); });
+      if (!liveMain()) items.push({ info: true, html: '<p class="small muted">All my accounts are on platforms nobody uses anymore. Join a new one to post.</p>' });
+      var lu = lifeUpdates(), pr = promos();
+      if (lu.length || pr.length) items.push({ section: 'Share' });
+      lu.forEach(function (u) { items.push({ icon: u.icon, label: 'Post about ' + u.what, sub: 'Family and friends will love it', disabled: c.breakY === s.year || !liveMain(), onClick: function () { shareLife(u); } }); });
+      pr.forEach(function (q, i) { var key = 'sp_promo' + i; items.push({ icon: q.icon, label: q.label, sub: q.sub, disabled: count(key) > 0 || c.breakY === s.year, onClick: function () { bump(key); var r = q.fn(); var m0 = liveMain() || main(); c.acc[m0].f += Math.round(total() * U.randf(0.005, 0.02)); sync(); done(r); } }); });
       items.push({ section: 'Me' });
+      items.push({ icon: '👥', label: 'My timeline', sub: 'What friends and family are posting', onClick: timeline });
       items.push({ icon: '📰', label: 'My feed', sub: c.feed.length ? U.plural(c.feed.length, 'recent post') : 'Nothing posted yet', onClick: feedView });
       items.push({ icon: '📊', label: 'Analytics', sub: 'Growth, engagement and best posts', onClick: analytics });
       items.push({ icon: '🌀', label: 'Doomscroll', sub: 'Lose an hour (or four)', disabled: count('sp_doom') > 0, onClick: doomscroll });
