@@ -146,7 +146,10 @@ TL.hoops = (function () {
 
   // Every team has a strength that carries over from year to year: contenders
   // stay good for a while and rebuilding teams take time.
-  function tq(t) { var x = h(), m = x.tq || (x.tq = {}); if (m[t] == null) m[t] = U.rand(32, 68); return m[t]; }
+  function tq(t) {
+    var g = me().gender;
+    if (TL.league && TL.league.active(g, S().year)) { var lq = TL.league.quality(g, t); if (lq != null) return lq; }
+    var x = h(), m = x.tq || (x.tq = {}); if (m[t] == null) m[t] = U.rand(32, 68); return m[t]; }
   function outlook(q) { return q >= 60 ? 'contender' : q >= 49 ? 'playoff team' : q >= 39 ? 'middle of the pack' : 'rebuilding'; }
   function teamKind(q) { return q >= 60 ? 'a contender' : q >= 49 ? 'a playoff team' : q >= 39 ? 'a middle-of-the-pack team' : 'a rebuilding team'; }
   function drift(x) { Object.keys(x.tq || {}).forEach(function (t) { var q = x.tq[t]; x.tq[t] = U.clamp(Math.round(q + (50 - q) * 0.12 + U.rand(-6, 6)), 25, 75); }); }
@@ -202,12 +205,12 @@ TL.hoops = (function () {
   }
   // A title: rings, the achievement and maybe Finals MVP. With `out`, the lines
   // are collected for a Game 7 story instead of logged.
-  function champion(x, lg, out) {
+  function champion(x, lg, out, fm) {
     var pro = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', say = function (t) { if (out) out.push(t); else E.log(t, 'good'); };
     if (pro) { x.rings++; E.achieve('hoops_ring'); }
     say('💍 We won the ' + (lg === 'EuroLeague' ? 'EuroLeague title' : lg === 'G League' ? 'G League title' : lg + ' championship') + '!' + (x.rings > 1 && pro ? ' That\'s ring number ' + x.rings + '.' : ''));
     E.stat('happy', 15); E.fame(10);
-    if (x.ovr >= 84 && U.chance(0.5)) { x.fmvp++; award(x, 'Finals MVP', x.seasons[x.seasons.length - 1]); say('🏅 I was named Finals MVP!'); E.fame(8); }
+    if (fm != null ? fm : x.ovr >= 84 && U.chance(0.5)) { x.fmvp++; award(x, 'Finals MVP', x.seasons[x.seasons.length - 1]); say('🏅 I was named Finals MVP!'); E.fame(8); }
   }
   function season() {
     var s = S(), x = h(), j = s.job;
@@ -225,17 +228,27 @@ TL.hoops = (function () {
     var l = statLine(x, mins), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', home = lg === 'NBA' || lg === 'WNBA';
     // Franchises move and rename (Seattle became Oklahoma City); keep up.
     if (home && TL.nba) { var nowName = TL.nba.current(me().gender, x.team, s.year); if (nowName !== x.team) { E.log('🚚 The ' + x.team + ' are now the ' + nowName + '.'); x.team = nowName; j.company = 'the ' + nowName + ' (' + lg + ')'; } }
+    // From my first season in the league, the whole league is simulated
+    // (js/league.js): my team's record and playoff run come from it.
+    var sim = home && TL.league ? TL.league.mine(me().gender, s.year, { clutch: mins >= 22 }) : null;
     var mates = home && TL.nba ? TL.nba.starsOn(me().gender, x.team, s.year) : [];
-    // My team's own strength matters as much as I do.
-    var strength = 41 + (tq(x.team) - 50) * 0.6 + U.rand(-9, 9) + (x.ovr - 75) * (mins / 36) + (played / gp - 1) * 10;
-    var wins = U.clamp(Math.round(strength * gp / 82), Math.round(gp * 0.15), Math.round(gp * 0.85));
-    var rec = wins + '-' + (gp - wins), pct = wins / gp, result, round = -1, odds = 0;
-    if (pct < 0.5) result = 'Missed the playoffs';
-    else {
-      round = 0; odds = U.clamp(0.3 + (pct - 0.5) + (x.ovr - 80) / 150, 0.1, 0.72);
-      while (round < 4 && U.chance(odds)) round++;
-      result = RESULTS[round];
+    var wins, rec, pct, result, round = -1, odds = 0;
+    if (sim) {
+      var gp0 = gp; gp = sim.w + sim.l; played = Math.min(gp, Math.round(played * gp / gp0)); wins = sim.w;
+      round = sim.wait ? sim.wait.round : sim.round;
+      result = round < 0 ? 'Missed the playoffs' : RESULTS[round];
+    } else {
+      // My team's own strength matters as much as I do.
+      var strength = 41 + (tq(x.team) - 50) * 0.6 + U.rand(-9, 9) + (x.ovr - 75) * (mins / 36) + (played / gp - 1) * 10;
+      wins = U.clamp(Math.round(strength * gp / 82), Math.round(gp * 0.15), Math.round(gp * 0.85));
+      if (wins / gp < 0.5) result = 'Missed the playoffs';
+      else {
+        round = 0; odds = U.clamp(0.3 + (wins / gp - 0.5) + (x.ovr - 80) / 150, 0.1, 0.72);
+        while (round < 4 && U.chance(odds)) round++;
+        result = RESULTS[round];
+      }
     }
+    rec = wins + '-' + (gp - wins); pct = wins / gp;
     // My best night of the season.
     var hi = played >= 10 ? Math.round(l.ppg + Math.max(4, l.ppg * 0.45) * U.randf(0.6, 1.6) + (U.chance(0.04) ? U.rand(8, 15) : 0)) : 0;
     var line = { year: s.year, age: me().age, team: x.team, league: lg, mates: mates.length ? mates.slice(0, 3) : undefined, gp: played, ppg: l.ppg, rpg: l.rpg, apg: l.apg, spg: l.spg, bpg: l.bpg, fg: l.fg, tp: l.tp, hi: hi, rec: rec, result: result };
@@ -251,9 +264,9 @@ TL.hoops = (function () {
     // Awards
     var allStar = false;
     if (proLeague) {
-      if (rookie && x.ovr >= 74 && l.ppg >= 14 * sc && U.chance(0.55)) { x.roy = true; award(x, 'Rookie of the Year', line); E.log('🌱 I won Rookie of the Year!', 'good'); E.fame(8); }
+      if (sim ? sim.roy : rookie && x.ovr >= 74 && l.ppg >= 14 * sc && U.chance(0.55)) { x.roy = true; award(x, 'Rookie of the Year', line); E.log('🌱 I won Rookie of the Year!', 'good'); E.fame(8); }
       if ((l.ppg >= 22 * sc || x.ovr >= 86) && played >= gp * 0.6 && U.chance(0.75)) { allStar = true; x.allstar++; award(x, 'All-Star', line); E.log('⭐ I was named an All-Star' + (x.allstar > 1 ? ' for the ' + U.ordinal(x.allstar) + ' time' : '') + '!', 'good'); E.fame(5); }
-      if (x.ovr >= 91 && pct >= 0.6 && played >= gp * 0.8 && U.chance(0.15 + (x.ovr - 91) * 0.05)) { x.mvp++; award(x, 'MVP', line); E.log('🏆 I won league MVP!', 'good'); E.fame(15); E.achieve('hoops_mvp'); }
+      if (sim ? sim.mvp && played >= gp * 0.65 : x.ovr >= 91 && pct >= 0.6 && played >= gp * 0.8 && U.chance(0.15 + (x.ovr - 91) * 0.05)) { x.mvp++; award(x, 'MVP', line); E.log('🏆 I won league MVP!', 'good'); E.fame(15); E.achieve('hoops_mvp'); }
       if (played >= gp * 0.65) {
         var score = x.ovr + (l.ppg - 22 * sc) * 0.25 + U.randf(-1.5, 1.5), tm = score >= 91 ? 0 : score >= 88 ? 1 : score >= 85.5 ? 2 : -1;
         if (tm >= 0) { var nm = (lg === 'EuroLeague' ? 'All-EuroLeague' : 'All-' + lg) + ' ' + ['First', 'Second', 'Third'][tm] + ' Team'; award(x, nm, line); E.log('🏅 I made the ' + nm + '.', 'good'); E.fame(3 - tm); }
@@ -267,15 +280,27 @@ TL.hoops = (function () {
       if (lg !== 'EuroLeague' && (c3 || dunk) && played >= gp * 0.5 && U.chance(0.3)) s.pending.push({ id: 'hoops_contest', data: { year: s.year, kind: c3 && (!dunk || U.chance(0.5)) ? '3pt' : 'dunk' } });
     }
     // Playoffs: sometimes it comes down to one possession.
-    if (round < 0) E.stat('happy', -3);
-    else if (round === 4) champion(x, lg);
+    if (sim && sim.wait) {
+      E.log('Playoffs: it all came down to ' + (lg === 'NBA' ? 'Game 7' : 'the deciding game') + ' of the ' + ROUNDS[sim.wait.round] + ' against ' + withStar(sim.wait.opp) + '.');
+      s.pending.push({ id: 'hoops_clutch', data: { year: s.year, round: sim.wait.round, opp: sim.wait.opp, lg: me().gender } });
+    }
+    else if (round < 0) E.stat('happy', -3);
+    else if (round === 4) champion(x, lg, null, sim ? !!sim.fmvp : null);
+    else if (sim) E.log('Playoffs: we ' + result.charAt(0).toLowerCase() + result.slice(1) + '.');
     else if (proLeague && mins >= 22 && U.chance(0.4)) {
       var opp = U.pick(opponents(x));
       E.log('Playoffs: it all came down to ' + (lg === 'NBA' ? 'Game 7' : 'the deciding game') + ' of the ' + ROUNDS[round] + ' against ' + (home ? withStar(opp) : 'the ' + opp) + '.');
       s.pending.push({ id: 'hoops_clutch', data: { year: s.year, round: round, odds: odds, opp: opp } });
     } else E.log('Playoffs: we ' + result.charAt(0).toLowerCase() + result.slice(1) + '.');
     // The rest of the league: the real champion and MVP (or invented ones in the future).
-    if (home && TL.nba) {
+    if (sim) {
+      var H = sim.H || {}, nw = [];
+      if (sim.champ && round !== 4) nw.push('the ' + sim.champ + ' won the ' + lg + ' title' + (round === 3 ? ', beating us in the Finals' : ''));
+      if (H.mvp && !sim.mvp) nw.push(H.mvp + ' (' + H.mvpT + ') won MVP');
+      if (H.top) nw.push('the ' + H.topTeam + ' took ' + H.top + ' first overall');
+      if (nw.length) E.log('📰 Around the league: ' + nw.join(', ') + '.');
+      if (H.moves && H.moves.length) E.log('📰 ' + H.moves.slice(0, 2).join(' '));
+    } else if (home && TL.nba) {
       var realChamp = round === 4 ? null : TL.nba.champOf(me().gender, s.year), realMvp = TL.nba.mvpOf(me().gender, s.year), wonMvp = (line.honors || []).indexOf('MVP') >= 0;
       var news = [];
       if (realChamp && realChamp !== x.team) news.push('the ' + realChamp + ' won the ' + lg + ' title' + (round === 3 ? ', beating us in the Finals' : ''));
@@ -306,6 +331,7 @@ TL.hoops = (function () {
   }
   function yearly() {
     var s = S(), x = h(), m = me();
+    if (x && TL.league && (TL.league.st(m.gender) || s.year > TL.nba._raw.LAST_REAL)) TL.league.ensure(m.gender, s.year);
     if (!x) {
       // Making the high school basketball team starts the journey.
       if (s.edu && s.edu.stage === 'high' && s.edu.team === 'Basketball Team') { start('hs'); E.log('🏀 I\'m on the varsity basketball team. I wear #' + h().num + '.'); }
@@ -425,7 +451,9 @@ TL.hoops = (function () {
     if (!q || q.clutch) return 'The moment had passed.';
     q.clutch = 1;
     var a = attr(x, how), p = how === 'sho' ? 0.18 + (a - 75) / 70 : how === 'ath' ? (0.45 + (a - 75) / 60) * 0.6 : 0.3 + (a - 75) / 90;
-    if (!U.chance(U.clamp(p, 0.08, 0.65))) {
+    var made = U.chance(U.clamp(p, 0.08, 0.65));
+    if (d.lg && TL.league) return clutchSim(x, q, d, how, made);
+    if (!made) {
       E.stat('happy', -6);
       return bad({ sho: 'My three rimmed out at the buzzer. Our season is over.', ath: 'I drove, but they blocked my layup at the rim. Our season is over.', pla: 'I found the open man, but his shot was off. Our season is over.' }[how]);
     }
@@ -437,6 +465,25 @@ TL.hoops = (function () {
     q.result = RESULTS[round];
     if (round === 4) { out.push('We rode that shot all the way.'); champion(x, q.league, out); }
     else out.push('We won the series, then lost in the ' + ROUNDS[round] + '.');
+    return good(out.join(' '));
+  }
+  // The simulated league's bracket waits on my shot.
+  function clutchSim(x, q, d, how, made) {
+    var r = TL.league.resume(d.lg, made), out = [];
+    if (!made) {
+      E.stat('happy', -6);
+      out.push({ sho: 'My three rimmed out at the buzzer. Our season is over.', ath: 'I drove, but they blocked my layup at the rim. Our season is over.', pla: 'I found the open man, but the shot was off. Our season is over.' }[how]);
+      q.result = RESULTS[d.round];
+      if (r && r.champ) out.push('The ' + r.champ + ' went on to win the title.');
+      return bad(out.join(' '));
+    }
+    x.clutch = (x.clutch || 0) + 1; E.fame(how === 'pla' ? 2 : 5); E.stat('happy', 10);
+    if (how !== 'pla') E.achieve('hoops_clutch');
+    out.push({ sho: '🎯 I buried a step-back three at the buzzer to win it!', ath: '💥 I tied it at the rim and we won in overtime!', pla: '🧠 I drew two defenders and found the open man for the game-winner!' }[how]);
+    var round = r && r.round != null ? r.round : d.round + 1;
+    q.result = RESULTS[round];
+    if (round === 4) { out.push('We rode that shot all the way.'); champion(x, q.league, out, !!(r && r.fmvp)); }
+    else { out.push('We won the series, then lost in the ' + ROUNDS[round] + '.'); if (r && r.champ) out.push('The ' + r.champ + ' won the title.'); }
     return good(out.join(' '));
   }
   def('hoops_contest', { cond: pro, build: function (d) {
@@ -581,6 +628,7 @@ TL.hoops = (function () {
         items.push({ icon: '🧓', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Hang up my sneakers for good?', function () { done(retire()); }); } });
       }
       if (x && TL.hsocial) TL.hsocial.items().forEach(function (it) { items.push(it); });
+      if (TL.league && homeLeague()) items.push({ icon: '🏟️', label: 'The ' + league(), sub: TL.league.st(me().gender) ? 'Standings, champions, top players, news' : 'Real history until my rookie season', onClick: TL.league.menu });
       if (x && (x.aw || x.honors || x.rings || x.high)) items.push({ icon: '🏆', label: 'Trophy case', sub: accolades(x).length ? U.plural(accolades(x).length, 'kind') + ' of hardware' : 'Records and honors', onClick: trophyCase });
       if (x && x.seasons.length) {
         items.push({ section: 'Season by season' });

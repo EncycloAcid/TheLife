@@ -57,13 +57,14 @@ TL.nba = (function () {
   function teams(g, y) {
     var t = table(g), out = [];
     var yy = g === 'F' ? y : Math.max(y, 1950);
+    if (lg(g, y)) return TL.league.teamNames(g); // the simulated league (js/league.js)
     Object.keys(t).forEach(function (id) { var n = nameIn(t[id], yy); if (n && out.indexOf(n) < 0) out.push(n); });
     return out;
   }
   function exists(g, y) { return g === 'F' ? y >= 1997 : true; }
   // The franchise id behind a team name (any era).
   function fid(g, name) { var t = table(g), hit = null; Object.keys(t).forEach(function (id) { if (t[id].some(function (r) { return r[0] === name; })) hit = id; }); return hit; }
-  function current(g, name, y) { var id = fid(g, name); return id ? nameIn(table(g)[id], y) || name : name; }
+  function current(g, name, y) { if (lg(g, y)) return name; var id = fid(g, name); return id ? nameIn(table(g)[id], y) || name : name; }
   // The minor league's name by era.
   function minors(y) { return y < 2002 ? 'CBA' : y < 2006 ? 'NBDL' : y < 2018 ? 'D-League' : 'G League'; }
 
@@ -141,18 +142,26 @@ TL.nba = (function () {
     }
     return L;
   }
+  // Is the simulated league running this season? Past our real data it
+  // starts on its own (only seasons already played are simulated here).
+  function lg(g, y) { if (!TL.league || !TL.S) return false; if (TL.league.active(g, y)) return true; if (y > LAST_REAL) { TL.league.ensure(g, y - 1); return TL.league.active(g, y); } return false; }
+  function sim(g, y) { return TL.league && (TL.league.active(g, y) || y > LAST_REAL); }
   function starsOn(g, team, y) {
+    if (lg(g, y)) return TL.league.starsOn(g, team);
     if (y <= LAST_ROSTER) return onTeam(g, team, y);
     return fake(g).filter(function (p) { return p.team === team; }).map(function (p) { return p.name; });
   }
   function anyStar(g, y, not) {
+    if (lg(g, y)) return TL.league.anyStar(g, not);
     var list = y <= LAST_ROSTER ? active(g, y) : fake(g).map(function (p) { return p.name; });
     list = list.filter(function (n) { return (not || []).indexOf(n) < 0; });
     return list.length ? U.pick(list) : null;
   }
   // The season's real (or invented) MVP and champion.
-  function mvpOf(g, y) { if (y <= LAST_REAL) return mvp(g, y); var L = fake(g).slice().sort(function (a, b) { return b.ovr - a.ovr; }); return L.length ? L[0].name : null; }
-  function champOf(g, y) { if (y <= LAST_REAL) return champion(g, y); var L = fake(g).slice().sort(function (a, b) { return b.ovr - a.ovr; }); return L.length && U.chance(0.5) ? L[0].team : U.pick(teams(g, y)); }
+  function mvpOf(g, y) { if (sim(g, y)) { var h = TL.league.hist(g, y); return h ? h.mvp : null; } if (y <= LAST_REAL) return mvp(g, y); var L = fake(g).slice().sort(function (a, b) { return b.ovr - a.ovr; }); return L.length ? L[0].name : null; }
+  function champOf(g, y) { if (sim(g, y)) { var h = TL.league.hist(g, y); return h ? h.ch : null; } if (y <= LAST_REAL) return champion(g, y); var L = fake(g).slice().sort(function (a, b) { return b.ovr - a.ovr; }); return L.length && U.chance(0.5) ? L[0].team : U.pick(teams(g, y)); }
 
-  return { teams: teams, exists: exists, current: current, minors: minors, starsOn: starsOn, anyStar: anyStar, mvpOf: mvpOf, champOf: champOf, LAST_REAL: LAST_REAL };
+  // The raw real data, for seeding the simulated league.
+  var _raw = { table: table, nameIn: nameIn, stars: stars, mvps: function (g) { return g === 'F' ? WMVPS : MVPS; }, LAST_REAL: LAST_REAL, LAST_ROSTER: LAST_ROSTER };
+  return { _raw: _raw, teams: teams, exists: exists, current: current, minors: minors, starsOn: starsOn, anyStar: anyStar, mvpOf: mvpOf, champOf: champOf, LAST_REAL: LAST_REAL };
 })();
