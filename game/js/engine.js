@@ -583,6 +583,7 @@ TL.engine = (function () {
     j.workHard = 0;
     j.term--;
     fame(j.level + U.rand(0, 2));
+    if (TL.politics) { TL.politics.yearly(j); TL.politics.lastApproval(j.perf); }
     if (j.perf < 12 && U.chance(0.35)) {
       log('🗳️ Voters recalled me from office. My approval rating was ' + j.perf + '%.', 'bad');
       quitJob(true); stat('happy', -20);
@@ -596,10 +597,13 @@ TL.engine = (function () {
   function campaignCost(tier, level) { return $(CAMPAIGNS[tier][1] * (level + 1)); }
   function electionChance(level, tier, incumbent) {
     var s = S(), m = me();
-    var p = 0.24 + (m.looks - 50) / 220 + (m.smarts - 50) / 260 + (s.karma - 50) / 220 + s.fame / 350 + CAMPAIGNS[tier][2];
+    var p = 0.24 + (m.looks - 50) / 220 + (m.smarts - 50) / 260 + Math.min(0.08, (s.karma - 50) / 220) + s.fame / 350 + CAMPAIGNS[tier][2];
     p -= level * 0.14 + (s.record.length ? 0.3 : 0);
-    if (level >= 3) p += s.fame / 300 - 0.18; // national office needs name recognition
-    if (incumbent) p = 0.15 + incumbent.perf / 110 + CAMPAIGNS[tier][2] / 2;
+    if (level >= 3) p += s.fame / 600 - 0.18; // national office needs name recognition
+    if (level === 3) p -= 0.04;
+    if (level === 4) p -= 0.24 + Math.min(0.2, (s.flags.presRuns || 0) * 0.1); // a primary, then the general; parties tire of repeat losers // a primary, then the general; parties tire of repeat losers
+    if (incumbent) p = 0.1 + incumbent.perf / 120 + CAMPAIGNS[tier][2] / 2 - (incumbent.terms >= 3 ? 0.08 : 0);
+    if (TL.politics) p += TL.politics.bonus(level, !!incumbent);
     return U.clamp(p, 0.03, 0.93);
   }
   function runForOffice(level, tier) {
@@ -610,12 +614,15 @@ TL.engine = (function () {
     if (s.royal) return { ok: false, msg: 'Members of the royal family must stay out of politics.' };
     if (s.flags.nextRun && s.year < s.flags.nextRun) return { ok: false, msg: 'I just lost an election. My party wants me to wait until ' + s.flags.nextRun + ' before running again.' };
     var cost = campaignCost(tier, level);
-    if (s.money < cost) return { ok: false, msg: 'I can\'t afford that campaign (' + fmt(cost) + ').' };
-    addMoney(-cost);
+    var chest = TL.politics ? TL.politics.chest() : 0;
+    if (s.money + chest < cost) return { ok: false, msg: 'I can\'t afford that campaign (' + fmt(cost) + ').' };
+    var fromChest = Math.min(chest, cost); if (fromChest) TL.politics.spend(fromChest);
+    addMoney(-(cost - fromChest));
     var opp = makePerson({ age: m.age + U.rand(-10, 15) });
     if (!U.chance(electionChance(level, tier))) {
       fame(2);
       s.flags.nextRun = s.year + (level >= 3 ? 4 : 2);
+      if (level === 4) s.flags.presRuns = (s.flags.presRuns || 0) + 1;
       if (j && j.politics) j.perf = Math.max(0, j.perf - 8);
       return { ok: false, msg: '🗳️ I lost the election for ' + office + ' to ' + fullName(opp) + '.' };
     }
@@ -631,8 +638,10 @@ TL.engine = (function () {
   function reelect(tier) {
     var s = S(), j = s.job;
     var cost = campaignCost(tier, j.level);
-    if (s.money < cost) tier = 0, cost = 0;
-    addMoney(-cost);
+    var chest = TL.politics ? TL.politics.chest() : 0;
+    if (s.money + chest < cost) tier = 0, cost = 0;
+    var fromChest = Math.min(chest, cost); if (fromChest) TL.politics.spend(fromChest);
+    addMoney(-(cost - fromChest));
     if (U.chance(electionChance(j.level, tier, j))) {
       j.term = 4; j.terms++;
       j.perf = U.clamp(j.perf + 8, 0, 100);

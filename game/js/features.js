@@ -650,6 +650,7 @@ TL.features = (function () {
     if (TL.extras) TL.extras.yearly();
     if (TL.sports) TL.sports.yearly();
     if (TL.hoops) TL.hoops.yearly();
+    if (TL.politics) TL.politics.check();
     if (TL.military) TL.military.yearly();
     if (TL.creator) TL.creator.yearly();
     if (TL.acting) TL.acting.yearly();
