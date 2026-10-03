@@ -13,12 +13,13 @@ TL.actions = (function () {
   // Log + show an action result, then save and refresh.
   // Self-care shows what it did: "(+4 smarts, +2 health)".
   var gainFrom = null, STATN = { happy: 'happiness', health: 'health', smarts: 'smarts', looks: 'looks', athl: 'athleticism' };
-  function snap() { var m = me(); return { happy: m.happy, health: m.health, smarts: m.smarts, looks: m.looks, athl: m.athl }; }
+  function snap() { var m = me(); return { happy: m.happy, health: m.health, smarts: m.smarts, looks: m.looks, athl: m.athl, at: Date.now() }; }
   function gains(b) { var m = me(), out = []; Object.keys(STATN).forEach(function (k) { var d = Math.round(m[k] - b[k]); if (d) out.push((d > 0 ? '+' : '') + d + ' ' + STATN[k]); }); return out.length ? ' (' + out.join(', ') + ')' : ''; }
   function done(res, title) {
     if (res == null) { ui().refresh(); return; }
     if (typeof res === 'string') res = { text: res, cls: '' };
-    if (gainFrom) { res = { text: res.text + gains(gainFrom), cls: res.cls, quiet: res.quiet }; gainFrom = null; }
+    if (gainFrom && Date.now() - gainFrom.at < 30000) res = { text: res.text + gains(gainFrom), cls: res.cls, quiet: res.quiet };
+    gainFrom = null;
     if (!res.quiet) E.log(res.text, res.cls);
     E.checkAchievements();
     E.save();
@@ -1162,7 +1163,6 @@ TL.actions = (function () {
       if (a >= 5) items.push({ icon: '🎨', label: 'Acting lessons', right: E.fmt(E.$(100)), onClick: function () { if (!afford(E.$(100))) return done(noMoney(E.$(100))); E.addMoney(-E.$(100)); var f = diminish('actl'); S().flags.acting = (S().flags.acting || 0) + f; if (S().acting) S().acting.skill = Math.min(100, S().acting.skill + 1.5 * f); E.stat('looks', f); done('I took an acting class. 🎭'); } });
 
       // Mind & Body results say how much each stat moved.
-      items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); var r = f0.apply(this, arguments); gainFrom = null; return r; }; } });
       if (a >= 5) items.push({ icon: '🎯', label: 'Hobbies & skills', sub: 'Coding, writing, singing, painting…', onClick: TL.features.skillsMenu });
       if (S().royal && a >= 6) items.push({ icon: '👑', label: 'Royal duties', sub: TL.features.royalTitle() + ' · popularity ' + S().royal.popularity + '%', onClick: TL.features.royalMenu });
 
@@ -1190,6 +1190,8 @@ TL.actions = (function () {
       if (a >= 16 && !S().flags.license) items.push({ icon: '🪪', label: 'Driving test', onClick: drivingTest });
       if (a >= 21) items.push({ icon: '👶', label: 'Adoption', onClick: adopt });
 
+      // Results say how much each stat moved (choices that open a dialog report when they finish).
+      items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons|Therapist|Nightclub|Spa day|Go fishing|Gardening|Go skydiving|Run a marathon)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); return f0.apply(this, arguments); }; } });
       items.push({ section: 'Life' });
       if (TL.maps) items.push({ icon: '🗺️', label: 'World map', sub: 'Home, places I\'ve lived, wars of the day', onClick: TL.maps.menu });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });

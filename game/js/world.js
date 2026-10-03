@@ -100,7 +100,7 @@ TL.world = (function () {
   var FISH = [['🐟', 'a bluegill', 0], ['🐠', 'a rainbow trout', 0], ['🐡', 'a pufferfish', 0], ['🦈', 'a small shark', 400], ['🐟', 'a huge bass', 150], ['👢', 'an old boot', 0], ['🦞', 'a lobster', 60]];
   function fishing() {
     if (usedThisYear('fish') >= 3) return done(nope('The fish are avoiding me. Maybe next year.'));
-    E.stat('happy', U.rand(2, 5)); E.stat('health', 1);
+    E.stat('happy', U.rand(4, 8)); E.stat('health', 1);
     if (U.chance(0.3)) return done('I went fishing and caught nothing but a sunburn. 🎣');
     var f = U.pick(FISH);
     if (f[2]) { var v = E.$(f[2]); E.addMoney(v); return done(good('I went fishing and caught ' + f[1] + '! ' + f[0] + ' I sold it for ' + E.fmt(v) + '.')); }

@@ -309,7 +309,7 @@ TL.social = (function () {
   }
   function join(id) {
     var s = S(), c = st();
-    if (c.acc[id]) return done(nope('I already have a ' + pname(id) + ' account.'));
+    if (c.acc[id]) return done(nope('I already have ' + E.an(pname(id)) + ' account.'));
     var start = U.rand(5, 60) + (s.fame || 0) * U.rand(50, 300) + Math.round(total() * U.randf(0.05, 0.2));
     c.acc[id] = { f: start, yr: 0, posts: 0, joined: s.year };
     s.followers = (s.followers || 0) + start; sync();
@@ -425,7 +425,7 @@ TL.social = (function () {
     var s = S(); if (!d || d.year !== s.year || accounts().length) return null;
     var b = best(); if (!b) return null;
     var start = Math.round(d.n * U.randf(0.3, 0.5));
-    return { icon: '📱', title: 'Where can we follow you?', text: (d.why === 'fame' ? 'People' : 'Fans of ' + WHY[d.why]) + ' keep asking where to find me online. I don\'t even have a ' + pname(b) + ' account.', choices: [
+    return { icon: '📱', title: 'Where can we follow you?', text: (d.why === 'fame' ? 'People' : 'Fans of ' + WHY[d.why]) + ' keep asking where to find me online. I don\'t even have ' + E.an(pname(b)) + ' account.', choices: [
       { label: 'Join ' + pname(b), run: function () { var c = st(); c.acc[b] = { f: start, yr: 1, posts: 1, joined: s.year }; c.platform = true; s.social.platform = true; s.followers = total(); E.fame(1); return good('I posted for the first time on ' + pname(b) + '. ' + big(start) + ' people followed me within a week. 📱'); } },
       { label: 'Stay offline', run: function () { E.stat('happy', 3); return 'I like my privacy. Fans can watch my work instead.'; } }
     ] };
