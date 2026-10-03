@@ -81,6 +81,42 @@ TL.military = (function () {
   function jobName(x) { x = x || m(); if (x.sf) return x.sf; var j = job(x.mos, x.track === 'officer'); return j[1]; }
   function risk(x) { x = x || m(); return x.sf ? 3 : job(x.mos, x.track === 'officer')[3]; }
 
+  // ------------------------------------------------------------- soldiering
+  // Four skills that grow with training, schools and experience, and decide
+  // how missions go, how evaluations read and who gets promoted.
+  var SK = [['fit', 'Fitness'], ['mrk', 'Marksmanship'], ['lead', 'Leadership'], ['tac', 'Tactics']];
+  function sk(x) {
+    x = x || m();
+    if (!x.sk) x.sk = { fit: U.clamp(Math.round(me().athl * 0.6 + U.rand(0, 15)), 10, 80), mrk: U.rand(20, 45), lead: U.clamp(Math.round(15 + me().smarts / 6 + (x.track === 'officer' ? 12 : 0)), 10, 70), tac: U.clamp(Math.round(15 + me().smarts / 5 + U.rand(0, 8)), 10, 70) };
+    return x.sk;
+  }
+  function train(k, n) { var o = sk(); o[k] = U.clamp(Math.round((o[k] + n * Math.max(0.25, (100 - o[k]) / 60)) * 10) / 10, 0, 100); }
+  function sv(k) { return Math.round(sk()[k]); }
+  // My billet: what I actually do at my rank.
+  function billet(x) {
+    x = x || m();
+    if (x.track === 'officer') return ['Platoon Leader', 'Platoon Leader', 'Company Commander', 'Battalion Executive Officer', 'Battalion Commander', 'Brigade Commander', 'Deputy Division Commander', 'Division Commander', 'Corps Commander', 'Combatant Commander'][x.grade];
+    return x.grade < 4 ? null : ['Team Leader', 'Squad Leader', 'Platoon Sergeant', 'First Sergeant', 'Command Sergeant Major'][x.grade - 4];
+  }
+  function leads(x) { x = x || m(); return x.track === 'officer' || x.grade >= 4; }
+  var STATIONS = {
+    army: ['Fort Bragg, North Carolina', 'Fort Hood, Texas', 'Fort Campbell, Kentucky', 'Joint Base Lewis-McChord, Washington', 'Fort Carson, Colorado', 'Schofield Barracks, Hawaii'],
+    marines: ['Camp Lejeune, North Carolina', 'Camp Pendleton, California', 'Twentynine Palms, California', 'Marine Corps Base Hawaii'],
+    navy: ['Naval Station Norfolk, Virginia', 'Naval Base San Diego, California', 'Pearl Harbor, Hawaii', 'Naval Station Mayport, Florida'],
+    airforce: ['Nellis Air Force Base, Nevada', 'Langley Air Force Base, Virginia', 'Eglin Air Force Base, Florida', 'Travis Air Force Base, California'],
+    coastguard: ['Coast Guard Base Alameda, California', 'Coast Guard Base Kodiak, Alaska', 'Coast Guard Sector Miami, Florida'],
+    spaceforce: ['Vandenberg Space Force Base, California', 'Schriever Space Force Base, Colorado', 'Patrick Space Force Base, Florida']
+  };
+  var ABROAD = { army: ['Germany', 'South Korea', 'Italy', 'Japan'], marines: ['Okinawa, Japan', 'Spain'], navy: ['Yokosuka, Japan', 'Rota, Spain', 'Naples, Italy', 'Bahrain'], airforce: ['Ramstein Air Base, Germany', 'Kadena Air Base, Japan', 'Aviano Air Base, Italy'], coastguard: ['Puerto Rico'], spaceforce: ['Thule, Greenland'] };
+  function stationsFor(x) { return us() ? STATIONS[x.branch] || STATIONS.army : ['a base near the capital', 'a coastal base', 'a training command']; }
+  function abroadFor(x) { return us() ? ABROAD[x.branch] || ABROAD.army : ['a posting abroad with allied forces', 'a peacekeeping base overseas']; }
+  var SCHOOLS = [
+    ['airborne', '🪂', 'Airborne School', 'Jump wings', function (x) { return sv('fit') >= 45 ? 0.85 : 0.4; }, 'fit'],
+    ['ranger', '🗡️', 'Ranger School', 'Ranger tab', function (x) { return U.clamp(0.25 + (sv('fit') + sv('lead') - 120) / 200, 0.08, 0.7); }, 'lead'],
+    ['sniper', '🎯', 'Sniper School', 'Sniper qualification', function (x) { return U.clamp(0.3 + (sv('mrk') - 60) / 60, 0.05, 0.8); }, 'mrk'],
+    ['instructor', '📣', 'Drill Instructor duty', 'Drill instructor badge', function (x) { return x.grade >= 4 || x.track === 'officer' ? 0.75 : 0; }, 'lead']
+  ];
+
   // ------------------------------------------------------------- joining
   function startService(o) {
     var s = S();
@@ -218,7 +254,10 @@ TL.military = (function () {
     if (!(s.job && s.job.mil)) { x.active = false; x.discharge = 'General'; return 0; }
     x.yos++; x.tig++;
     if (s.record.length > (x.records || 0)) return courtMartial();
-    x.perf = U.clamp(Math.round(x.perf + U.rand(-6, 6) + (me().athl - 60) / 20 + (s.flags.milEffort || 0) * 4), 0, 100);
+    x.perf = U.clamp(Math.round(x.perf + U.rand(-6, 6) + (me().athl - 60) / 20 + (s.flags.milEffort || 0) * 4 + (sv('lead') - 50) / 40 + (sv('tac') - 50) / 60), 0, 100);
+    train('tac', 0.6); if (leads(x)) { train('lead', 0.8); x.unit = U.clamp(Math.round((x.unit == null ? 55 : x.unit) + U.rand(-5, 3) + (sv('lead') - 50) / 20), 0, 100); }
+    if (!x.station) x.station = { name: U.pick(stationsFor(x)), year: s.year };
+    else if (x.yos % 3 === 0 && !x.conscript) s.pending.push({ id: 'mil_orders', data: {} });
     s.flags.milEffort = 0;
     promote();
     // Deployment: high-risk jobs and special forces go most often.
@@ -239,7 +278,8 @@ TL.military = (function () {
     if (x.grade >= max || x.conscript && x.grade >= 4) return;
     var need = table[x.grade];
     if (x.yos < need[0] || x.tig < 1) return;
-    var p = need[1] * (0.6 + x.perf / 125) + Math.min(0.15, x.medals.length * 0.03);
+    // Schools and a tight unit strengthen my record; medals still count on their own.
+    var p = need[1] * (0.6 + x.perf / 125) * (1 + Math.min(0.15, (x.badges || []).length * 0.05)) * (leads(x) ? 1 + ((x.unit == null ? 55 : x.unit) - 55) / 300 : 1) + Math.min(0.15, x.medals.length * 0.03);
     if (U.chance(U.clamp(p, 0.02, 0.98))) {
       x.grade++; x.tig = 0; x.passed = 0;
       E.log('🎖️ I was promoted to ' + rankTitle() + ' (' + payGrade() + ')!', 'good');
@@ -287,7 +327,8 @@ TL.military = (function () {
     E.stat('happy', -4);
     var partner = E.partner(); if (partner) E.rel(partner, -4);
     // Most deployments are long, hard and uneventful.
-    var kia = [0.001, 0.003, 0.008, 0.016, 0.025][Math.min(4, danger)], wia = [0.01, 0.03, 0.07, 0.12, 0.16][Math.min(4, danger)];
+    var care = U.clamp(1.2 - sv('tac') / 200, 0.7, 1.15);
+    var kia = [0.001, 0.003, 0.008, 0.016, 0.025][Math.min(4, danger)] * care, wia = [0.01, 0.03, 0.07, 0.12, 0.16][Math.min(4, danger)] * care;
     if (danger >= 2) x.combat++;
     if (U.chance(kia)) {
       if (danger >= 3 && U.chance(0.03)) { x.medals.push({ name: medalName('moh'), year: s.year }); E.achieve('medal_of_honor'); }
@@ -300,16 +341,58 @@ TL.military = (function () {
       medal(medalName('purple')); E.achieve('purple_heart'); x.wounded = (x.wounded || 0) + 1;
       out.push('I was wounded in action');
     }
-    var valor = danger >= 3 ? 0.06 : danger >= 2 ? 0.025 : 0;
+    var valor = (danger >= 3 ? 0.06 : danger >= 2 ? 0.025 : 0) * (0.75 + (sv('mrk') + sv('tac')) / 400);
     if (U.chance(valor * 0.02)) { medal(medalName('moh')); E.achieve('medal_of_honor'); E.fame(25); out.push('my actions under fire earned the ' + medalName('moh')); }
     else if (U.chance(valor * 0.3)) { medal(medalName('silver')); E.fame(6); out.push('I earned the ' + medalName('silver') + ' for gallantry'); }
     else if (U.chance(valor + (danger >= 2 ? 0.04 : 0.005))) { medal(medalName('bronze')); E.fame(2); out.push('I earned the ' + medalName('bronze')); }
     else if (U.chance(0.35)) { medal(medalName(U.chance(0.6) ? 'ach' : 'com')); }
     if (danger >= 2 && U.chance(0.12 + (x.combat >= 3 ? 0.1 : 0)) && !E.hasCondition('PTSD')) { E.addCondition('PTSD'); out.push('the things I saw stayed with me'); }
     x.perf = U.clamp(x.perf + 6, 0, 100);
+    train('mrk', 1.5); train('tac', 1.5);
+    (x.tours = x.tours || []).push({ year: s.year, where: where, note: out.join('; ') });
+    if (danger >= 1 && U.chance(0.6)) s.pending.push({ id: 'mil_mission', data: { where: where, danger: danger, year: s.year } });
     var msg = 'I came home from ' + where + (out.length ? '. ' + U.cap(out.join('; ')) + '.' : ' safe.');
     return out.length && /wounded|stayed/.test(out.join()) ? bad(msg) : out.length ? good(msg) : msg;
   }
+  // A defining moment downrange.
+  var MISSIONS = [
+    ['Our convoy is ambushed on a mountain road.', [['mrk', 'Return fire and suppress them'], ['tac', 'Push the trucks through the kill zone'], ['lead', 'Rally the squad and call in air support']]],
+    ['A patrol finds an insurgent weapons cache rigged with explosives.', [['tac', 'Clear it methodically'], ['lead', 'Pull everyone back and call in engineers'], ['mrk', 'Hold overwatch from the ridge']]],
+    ['A sniper has the outpost pinned down.', [['mrk', 'Counter-snipe'], ['tac', 'Flank the position'], ['lead', 'Keep everyone calm and in cover']]],
+    ['A villager warns us about an attack planned for tonight.', [['lead', 'Win the village elders over'], ['tac', 'Set an ambush of our own'], ['mrk', 'Double the guard on the walls']]]
+  ];
+  def('mil_mission', { cond: function () { var x = m(); return !!(x && x.active); }, build: function (d) {
+    var x = m(), sc = d && d.where ? MISSIONS[(d.year || 0) % MISSIONS.length] : null;
+    if (!sc || x.lastMission === d.year) return null;
+    return { icon: '⚔️', title: 'Downrange', text: 'In ' + d.where + ': ' + sc[0], choices: sc[1].map(function (o) { return { label: o[1] + ' (' + SK.filter(function (k) { return k[0] === o[0]; })[0][1].toLowerCase() + ' ' + sv(o[0]) + ')', run: function () { return mission(d, o[0]); } }; }) };
+  } });
+  function mission(d, k) {
+    var x = m(), s = S();
+    if (!x || x.lastMission === d.year) return 'The moment passed.';
+    x.lastMission = d.year;
+    train(k, 2);
+    var p = U.clamp(0.35 + (sv(k) - 50) / 80 + (leads(x) ? ((x.unit || 55) - 55) / 200 : 0), 0.12, 0.85);
+    var t = x.tours && x.tours[x.tours.length - 1];
+    if (U.chance(p)) {
+      x.perf = U.clamp(x.perf + 4, 0, 100); if (leads(x)) x.unit = Math.min(100, (x.unit || 55) + 6);
+      if (d.danger >= 2 && U.chance(0.12)) { medal(medalName('bronze')); if (t) t.note = (t.note ? t.note + '; ' : '') + 'Bronze Star'; return good('We pulled it off and everyone came home. My command put me in for the ' + medalName('bronze') + '.'); }
+      if (t) t.note = (t.note ? t.note + '; ' : '') + 'mission success';
+      return good('We pulled it off and everyone came home. My evaluations will say so.');
+    }
+    x.perf = U.clamp(x.perf - 4, 0, 100); if (leads(x)) x.unit = Math.max(0, (x.unit || 55) - 6);
+    if (U.chance(0.2)) { E.stat('health', -U.rand(8, 20)); medal(medalName('purple')); E.achieve('purple_heart'); x.wounded = (x.wounded || 0) + 1; return bad('It went wrong. I was wounded getting my people out.'); }
+    if (d.danger >= 2 && U.chance(0.15) && !E.hasCondition('PTSD')) E.addCondition('PTSD');
+    return bad('It went wrong. We lost equipment, and I replay that day in my head.');
+  }
+  def('mil_orders', { cond: function () { var x = m(); return !!(x && x.active && !x.conscript); }, build: function () {
+    var x = m(), home = U.pick(stationsFor(x).filter(function (n) { return !x.station || n !== x.station.name; })), abroad = U.pick(abroadFor(x));
+    var go = function (name, note) { var sx = m(); (sx.stations = sx.stations || []).push(sx.station); sx.station = { name: name, year: S().year }; return note; };
+    return { icon: '📦', title: 'New orders', text: 'My time at ' + (x.station ? x.station.name : 'my base') + ' is up. Where do I want to go next?', choices: [
+      { label: home, run: function () { E.stat('happy', 3); E.people(['spouse', 'child']).forEach(function (p) { E.rel(p, 2); }); return go(home, 'I PCSed to ' + home + '. Good schools for the kids and a short commute.'); } },
+      { label: abroad + ' (overseas)', run: function () { E.stat('happy', 6); return go(abroad, 'I PCSed to ' + abroad + '. A whole new country to explore on weekends.'); } },
+      { label: 'A front-line unit (deploy more, promote faster)', run: function () { S().flags.milVolunteer = 1; var sx = m(); sx.perf = U.clamp(sx.perf + 5, 0, 100); return go(home + ' (a front-line unit)', 'I asked for the toughest unit going. My commander noticed.'); } }
+    ] };
+  } });
   def('mil_contract', { cond: function () { return m() && m().active; }, build: function () {
     var x = m(), bonus = Math.round(totalPay(x) * (x.grade >= 4 ? 0.5 : 0.3)), ch = [];
     ch.push({ label: (officer() ? 'Stay in' : 'Re-enlist') + ' for 4 years (+' + E.fmt(E.$(bonus)) + ')', run: function () { x.contractEnd = S().year + 4; E.addMoney(E.$(bonus)); return good('I ' + (officer() ? 'extended my service' : 're-enlisted') + ' for four more years. 🎖️'); } });
@@ -331,7 +414,7 @@ TL.military = (function () {
   } });
   def('mil_sf', { cond: function () { var x = m(); return !!(x && x.active); }, build: function () {
     var x = m(), names = { army: ['Ranger Assessment and Selection', 'the 75th Ranger Regiment', 'Green Beret (Special Forces)'], marines: ['MARSOC Assessment and Selection', 'Marine Raiders', 'Marine Raider'], navy: ['BUD/S', 'the Navy SEALs', 'Navy SEAL'], airforce: ['Pararescue Indoctrination', 'Pararescue', 'Pararescueman (PJ)'] }[x.branch] || ['special forces selection', 'the special forces', 'Special Forces Operator'];
-    var p = U.clamp(0.08 + (me().athl - 70) / 80 + (me().health - 70) / 200 + (me().happy - 50) / 300, 0.03, 0.55);
+    var p = U.clamp(0.08 + (me().athl - 70) / 80 + (me().health - 70) / 200 + (me().happy - 50) / 300 + (sv('fit') + sv('mrk') - 110) / 300 + ((x.badges || []).indexOf('Ranger tab') >= 0 ? 0.08 : 0), 0.03, 0.6);
     return { icon: '🪖', title: names[0], text: 'Weeks of no sleep, cold water and endless miles. Most candidates quit. My odds: about ' + Math.round(p * 100) + '%.', choices: [
       { label: 'Never quit', run: function () { if (U.chance(p)) { x.sf = names[2]; E.achieve('operator'); E.fame(4); x.perf = U.clamp(x.perf + 15, 0, 100); return good('I made it through ' + names[0] + ' and joined ' + names[1] + '. I\'m a ' + names[2] + ' now. 🪖'); } E.stat('health', -10); return bad('My body gave out. I was dropped from ' + names[0] + '.'); } },
       { label: 'Ring the bell (quit)', run: function () { return 'I rang the bell. No shame — most people do.'; } }
@@ -367,7 +450,11 @@ TL.military = (function () {
     if (x.track === 'rotc' || x.track === 'cadet') return '<div class="kv"><b>' + (x.track === 'rotc' ? 'ROTC cadet' : 'Cadet') + '</b> · ' + U.esc(branchName(x.branch)) + '<br>I\'ll be commissioned as ' + E.an(RANKS[x.branch] ? RANKS[x.branch][1][0] : 'officer') + ' when I graduate, then serve ' + (x.track === 'cadet' ? 5 : 4) + ' years.</div>';
     if (!x.active) return '<div class="kv"><b>Veteran</b> · ' + U.esc(branchName(x.branch)) + '<br>' + U.plural(x.yos, 'year') + ' of service · ' + U.esc(x.discharge || '') + ' discharge' + (ml ? '<br>🎖️ ' + U.esc(ml) : '') + '</div>';
     return '<div class="mil-card"><div class="mc-ins">' + payGrade() + '</div><div class="mc-main"><b>' + U.esc(rankTitle()) + '</b><small>' + U.esc(jobName()) + ' · ' + U.esc(branchName(x.branch)) + '</small><small>' + U.plural(x.yos, 'year') + ' served · ' + (x.conscript ? 'conscript' : 'contract ends ' + x.contractEnd) + '</small></div></div>' +
-      '<div class="minibar"><span>Evaluations</span><span class="track"><span class="fill ' + (x.perf >= 66 ? 'hi' : x.perf >= 33 ? 'mid' : 'lo') + '" style="width:' + x.perf + '%"></span></span></div>' +
+      '<div class="hb-arch">' + (billet(x) ? billet(x) + ' · ' : '') + U.esc(x.station ? x.station.name : branchName(x.branch)) + '</div>' +
+      ((x.badges || []).length ? '<div class="hc-chips">' + x.badges.map(function (b) { return '<span class="hc-chip">' + U.esc(b) + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="minibar wide"><span>Evaluations ' + x.perf + '</span><span class="track"><span class="fill ' + (x.perf >= 66 ? 'hi' : x.perf >= 33 ? 'mid' : 'lo') + '" style="width:' + x.perf + '%"></span></span></div>' +
+      SK.map(function (k) { var v = sv(k[0]); return '<div class="minibar wide"><span>' + k[1] + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('') +
+      (leads(x) ? '<div class="minibar wide"><span>Unit cohesion ' + (x.unit == null ? 55 : x.unit) + '</span><span class="track"><span class="fill ' + ((x.unit || 55) >= 66 ? 'hi' : (x.unit || 55) >= 33 ? 'mid' : 'lo') + '" style="width:' + (x.unit == null ? 55 : x.unit) + '%"></span></span></div>' : '') +
       '<p class="small muted">Pay: ' + E.fmt(s.job.salary) + '/yr incl. housing · ' + U.plural(x.deployments, 'deployment') + '</p>' + (ml ? '<p class="small">🎖️ ' + U.esc(ml) + '</p>' : '');
   }
   function menu() {
@@ -382,19 +469,49 @@ TL.military = (function () {
         return items;
       }
       if (!x.active) {
+        items.push({ icon: '📜', label: 'Service record', onClick: record });
         items.push({ icon: '🏳️', label: 'Veteran benefits', sub: x.discharge === 'Honorable' ? 'GI Bill · VA healthcare · hiring preference' : 'Lost with a ' + String(x.discharge || 'general').toLowerCase() + ' discharge', disabled: x.discharge !== 'Honorable', onClick: function () { done('As a veteran I can use the GI Bill for college, and employers give me preference for police, fire and federal jobs.'); } });
         return items;
       }
       items.push({ section: 'Duty' });
-      items.push({ icon: '🏃', label: 'Physical training', sub: 'Fitness and evaluations', onClick: function () { if (!onceAYear('mil_pt')) return done(nope('I\'m already doing PT every morning.')); me().athl = U.clamp(me().athl + U.rand(2, 4), 0, 100); s.flags.milEffort = 1; E.stat('health', 2); done('I maxed out my fitness test. 💪'); } });
-      items.push({ icon: '📚', label: 'Study for the promotion board', onClick: function () { if (!onceAYear('mil_study')) return done(nope('I already studied this year.')); E.stat('smarts', 2); x.perf = U.clamp(x.perf + 6, 0, 100); done('I studied regulations and military history for the board. 📚'); } });
+      items.push({ icon: '🏃', label: 'Physical training', sub: 'Fitness and evaluations', onClick: function () { if (!onceAYear('mil_pt')) return done(nope('I\'m already doing PT every morning.')); me().athl = U.clamp(me().athl + U.rand(2, 4), 0, 100); s.flags.milEffort = 1; E.stat('health', 2); train('fit', 3); done('I maxed out my fitness test. 💪 (fitness ' + sv('fit') + ')'); } });
+      items.push({ icon: '🎯', label: 'Range qualification', sub: 'Marksmanship ' + sv('mrk'), onClick: function () { if (!onceAYear('mil_range')) return done(nope('I already qualified this year.')); train('mrk', 4); var e = sv('mrk') >= 75; if (e) x.perf = U.clamp(x.perf + 3, 0, 100); done((e ? good : function (t) { return t; })('I spent the week on the range' + (e ? ' and shot Expert.' : '.') + ' 🎯 (marksmanship ' + sv('mrk') + ')')); } });
+      if (leads(x)) items.push({ icon: '🤝', label: 'Mentor my soldiers', sub: 'Leadership ' + sv('lead') + ' · cohesion ' + (x.unit == null ? 55 : x.unit), onClick: function () { if (!onceAYear('mil_mentor')) return done(nope('I already spent extra time with my people this year.')); train('lead', 3); x.unit = Math.min(100, (x.unit == null ? 55 : x.unit) + U.rand(5, 10)); done('I counseled my soldiers one on one and fixed problems up the chain. 🤝'); } });
+      items.push({ icon: '📚', label: 'Study for the promotion board', onClick: function () { if (!onceAYear('mil_study')) return done(nope('I already studied this year.')); E.stat('smarts', 2); x.perf = U.clamp(x.perf + 6, 0, 100); train('tac', 3); done('I studied regulations, tactics and military history for the board. 📚 (tactics ' + sv('tac') + ')'); } });
       items.push({ icon: '🎯', label: 'Volunteer for deployment', sub: 'More likely to deploy next year', onClick: function () { if (!onceAYear('mil_vol')) return done(nope('My name is already on the list.')); s.flags.milVolunteer = 1; done('I volunteered for the next deployment.'); } });
       if (!x.sf && !x.conscript && ['army', 'marines', 'navy', 'airforce'].indexOf(x.branch) >= 0 && (officer() ? x.grade >= 1 : x.grade >= 2)) items.push({ icon: '🪖', label: 'Special forces selection', sub: 'Needs elite fitness', disabled: me().athl < 70, onClick: function () { if (!onceAYear('mil_sf')) return done(nope('Selection only runs once a year.')); s.pending.push({ id: 'mil_sf', data: {} }); ui().closeAll(); ui().runPending(); } });
       if (!officer() && !x.conscript && s.degrees.some(function (d) { return d.type === 'bachelor'; }) && me().age <= 32) items.push({ icon: '⭐', label: 'Apply to OCS', sub: 'Become an officer', onClick: function () { if (!onceAYear('mil_ocs2')) return done(nope('I already applied this year.')); if (U.chance(0.6)) { x.track = 'officer'; x.grade = 0; x.tig = 0; sync(); E.achieve('officer'); return done(good('I was commissioned as ' + E.an(rankTitle()) + '! ⭐')); } done(bad('I wasn\'t selected for OCS this year.')); } });
       items.push({ icon: '🏖️', label: 'Take leave', sub: '30 days a year', onClick: function () { if (!onceAYear('mil_leave')) return done(nope('I\'ve used my leave this year.')); E.stat('happy', 6); E.people(['mother', 'father', 'spouse', 'child']).forEach(function (p) { E.rel(p, 3); }); done('I took leave and spent time with family. 🏡'); } });
+      items.push({ section: 'Schools' });
+      SCHOOLS.forEach(function (sc) {
+        var has = (x.badges || []).indexOf(sc[3]) >= 0, p = sc[4](x);
+        if (has || (sc[0] === 'instructor' && !p)) return;
+        items.push({ icon: sc[1], label: sc[2], sub: 'Earn the ' + sc[3].toLowerCase() + ' · ' + Math.round(p * 100) + '% pass rate for me', disabled: usedYear('mil_school'), onClick: function () {
+          if (!onceAYear('mil_school')) return done(nope('I can only attend one school a year.'));
+          train(sc[5], 2); E.stat('health', -3);
+          if (!U.chance(p)) return done(bad('I washed out of ' + sc[2] + '. I can try again next year.'));
+          (x.badges = x.badges || []).push(sc[3]); x.perf = U.clamp(x.perf + 3, 0, 100);
+          if (sc[0] === 'ranger') E.achieve('ranger');
+          done(good('I graduated from ' + sc[2] + ' and earned my ' + sc[3].toLowerCase() + '! 🎖️'));
+        } });
+      });
       items.push({ section: 'Leaving' });
+      items.push({ icon: '📜', label: 'Service record', sub: 'Medals, schools, deployments and stations', onClick: record });
       items.push({ icon: '🚪', label: 'Go AWOL', sub: 'Leave without permission', danger: true, onClick: function () { ui().confirm('Desert?', 'Walking away from a contract means an other-than-honorable discharge and losing veteran benefits.', function () { discharge('Other Than Honorable'); E.karma(-6); E.stat('happy', -4); done(bad('I deserted. I received an other-than-honorable discharge.')); }); } });
       return items;
+    });
+  }
+  function usedYear(key) { return !!(S().yearActs || {})[key]; }
+  function record() {
+    ui().menu('Service record', function () {
+      var x = m(), rows = [];
+      rows.push({ icon: '🎖️', label: rankTitle(x) + ' (' + payGrade(x) + ')', sub: jobName(x) + ' · ' + branchName(x.branch) + ' · ' + U.plural(x.yos, 'year') + ' of service' });
+      (x.badges || []).forEach(function (b) { rows.push({ icon: '🏅', label: b }); });
+      var md = {}; (x.medals || []).forEach(function (q) { (md[q.name] = md[q.name] || []).push(q.year); });
+      Object.keys(md).forEach(function (k) { rows.push({ icon: /Honor/.test(k) ? '🎖️' : /Purple|Wound/.test(k) ? '💜' : '🏅', label: (md[k].length > 1 ? md[k].length + '× ' : '') + k, sub: md[k].join(', ') }); });
+      (x.tours || []).forEach(function (t) { rows.push({ icon: '🌍', label: 'Deployed to ' + t.where + ' (' + t.year + ')', sub: t.note || 'Came home safe' }); });
+      (x.stations || []).concat(x.station ? [x.station] : []).forEach(function (st) { rows.push({ icon: '📍', label: st.name, sub: 'Stationed from ' + st.year }); });
+      return rows;
     });
   }
   function summary() { var x = m(); if (!x) return ''; return x.active ? rankTitle() + ' · ' + branchName(x.branch) : x.track === 'rotc' ? 'ROTC cadet' : x.track === 'cadet' ? 'Academy cadet' : 'Veteran · ' + x.discharge; }
