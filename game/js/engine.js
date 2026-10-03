@@ -907,7 +907,7 @@ TL.engine = (function () {
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
       if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name) || (TL.health && TL.health.has(ill.name))) return;
-      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1);
+      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1);
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
@@ -966,6 +966,7 @@ TL.engine = (function () {
     log('⚰️ My ' + (p.role === 'friend' ? 'friend' : p.role) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
     if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
     if (TL.features) TL.features.onDeath(p);
+    if (TL.health && TL.health.familyDeath) TL.health.familyDeath(p, cause); // family history (js/health.js)
     if (TL.dynasty) TL.dynasty.onDeath(p); // the crown may pass (js/eras.js)
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
   }
