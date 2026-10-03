@@ -279,10 +279,12 @@ TL.hoops = (function () {
     if (!onceAYear('hoops_' + kind)) return done(nope('I already worked on that this year.'));
     var x = h(), s = S();
     s.flags.hoopsTrain = 1;
-    var gain = me().age < 30 ? U.rand(1, 2) : U.rand(0, 1);
-    x.ovr = U.clamp(x.ovr + (x.ovr < x.pot ? gain : 0), 20, 99);
+    var gain = me().age < 30 ? U.rand(1, 2) : U.rand(0, 1), capped = x.ovr >= x.pot;
+    // At my ceiling, hard work slowly raises the ceiling itself (it used to do nothing at all).
+    if (capped && me().age < 31 && x.pot < 99 && s.flags.hoopsCeil !== s.year && U.chance(0.6)) { s.flags.hoopsCeil = s.year; x.pot++; capped = false; gain = 1; }
+    x.ovr = U.clamp(x.ovr + (capped ? 0 : Math.min(gain, Math.max(0, x.pot - x.ovr))), 20, 99);
     me().athl = U.clamp(me().athl + 1, 0, 100); E.stat('health', 1);
-    done({ shoot: 'I put up 500 jumpers a day. 🎯', handle: 'I worked on my ball handling until my hands ached.', defense: 'I studied film and drilled defensive footwork. 🛡️', strength: 'I hit the weight room hard. 💪' }[kind] + ' (OVR ' + x.ovr + ')');
+    done({ shoot: 'I put up 500 jumpers a day. 🎯', handle: 'I worked on my ball handling until my hands ached.', defense: 'I studied film and drilled defensive footwork. 🛡️', strength: 'I hit the weight room hard. 💪' }[kind] + ' (OVR ' + x.ovr + (x.ovr >= x.pot ? ', near my ceiling' : '') + ')');
   }
   function menu() {
     ui().menu('Basketball 🏀', function () {

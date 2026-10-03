@@ -288,7 +288,8 @@ TL.acting = (function () {
     var review = U.clamp(Math.round(q), 4, 99);
     var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review };
     var lead = /Lead/.test(r.part), msg, cls = '';
-    var dr = r.rep * (review - 55) / 45 * (lead ? 1.2 : 1);
+    // Every credit builds my name; good reviews and leading parts build it faster, flops can cost me.
+    var dr = r.rep * U.clamp(0.5 + (review - 50) / 40, 0.15, 1.8) * (lead ? 1.2 : 1);
     if (k.film && k.gross) {
       var gross = Math.round(U.randf(k.gross[0], k.gross[1]) * (0.4 + review / 100) * (1 + x.rep / 200) * (r.franchise ? 1.6 : 1));
       credit.gross = gross;
@@ -297,11 +298,11 @@ TL.acting = (function () {
       if (r.kind === 'blockbuster' && review < 40) { msg += ' Critics called it a box-office bomb.'; dr -= 4; cls = 'bad'; }
       else if (gross >= 1000) { msg += ' A billion-dollar hit! 🍿'; cls = 'good'; }
     } else if (r.kind === 'commercial') {
-      msg = '📺 My commercial for ' + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.5;
+      msg = '📺 My commercial for ' + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
     } else {
       msg = k.icon + ' ' + (k.stage ? 'My show "' + r.title + '" opened' : '"' + r.title + '" premiered') + ' to ' + (review >= 85 ? 'rave reviews' : review >= 60 ? 'good reviews' : review >= 40 ? 'mixed reviews' : 'terrible reviews') + ' (' + review + '%).';
     }
-    x.rep = U.clamp(x.rep + dr + 0.3, 0, 100);
+    x.rep = U.clamp(x.rep + dr + 0.5, 0, 100);
     if (review >= 85 && cls !== 'bad') cls = 'good';
     E.log(msg, cls);
     E.fame(Math.max(0, r.rep * review / 120 * (lead ? 1.4 : 1) - 1));
@@ -346,8 +347,8 @@ TL.acting = (function () {
     }
     // Out of sight, out of mind.
     // Stars fade unless they keep landing hits; out of sight, out of mind.
-    x.rep = Math.max(0, x.rep - 0.5 - x.rep / 28);
-    if (!results.length && !x.retired) x.rep = Math.max(0, x.rep - U.rand(2, 5));
+    x.rep = Math.max(0, x.rep - 0.3 - x.rep / 40);
+    if (!results.length && !x.retired) x.rep = Math.max(0, x.rep - U.rand(1, 3));
     if (me().age >= 60) x.rep = Math.max(0, x.rep - 1);
     var best = results.filter(function (r) { return r.credit.kind !== 'commercial'; }).sort(function (a, b) { return b.review - a.review; })[0];
     nominate(best, x);
