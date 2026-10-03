@@ -95,7 +95,7 @@ TL.mind = (function () {
   function card(p) {
     if (!p.alive || p.age < 6) return '';
     var o = opinion(p), mem = (p.mem || []).slice(-3).reverse();
-    var html = '<div class="mind"><div class="hb-arch">💭 ' + mood(p) + ' · ' + o.word + '</div>';
+    var html = '<div class="mind"><div class="hb-arch">💭 ' + mood(p) + ' · ' + o.word + '</div><p class="small">“' + U.esc(greeting(p)) + '”</p>';
     if (o.why) html += '<p class="small muted">' + U.esc(U.cap ? U.cap(o.why) : o.why) + '.</p>';
     if (p.owe && !p.owe.paid) html += '<p class="small muted">💵 Owes me ' + E.fmt(p.owe.amt) + ' since ' + p.owe.year + '.</p>';
     if (p.venture && !p.venture.done) html += '<p class="small muted">📈 I invested ' + E.fmt(p.venture.amt) + ' in ' + their(p) + ' ' + p.venture.what + ' (' + p.venture.year + ').</p>';
@@ -115,6 +115,87 @@ TL.mind = (function () {
     if (a >= 50) opts.push([0.5 + (a - 50) / 30, function () { p.health = U.clamp(p.health - U.rand(10, 25), 0, 100); return ['🏥 ' + My(p) + ' had a health scare. ' + (p.rel >= 60 ? 'I was worried sick.' : ''), p.rel >= 60 ? 'bad' : '']; }]);
     if (emp && a >= 62) opts.push([1.5, function () { p.job = 'Retired'; p.happy = U.clamp(p.happy + 8, 0, 100); return ['🎉 ' + My(p) + ' retired.', '']; }]);
     return opts;
+  }
+
+  // Their news, kept so they can bring it up when we talk.
+  var NEWS = [[/promoted/, 'promo'], [/lost \w+ job/, 'laidoff'], [/new job/, 'newjob'], [/got married/, 'married'], [/had a baby/, 'baby'], [/moved away/, 'moved'], [/health scare/, 'health'], [/retired/, 'retired']];
+  function remember(p, text) { NEWS.forEach(function (n) { if (n[0].test(text)) { p.news = [S().year, n[1]]; } }); }
+
+  // ------------------------------------------------------------ dialogue
+  // Conversations: they answer in their own words, from their mood, their
+  // news, what they remember about me and who they are.
+  function ui() { return TL.ui; }
+  function done(r) { return TL.actions.done(r); }
+  function said(p, q) { return p.first + ': “' + q + '”'; }
+  var MOOD_LINES = {
+    Happy: ['Honestly? Things are really good right now.', 'Can\'t complain. Life\'s been kind to me lately.', 'I\'m in a great place. Thanks for asking!'],
+    Content: ['Same old, same old. But good!', 'Busy, but I\'m doing fine.', 'Not bad at all. How about you?'],
+    Stressed: ['I\'m hanging in there… barely.', 'Everything is a lot right now.', 'I haven\'t slept properly in weeks.'],
+    Miserable: ['Not great, if I\'m being honest.', 'I don\'t really want to talk about it.', 'Some days I can barely get out of bed.']
+  };
+  var NEWS_LINES = { promo: 'I got promoted! I\'m finally getting paid what I\'m worth.', laidoff: 'I got laid off. I\'m trying not to panic.', newjob: 'I started a new job. Still learning everyone\'s names.', married: 'Married life is treating me well. Who knew?', baby: 'The baby doesn\'t sleep, so neither do I. But look at this picture!', moved: 'The new place is nice, but I miss everyone back home.', health: 'The doctors gave me a scare. I\'m okay, but it shook me.', retired: 'Retirement is wonderful. I nap whenever I want.' };
+  var TRAIT_TAGS = { Funny: ' Anyway, did I tell you the one about the goat and the lawyer?', Ambitious: ' I\'ve got big plans for next year, though.', Greedy: ' Money\'s tight, but I\'ve got a few schemes going.', Romantic: ' I\'ve been thinking a lot about love lately.', Nerdy: ' I\'ve been reading about black holes, by the way. Fascinating.', Athletic: ' I\'m training for a race, too.', Artsy: ' I started painting again.', Cheerful: ' But hey, the sun\'s out!' };
+  function howAreYou(p) {
+    var y = S().year, md = mood(p), news = p.news && y - p.news[0] <= 2 ? NEWS_LINES[p.news[1]] : null, o = opinion(p), w = worst(p);
+    var line = news || U.pick(MOOD_LINES[md]);
+    if (w && w[1] <= -8 && !has(p, 'Kind')) line += ' And honestly, I\'m still hurt about the time you ' + theirWords(w[2], p) + '.';
+    else if (o.v >= 80 && U.chance(0.5)) line += ' It\'s really good to talk to you.';
+    var tags = (p.traits || []).filter(function (t) { return TRAIT_TAGS[t]; });
+    if (tags.length && U.chance(0.5)) line += TRAIT_TAGS[U.pick(tags)];
+    return { line: line, low: md === 'Stressed' || md === 'Miserable' || (p.news && /laidoff|health|moved/.test(p.news[1]) && y - p.news[0] <= 2), sore: !!(w && w[1] <= -8) };
+  }
+  // A memory in their words: "insulted ~" → "insulted me", "spilled her secret" → "spilled my secret".
+  function theirWords(t, p) { return t.replace(/~/g, 'me').replace(new RegExp('\\b' + their(p) + '\\b', 'g'), 'my').replace(new RegExp('\\b' + they(p) + '\\b', 'g'), 'I'); }
+  // Same pick all year for the same person, so their card doesn't change every time it redraws.
+  function steady(p, arr) { var h = 0, k = String(p.id) + S().year; for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0; return arr[h % arr.length]; }
+  function f0(p) { var k = 'talk' + p.id, y = S().yearActs || (S().yearActs = {}); y[k] = (y[k] || 0) + 1; return 1 / y[k]; }
+  function talk(p, topics) {
+    var opts = [], o = opinion(p), w = worst(p), others = S().people.filter(function (q) { return q.alive && q !== p && q.age >= 12 && /friend|sibling|coworker|ex|partner|spouse/.test(q.role); });
+    opts.push({ label: 'Ask how ' + they(p) + '\'s really doing', fn: function () {
+      var r = howAreYou(p), fct = f0(p);
+      if (r.sore) { note(p, -1, 'reopened an old wound'); }
+      if (!r.low && !r.sore) { E.rel(p, Math.round(U.rand(3, 6) * fct)); return done(said(p, r.line)); }
+      ui().choose('💬 ' + p.first, said(p, r.line), [
+        { label: r.sore ? 'Apologize for it' : 'Listen and comfort ' + them(p), fn: function () { if (r.sore) recent(p).forEach(function (m) { if (m[1] < 0) m[3] = 1; }); E.rel(p, Math.round((r.sore ? 10 : 8) * fct)); note(p, 6, r.sore ? 'apologized and meant it' : 'was there for ~ when ' + they(p) + ' was struggling'); p.happy = U.clamp(p.happy + 6, 0, 100); done(good(r.sore ? 'I apologized. ' + p.first + ' hugged me and said ' + they(p) + '\'d been waiting years to hear it.' : 'I mostly listened. ' + p.first + ' said ' + they(p) + ' felt lighter afterward.')); } },
+        { label: 'Give ' + them(p) + ' advice', fn: function () { var ok = !has(p, 'Stubborn') && (me().smarts || 50) + U.rand(-30, 30) > 45; E.rel(p, Math.round((ok ? 6 : -3) * fct)); if (ok) p.happy = U.clamp(p.happy + 4, 0, 100); done(ok ? good('My advice actually helped. ' + p.first + ' said ' + they(p) + ' would try it.') : bad(p.first + ' didn\'t want solutions. ' + U.cap(they(p)) + ' wanted someone to listen.')); } },
+        { label: 'Change the subject', fn: function () { E.rel(p, -2); done(p.first + ' noticed I changed the subject.'); } }
+      ]);
+    } });
+    if (p.age >= 16 && me().age >= 12) opts.push({ label: 'Ask for ' + their(p) + ' advice', fn: function () {
+      var wise = (p.smarts || 50) + (p.age >= 50 ? 15 : 0) + U.rand(-20, 20), fct = f0(p);
+      E.rel(p, Math.round(4 * fct));
+      if (wise >= 65) { E.stat('smarts', 2); E.stat('happy', 3); return done(good(said(p, U.pick(['Stop waiting for permission. Just start.', 'Save more than you think you need to.', 'People remember how you made them feel.', 'Sleep on big decisions. Every time.'])) + ' Good advice, actually.')); }
+      if (wise < 35) return done(said(p, U.pick(['Just put it all on red.', 'Have you tried not worrying about it?', 'Text your ex. What\'s the worst that could happen?'])) + ' I won\'t be taking that advice.');
+      return done(said(p, U.pick(['Do what makes you happy, I guess.', 'Honestly, I\'m figuring it out too.', 'Trust your gut.'])));
+    } });
+    if (others.length && p.age >= 12 && me().age >= 12) { var tgt = U.pick(others); opts.push({ label: 'Gossip about ' + tgt.first, fn: function () {
+      var likes = has(p, 'Mean') || has(p, 'Jealous') || has(p, 'Outgoing'), prude = has(p, 'Kind') || has(p, 'Loyal'), fct = f0(p);
+      if (prude && !likes) { E.rel(p, -4); E.karma(-1); return done(bad(said(p, 'I don\'t really like talking about people behind their backs.') + ' Awkward.')); }
+      E.rel(p, Math.round((likes ? 7 : 3) * fct)); E.karma(-1);
+      if (U.chance(0.2)) { E.rel(tgt, -10); note(tgt, -10, 'gossiped about ~'); return done(bad('We gossiped about ' + tgt.first + '… and it got back to ' + them(tgt) + '.')); }
+      return done(said(p, U.pick(['No way. Tell me everything.', 'I KNEW something was going on there.', 'Okay, but you didn\'t hear it from me…'])) + ' We gossiped about ' + tgt.first + ' for an hour.');
+    } }); }
+    if (w && w[1] <= -6) opts.push({ label: 'Clear the air about the time I ' + fill(w[2], p).replace(/^I /, ''), fn: function () {
+      var ok = !has(p, 'Stubborn') || U.chance(0.4);
+      if (ok) { recent(p).forEach(function (m) { if (m[1] < 0) m[3] = 1; }); E.rel(p, 12); return done(good(said(p, 'Thank you for saying that. I forgive you.'))); }
+      E.rel(p, 2); return done(said(p, 'I appreciate it. I\'m just not there yet.'));
+    } });
+    if (p.rel >= 60 && me().age >= 12) opts.push({ label: 'Tell ' + them(p) + ' what ' + they(p) + ' means to me', fn: function () {
+      var fct = f0(p), shy = has(p, 'Shy') || has(p, 'Stubborn');
+      E.rel(p, Math.round(9 * fct)); E.stat('happy', 3); note(p, 7, 'told ~ how much ' + they(p) + ' means to me');
+      return done(good(said(p, shy ? 'Oh, stop. …I mean it, though. Same.' : U.pick(['You\'re going to make me cry. You mean a lot to me too.', 'Where is this coming from? I love you too, you weirdo.', 'I needed to hear that today.']))));
+    } });
+    // A couple of everyday topics from the old menu round it out.
+    (topics || []).slice(0, 2).forEach(function (t) { opts.push(t); });
+    ui().choose('💬 Talk to ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + ', and seems ' + mood(p).toLowerCase() + '. ' : '') + 'What do we talk about?', opts.slice(0, 6));
+  }
+  // A line on their card: how they greet me.
+  function greeting(p) {
+    if (!p.alive || p.age < 4) return '';
+    var o = opinion(p).v, md = mood(p);
+    var l = steady(p, o >= 85 ? ['There you are! I was just thinking about you.', 'My favorite person!'] : o >= 65 ? ['Hey, you! Good to see you.', 'Oh nice, it\'s you.'] : o >= 45 ? ['Hey.', 'Oh, hi.'] : o >= 25 ? ['What do you want?', '…Hi.'] : ['Oh. It\'s you.', 'I\'m busy.']);
+    if (md === 'Miserable' && o >= 45) l += ' Sorry, rough week.';
+    return l;
   }
 
   // ------------------------------------------------------------ initiative
@@ -178,7 +259,7 @@ TL.mind = (function () {
     // A bit of news from their own lives.
     if (ppl.length && U.chance(0.45)) {
       var who = U.pick(ppl), news = lifeNews(who);
-      if (news.length) { var n = pickW(news)[1](); E.log(n[0], n[1]); }
+      if (news.length) { var n = pickW(news)[1](); E.log(n[0], n[1]); remember(who, n[0]); }
     }
     // Someone reaches out (or lashes out).
     var acts = 0, evDone = false;
@@ -252,5 +333,5 @@ TL.mind = (function () {
     ] };
   } });
 
-  return { yearly: yearly, wrap: wrap, card: card, opinion: opinion, note: note, mood: mood };
+  return { yearly: yearly, wrap: wrap, card: card, opinion: opinion, note: note, mood: mood, talk: talk };
 })();

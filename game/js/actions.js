@@ -225,7 +225,7 @@ TL.actions = (function () {
   function conversation(p) {
     var anc = TL.ancient && TL.ancient.on(), T = anc ? TL.ancient.TOPICS : TOPICS, KT = anc ? TL.ancient.KID_TOPICS : KID_TOPICS;
     var kid = p.age < 10 || me().age < 10, picks = U.shuffle((kid ? KT : T).slice()).slice(0, 4);
-    ui().choose('💬 Talk to ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What do we talk about?', picks.map(function (t) {
+    var topicOpts = picks.map(function (t) {
       return { label: U.cap(t[0]), fn: function () {
         var f = diminish('talk' + p.id), sc = likeScore(p, t[1]), risky = !!t[2], stub = (p.traits || []).indexOf('Stubborn') >= 0;
         var chance = risky ? (stub ? 0.25 : 0.45) : sc > 0 ? 0.92 : t[0] === 'the weather' ? 0.95 : 0.7;
@@ -237,7 +237,10 @@ TL.actions = (function () {
         E.rel(p, -U.rand(risky ? 4 : 2, risky ? 9 : 5));
         return done(bad(risky ? 'Talking about ' + t[0] + ' with ' + p.first + ' turned into a shouting match.' : p.first + ' seemed bored when I brought up ' + t[0] + '.'));
       } };
-    }));
+    });
+    // Past childhood, people talk back (js/mind.js).
+    if (!kid && TL.mind) return TL.mind.talk(p, topicOpts);
+    ui().choose('💬 Talk to ' + p.first, (p.traits && p.traits.length ? p.first + ' is ' + p.traits.join(' and ').toLowerCase() + '. ' : '') + 'What do we talk about?', topicOpts);
   }
   function compliment(p) {
     var f = diminish('comp' + p.id);

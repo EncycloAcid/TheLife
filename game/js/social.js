@@ -122,7 +122,7 @@ TL.social = (function () {
     }
     a.f += gain; if (p[0] === 'live' && a.f >= 5000) { var tips = E.$(Math.round(a.f * U.randf(0.002, 0.01))); E.addMoney(tips); }
     if (p[0] === 'story' || p[0] === 'update') TL.S.people.filter(function (q0) { return q0.alive && /friend|sibling|mother|father/.test(q0.role); }).slice(0, 4).forEach(function (q0) { E.rel(q0, 1); });
-    if (viral) E.fame(U.rand(2, 6));
+    if (viral) { E.fame(U.rand(2, 6)); react('viral'); }
     E.stat('happy', score >= 60 ? 3 : score < 35 ? -2 : 1);
     feed({ y: s.year, p: id, t: label, l: likes, c: comment(score, id), v: viral ? 1 : 0 });
     sync();
@@ -215,7 +215,7 @@ TL.social = (function () {
         if (t && ['tt', 'ig', 'tw', 'snap'].indexOf(id) >= 0) items.push({ icon: '🔥', label: 'Join the trend', sub: t, disabled: count('sp_trend') > 0, onClick: function () { bump('sp_trend'); post(id, ['trend', '🔥', 'Join the trend', 'looks', [id], [], 0.02], true); } });
         postsFor(id).forEach(function (p) { items.push({ icon: p[1], label: p[2], sub: (p[3] ? U.cap(E.statLabel ? E.statLabel(p[3]) : p[3]) : 'Anyone can') + (c.niche && p[5].indexOf(c.niche) >= 0 ? ' · fits my niche' : '') + (p[6] >= 0.1 ? ' · risky' : ''), onClick: function () { post(id, p); } }); });
       }
-      items.push({ icon: '🗑️', label: 'Delete my ' + pname(id) + ' account', danger: true, onClick: function () { var s = S(); s.followers = Math.max(0, (s.followers || 0) - a.f); delete c.acc[id]; sync(); ui().back(); done('I deleted my ' + pname(id) + ' account.'); } });
+      items.push({ icon: '🗑️', label: 'Delete my ' + pname(id) + ' account', danger: true, onClick: function () { var s = S(); s.followers = Math.max(0, (s.followers || 0) - a.f); delete c.acc[id]; if (!accounts().length) c.platform = false; sync(); ui().back(); done('I deleted my ' + pname(id) + ' account.'); } });
       return items;
     });
   }
@@ -305,6 +305,24 @@ TL.social = (function () {
     c.hist.push({ y: s.year, f: total() }); if (c.hist.length > 40) c.hist.shift();
     s.followers = total();
   }
+  // The people in my life see it too (js/mind.js): loyal friends cheer or defend me, jealous or mean ones don't.
+  function react(kind) {
+    var s = S(), my0 = { 'best friend': 'my best friend', friend: 'my friend', sibling: 'my sibling', mother: 'my mom', father: 'my dad', partner: 'my partner', spouse: 'my spouse' };
+    var rn = function (p) { return p.role === 'sibling' ? (p.gender === 'M' ? 'my brother' : 'my sister') : p.role === 'spouse' ? (p.gender === 'M' ? 'my husband' : 'my wife') : my0[p.role]; };
+    var ppl = s.people.filter(function (p) { return p.alive && p.age >= 13 && my0[p.role]; });
+    if (!ppl.length) return;
+    var has = function (p, t) { return (p.traits || []).indexOf(t) >= 0; };
+    var fan = U.shuffle(ppl.filter(function (p) { return p.rel >= 55 && (has(p, 'Loyal') || has(p, 'Kind') || has(p, 'Cheerful') || /mother|father|best friend|partner|spouse/.test(p.role)); }))[0];
+    var foe = U.shuffle(ppl.filter(function (p) { return p.rel < 50 && (has(p, 'Mean') || has(p, 'Jealous')); }))[0];
+    var note = TL.mind ? TL.mind.note : function () {};
+    if (kind === 'viral') {
+      if (fan) { E.rel(fan, 2); E.log('💬 ' + U.cap(rn(fan)) + ' ' + fan.first + ' shared my post: "' + U.pick(['THAT\'S MY ' + (fan.role === 'mother' || fan.role === 'father' ? 'KID' : 'FRIEND') + '!!', 'told you you\'d blow up 😭', 'famous now, don\'t forget us']) + '"', 'good'); }
+      if (foe && U.chance(0.6)) { E.rel(foe, -3); note(foe, -3, 'got jealous when my post blew up', true); }
+    } else {
+      if (fan) { E.rel(fan, 4); note(fan, 6, 'defended me when I got canceled', true); E.log('🛡️ ' + U.cap(rn(fan)) + ' ' + fan.first + ' defended me in the comments.', 'good'); }
+      if (foe) { E.rel(foe, -4); note(foe, -6, 'piled on me when I got canceled', true); E.log('🗡️ ' + U.cap(rn(foe)) + ' ' + foe.first + ' joined the pile-on.', 'bad'); }
+    }
+  }
   function dmKind(f) {
     var l = [['fan', 3], ['hater', f >= 1000 ? 2 : 0.5], ['scam', 1.5], ['collab', f >= 5000 ? 2 : 0], ['celeb', f >= 100000 ? 1 : 0.1], ['crush', me().age >= 18 && me().age <= 40 ? 1.2 : 0]];
     var t = l.reduce(function (a, q) { return a + q[1]; }, 0), r = Math.random() * t;
@@ -362,7 +380,7 @@ TL.social = (function () {
     var s = S(), c = st(), sk = d.why === 'sketchy';
     var text = sk ? 'The sketchy product I promoted turned out to be a scam, and my followers lost money. People are tagging me in everything.' : 'Someone dug up ' + U.pick(['a tweet I posted ten years ago', 'an old video of me saying something awful', 'screenshots from my group chat', 'a post where I mocked a fan']) + '. It\'s trending, and not in a good way.';
     var lost = function (k0) { var t = 0; accounts().forEach(function (id) { var a = c.acc[id], l = Math.round(a.f * k0); a.f -= l; t += l; }); sync(); return t; };
-    c.drama = s.year;
+    c.drama = s.year; react('drama');
     return { icon: '🔥', title: sk ? 'Scam fallout' : 'Canceled', text: text, choices: [
       { label: 'Post a sincere video apology', run: function () { var l = lost(U.randf(0.02, 0.08)); E.karma(2); return 'I apologized on camera and meant it. Most people accepted it. Lost ' + big(l) + ' followers.'; } },
       { label: 'Post a Notes-app apology', run: function () { var l = lost(U.randf(0.06, 0.15)); return bad('The Notes-app apology got roasted harder than the original post. Lost ' + big(l) + ' followers.'); } },

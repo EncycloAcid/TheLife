@@ -120,6 +120,7 @@ TL.hsocial = (function () {
     if (x.stage === 'pro') out.push({ icon: '😤', label: 'Call out a rival', sub: 'Could win the internet, or get you fined', disabled: count('hs_trash') > 0, onClick: trash });
     if (s.followers >= 50000) out.push({ icon: '🤑', label: 'Sponsored post', sub: '~' + E.fmt(E.$(Math.round(s.followers * 0.02 + 5000))), disabled: count('hs_spon') > 0, onClick: sponsored });
     out.push({ icon: '💬', label: 'Read my feed', sub: 'What fans and media are saying', onClick: feedView });
+    if (TL.social) out.push({ icon: '📱', label: 'All my accounts', sub: 'Platforms, brand deals, DMs and analytics', onClick: TL.social.menu });
     return out;
   }
 
