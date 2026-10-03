@@ -1301,6 +1301,16 @@ TL.engine = (function () {
     if (s.karma >= 85) r.push(['😇', 'Hero', 'A truly good soul.']);
     if (s.karma <= 15) r.push(['😈', 'Villain', 'Left a trail of misery.']);
     if (s.prison && s.prison.remaining > 0) r.push(['⛓️', 'Prisoner', 'Died behind bars.']);
+    // Everyday lives get a label that fits them too, not just "Ordinary".
+    var h = s.hist || [], avg = h.length ? h.reduce(function (t, x) { return t + x[2]; }, 0) / h.length : m.happy;
+    var sp = people('spouse')[0], kids = people('child', true).length;
+    if (!r.length && sp && !s.counts.exes && m.age >= 50) r.push(['💞', 'Devoted', 'One great love, for life.']);
+    if (!r.length && (s.lived || []).length >= 2) r.push(['🌍', 'Globetrotter', 'Made a home in ' + ((s.lived || []).length + 1) + ' countries.']);
+    if (!r.length && avg >= 70) r.push(['🌻', 'Content', 'Happy most days, and that was enough.']);
+    if (!r.length && m.age >= 85) r.push(['🌳', 'Long life', 'Saw ' + m.age + ' years go by.']);
+    if (!r.length && !sp && !kids && m.age >= 50) r.push(['🌙', 'Solitary', 'Walked through life mostly alone.']);
+    if (!r.length && avg < 35) r.push(['🌧️', 'Hard times', 'Life was a struggle more often than not.']);
+    if (!r.length && s.jobHistory.concat(s.job ? [s.job] : []).reduce(function (t, j) { return t + (j.years || 0); }, 0) >= 35) r.push(['🔨', 'Hard worker', 'Put in decades of honest work.']);
     if (!r.length) r.push(['🙂', 'Ordinary', 'A quiet, ordinary life.']);
     return r[0];
   }

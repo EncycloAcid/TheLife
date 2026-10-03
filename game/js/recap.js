@@ -81,10 +81,20 @@ TL.recap = (function () {
     var happy = h.length ? h.reduce(function (a, x) { return a + x[2]; }, 0) / h.length : m.happy;
     var nw = Math.max(0, E.netWorth()) / E.k();
     var fam = (E.people('spouse').length ? 8 : 0) + Math.min(12, E.people('child', true).length * 4) + Math.min(5, E.people('grandchild').length);
-    var score = happy * 0.35 + Math.min(18, Math.log10(1 + nw) * 3) + fam + Math.min(10, s.ach.length) + (s.karma - 50) / 8 + s.fame / 12 + Math.min(10, m.age / 9) - Math.min(15, s.record.length * 4);
+    // Each part of the score, so the grade explains itself on the death screen.
+    var parts = [
+      ['😊', 'Happiness', happy * 0.35, 35],
+      ['💰', 'Wealth', Math.min(18, Math.log10(1 + nw) * 3), 18],
+      ['👨‍👩‍👧', 'Family', fam, 25],
+      ['🏅', 'Achievements', Math.min(10, s.ach.length) + s.fame / 12, 18],
+      ['😇', 'Character', (s.karma - 50) / 8, 6],
+      ['⏳', 'Longevity', Math.min(10, m.age / 9), 10]
+    ];
+    if (s.record.length) parts.push(['⛓️', 'Crime', -Math.min(15, s.record.length * 4), 0]);
+    var score = parts.reduce(function (a, x) { return a + x[2]; }, 0);
     score = U.clamp(Math.round(score), 0, 100);
     var g = score >= 85 ? ['A+', 'A legendary life'] : score >= 75 ? ['A', 'A life well lived'] : score >= 65 ? ['B', 'A good life'] : score >= 52 ? ['C', 'An ordinary life'] : score >= 40 ? ['D', 'A rough road'] : ['F', 'A hard life'];
-    return { score: score, letter: g[0], title: g[1], happy: Math.round(happy) };
+    return { score: score, letter: g[0], title: g[1], happy: Math.round(happy), parts: parts };
   }
   function peak() {
     var best = null;
@@ -145,6 +155,11 @@ TL.recap = (function () {
     var g = grade(), st = stages(), hl = highlights(), sv = survivors(), s = S(), m = s.me;
     var h = '';
     h += '<div class="rc-grade"><div class="rc-letter g-' + g.letter.charAt(0) + '">' + g.letter + '</div><div><b>' + g.title + '</b><br><span class="muted">Life score ' + g.score + ' / 100</span></div></div>';
+    // Where the points came from (and went).
+    h += '<div class="rc-parts">' + g.parts.map(function (x) {
+      var v = Math.round(x[2]), w = x[3] ? U.clamp(x[2] / x[3] * 100, 0, 100) : 0;
+      return '<div class="rc-part"><span class="rc-ico">' + x[0] + '</span><span class="rc-pl">' + x[1] + '</span><span class="rc-bar"><i class="' + (v < 0 ? 'neg' : '') + '" style="width:' + (v < 0 ? U.clamp(-x[2] / 15 * 100, 0, 100) : w).toFixed(0) + '%"></i></span><b>' + (v > 0 ? '+' : '') + v + '</b></div>';
+    }).join('') + '</div>';
     h += '<h3 class="rc-h">Life in numbers</h3><div class="dstats">' + numbers().map(function (r) { return '<div class="dstat"><small>' + r[0] + '</small><b>' + U.esc(String(r[1])) + '</b></div>'; }).join('') + '</div>';
     if (hl.length) h += '<h3 class="rc-h">Highlights</h3><div class="rc-list">' + hl.map(function (x) { return '<div class="rc-row"><span class="rc-ico">' + x[0] + '</span><div><b>' + U.esc(x[1]) + '</b><br><span class="muted">' + U.esc(x[2]) + '</span></div></div>'; }).join('') + '</div>';
     if (st.length) {
