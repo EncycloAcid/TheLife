@@ -3,7 +3,7 @@
  * and right after quitting the current job, to catch events that outlive
  * the career or person they were about. Run: node tests/events.js [lives] */
 var fs=require('fs'),vm=require('vm'),path=require('path');var ctx={console,Math,Date,JSON};ctx.globalThis=ctx;vm.createContext(ctx);
-['util','data','realdata','logofiles','logos','engine','events','actions','features','extras','world','hoops','military','sports','creator','acting','music','prosports','politics','work','business','health','market','history','ancient','medieval','viking','eras','mapdata','maps','recap'].forEach(f=>vm.runInContext(fs.readFileSync(path.join(__dirname,'../game/js/'+f+'.js'),'utf8'),ctx,{filename:f+'.js'}));
+['util','data','realdata','logofiles','logos','engine','events','actions','features','extras','world','hoops','nba','hoopsocial','military','sports','creator','acting','music','prosports','politics','work','business','health','market','history','ancient','medieval','viking','eras','mapdata','maps','recap'].forEach(f=>vm.runInContext(fs.readFileSync(path.join(__dirname,'../game/js/'+f+'.js'),'utf8'),ctx,{filename:f+'.js'}));
 var TL=ctx.TL,E=TL.engine,dialogs=[];TL.ui={menu(){},back(){},closeAll(){},refresh(){},toast(){},alert(t,x,c,cb){},choose(){},confirm(){},prompt(){},runPending(){},timeMachine(){}};
 var ids=Object.keys(TL.events.defs),fails={},built={},runs=0;
 var countries=['United States','United Kingdom','Japan','Roman Empire','Kingdom of England','Viking Norway'];

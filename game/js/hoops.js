@@ -41,11 +41,31 @@ TL.hoops = (function () {
   var POWERS = ['Spain', 'France', 'Serbia', 'Canada', 'Australia', 'Argentina', 'Lithuania', 'Germany', 'Greece', 'Slovenia'];
 
   function league() { return me().gender === 'F' ? 'WNBA' : 'NBA'; }
-  function teams() { return me().gender === 'F' ? WNBA : NBA; }
+  // The real teams of the season (js/nba.js), with the old lists as a fallback.
+  function teams() { var t = TL.nba && TL.nba.teams(me().gender, S().year); return t && t.length ? t : me().gender === 'F' ? WNBA : NBA; }
+  function homeLeague() { return !TL.nba || TL.nba.exists(me().gender, S().year); } // no WNBA before 1997
+  var CBA = ['Rockford Lightning', 'Quad City Thunder', 'Sioux Falls Skyforce', 'La Crosse Catbirds', 'Yakima Sun Kings', 'Grand Rapids Hoops'];
+  var DLEAGUE = ['Austin Toros', 'Fort Wayne Mad Ants', 'Sioux Falls Skyforce', 'Rio Grande Valley Vipers', 'Iowa Energy', 'Bakersfield Jam', 'Idaho Stampede', 'Reno Bighorns'];
+  function minorTeams() { var y = S().year; return y < 2002 ? CBA : y < 2018 ? DLEAGUE : GLEAGUE; }
+  // How the minor league was known in a given year.
+  function lgName(lg, y) { return lg === 'G League' && TL.nba ? TL.nba.minors(y || S().year) : lg; }
+  // Pro salaries grew much faster than prices: scale today's pay scale to the era.
+  var AVG = [[1950, 4000], [1960, 9000], [1970, 35000], [1980, 170000], [1985, 330000], [1990, 750000], [1995, 1900000], [2000, 3600000], [2005, 4900000], [2010, 5800000], [2015, 5000000], [2020, 7700000], [2025, 12000000]];
+  var WAVG = [[1997, 30000], [2005, 45000], [2015, 75000], [2025, 120000]];
+  function eraPay() {
+    var y = S().year, t = me().gender === 'F' ? WAVG : AVG, now = t[t.length - 1][1];
+    if (y >= t[t.length - 1][0]) return 1;
+    var v = t[0][1];
+    for (var i = 1; i < t.length; i++) if (y <= t[i][0]) { var a = t[i - 1], b = t[i], f = (y - a[0]) / (b[0] - a[0]); v = y < t[0][0] ? t[0][1] : a[1] + (b[1] - a[1]) * U.clamp(f, 0, 1); break; }
+    var price = TL.history ? TL.history.priceLevel(y) : 1;
+    return U.clamp(v / now / Math.max(0.05, price), 0.004, 1);
+  }
   function games() { return me().gender === 'F' ? 40 : 82; }
   function cm2ft(cm) { var inch = Math.round(cm / 2.54); return Math.floor(inch / 12) + '′' + (inch % 12) + '″'; }
   function posFor(cm, g) { var o = g === 'F' ? -12 : 0; return cm < 191 + o ? 'PG' : cm < 198 + o ? 'SG' : cm < 204 + o ? 'SF' : cm < 209 + o ? 'PF' : 'C'; }
-  function opponents(x) { var lg = x.league, pool = lg === 'EuroLeague' ? EURO : lg === 'G League' ? GLEAGUE : teams(); return pool.filter(function (t) { return t !== x.team; }); }
+  function opponents(x) { var lg = x.league, pool = lg === 'EuroLeague' ? EURO : lg === 'G League' ? minorTeams() : teams(); return pool.filter(function (t) { return t !== x.team; }); }
+  // "the Warriors" or "Stephen Curry and the Warriors".
+  function withStar(team) { var st = TL.nba && TL.nba.starsOn(me().gender, team, S().year); return (st && st.length ? U.pick(st) + ' and the ' : 'the ') + team; }
 
   function start(stage) {
     var m = me(), g = m.gender;
@@ -162,15 +182,17 @@ TL.hoops = (function () {
       if (x.ovr >= 76 && l.ppg >= 20 && U.chance(0.3)) { honor(x, 'National Player of the Year (' + s.year + ')'); (q.honors = q.honors || []).push('Player of the Year'); msg += ' I won National Player of the Year!'; E.fame(5); }
     }
     E.log(msg, cls);
+    if (!hs && TL.hsocial) TL.hsocial.season(x, q);
   }
 
   // ------------------------------------------------------------ pro seasons
   function salaryFor(o, rookiePick) {
     var g = me().gender === 'F';
-    if (rookiePick) return g ? 75000 : Math.round(12000000 * Math.pow(0.9, rookiePick - 1) + 1100000);
+    var f = eraPay();
+    if (rookiePick) return Math.round((g ? 75000 : 12000000 * Math.pow(0.9, rookiePick - 1) + 1100000) * f);
     var max = g ? 250000 : 52000000, min = g ? 66000 : 1200000;
     var t = U.clamp((o - 62) / 33, 0, 1);
-    return Math.round(min + (max - min) * Math.pow(t, 2.2));
+    return Math.round((min + (max - min) * Math.pow(t, 2.2)) * f);
   }
   function sign(team, lg, years, salary, title) {
     var s = S(), x = h();
@@ -200,7 +222,10 @@ TL.hoops = (function () {
       x.ovr = U.clamp(x.ovr - injured[2], 20, 99); E.stat('health', -injured[2] * 3 - 3); E.stat('happy', -6);
     }
     var played = injured ? Math.max(0, gp - Math.round(injured[1] * gp / 82)) : gp - U.rand(0, Math.round(gp * 0.08));
-    var l = statLine(x, mins), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague';
+    var l = statLine(x, mins), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', home = lg === 'NBA' || lg === 'WNBA';
+    // Franchises move and rename (Seattle became Oklahoma City); keep up.
+    if (home && TL.nba) { var nowName = TL.nba.current(me().gender, x.team, s.year); if (nowName !== x.team) { E.log('🚚 The ' + x.team + ' are now the ' + nowName + '.'); x.team = nowName; j.company = 'the ' + nowName + ' (' + lg + ')'; } }
+    var mates = home && TL.nba ? TL.nba.starsOn(me().gender, x.team, s.year) : [];
     // My team's own strength matters as much as I do.
     var strength = 41 + (tq(x.team) - 50) * 0.6 + U.rand(-9, 9) + (x.ovr - 75) * (mins / 36) + (played / gp - 1) * 10;
     var wins = U.clamp(Math.round(strength * gp / 82), Math.round(gp * 0.15), Math.round(gp * 0.85));
@@ -213,14 +238,14 @@ TL.hoops = (function () {
     }
     // My best night of the season.
     var hi = played >= 10 ? Math.round(l.ppg + Math.max(4, l.ppg * 0.45) * U.randf(0.6, 1.6) + (U.chance(0.04) ? U.rand(8, 15) : 0)) : 0;
-    var line = { year: s.year, age: me().age, team: x.team, league: lg, gp: played, ppg: l.ppg, rpg: l.rpg, apg: l.apg, spg: l.spg, bpg: l.bpg, fg: l.fg, tp: l.tp, hi: hi, rec: rec, result: result };
+    var line = { year: s.year, age: me().age, team: x.team, league: lg, mates: mates.length ? mates.slice(0, 3) : undefined, gp: played, ppg: l.ppg, rpg: l.rpg, apg: l.apg, spg: l.spg, bpg: l.bpg, fg: l.fg, tp: l.tp, hi: hi, rec: rec, result: result };
     var rookie = !x.seasons.some(function (q) { return q.league === x.league && x.league !== 'NCAA'; }) && x.league !== 'G League';
     x.seasons.push(line);
-    E.log('🏀 ' + s.year + ' with the ' + x.team.replace(/^the /, '') + ' (' + rec + '): ' + fmtLine(l) + ' in ' + played + ' games.' + (injured ? ' I missed time with ' + injured[0] + '.' : ''), injured ? 'bad' : '');
+    E.log('🏀 ' + s.year + ' with the ' + x.team.replace(/^the /, '') + ' (' + rec + '): ' + fmtLine(l) + ' in ' + played + ' games.' + (mates.length ? ' Teammates included ' + mates.slice(0, 2).join(' and ') + '.' : '') + (injured ? ' I missed time with ' + injured[0] + '.' : ''), injured ? 'bad' : '');
     if (hi) {
       var foe = U.pick(opponents(x)), best = !x.high || hi > x.high.pts;
-      if (hi >= 50) { x.fifty = (x.fifty || 0) + 1; E.log('🔥 I dropped ' + hi + ' points on the ' + foe + (best ? ', a career high' : '') + '!', 'good'); E.fame(3); }
-      else if (hi >= 40 && best) E.log('🔥 Career night: ' + hi + ' points against the ' + foe + '.', 'good');
+      if (hi >= 50) { x.fifty = (x.fifty || 0) + 1; E.log('🔥 I dropped ' + hi + ' points on ' + (home ? withStar(foe) : 'the ' + foe) + (best ? ', a career high' : '') + '!', 'good'); E.fame(3); }
+      else if (hi >= 40 && best) E.log('🔥 Career night: ' + hi + ' points against ' + (home ? withStar(foe) : 'the ' + foe) + '.', 'good');
       if (best) x.high = { pts: hi, year: s.year, opp: foe };
     }
     // Awards
@@ -246,9 +271,17 @@ TL.hoops = (function () {
     else if (round === 4) champion(x, lg);
     else if (proLeague && mins >= 22 && U.chance(0.4)) {
       var opp = U.pick(opponents(x));
-      E.log('Playoffs: it all came down to ' + (lg === 'NBA' ? 'Game 7' : 'the deciding game') + ' of the ' + ROUNDS[round] + ' against the ' + opp + '.');
+      E.log('Playoffs: it all came down to ' + (lg === 'NBA' ? 'Game 7' : 'the deciding game') + ' of the ' + ROUNDS[round] + ' against ' + (home ? withStar(opp) : 'the ' + opp) + '.');
       s.pending.push({ id: 'hoops_clutch', data: { year: s.year, round: round, odds: odds, opp: opp } });
     } else E.log('Playoffs: we ' + result.charAt(0).toLowerCase() + result.slice(1) + '.');
+    // The rest of the league: the real champion and MVP (or invented ones in the future).
+    if (home && TL.nba) {
+      var realChamp = round === 4 ? null : TL.nba.champOf(me().gender, s.year), realMvp = TL.nba.mvpOf(me().gender, s.year), wonMvp = (line.honors || []).indexOf('MVP') >= 0;
+      var news = [];
+      if (realChamp && realChamp !== x.team) news.push('the ' + realChamp + ' won the ' + lg + ' title' + (round === 3 ? ', beating us in the Finals' : ''));
+      if (realMvp && !wonMvp) news.push(realMvp + ' won MVP');
+      if (news.length) E.log('📰 Around the league: ' + news.join(', and ') + '.');
+    }
     // The Olympics, every four years, for the best players.
     var usa = S().country === 'United States', yr = s.year;
     if (proLeague && yr % 4 === 0 && yr >= (F ? 1976 : 1992) && !(usa && yr === 1980) && played >= gp * 0.5 && x.ovr >= (usa ? 84 : 79) && me().age <= 36 && U.chance(0.8)) s.pending.push({ id: 'hoops_olympics', data: { year: yr } });
@@ -258,10 +291,11 @@ TL.hoops = (function () {
     x.contract.years--;
     j.title = role(x.ovr)[0];
     if (me().age >= 40 || x.ovr < 56 || (me().age >= 35 && x.ovr < 68)) { S().pending.push({ id: 'hoops_retire', data: {} }); }
-    else if (x.league === 'G League' && x.ovr >= 74 && U.chance(0.3)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the G League! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
+    else if (x.league === 'G League' && x.ovr >= 74 && U.chance(0.3)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the ' + lgName('G League') + '! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
     else if (x.contract.years <= 0) S().pending.push({ id: 'hoops_fa', data: {} });
     else if (!x.shoe && S().fame >= 45 && U.chance(0.5)) S().pending.push({ id: 'hoops_shoe', data: {} });
     drift(x);
+    if (TL.hsocial) TL.hsocial.season(x, line);
     return earned;
   }
 
@@ -326,11 +360,12 @@ TL.hoops = (function () {
     if (o >= 82 + f) pick = U.rand(1, 8); else if (o >= 77 + f) pick = U.rand(6, f ? 12 : 30); else if (o >= 72 + f) pick = U.rand(f ? 13 : 31, f ? 36 : 60); else pick = 0;
     if (me().gender === 'F' && pick > 36) pick = 0;
     var yr = S().year;
+    if (!homeLeague()) { x.draft = { year: yr, pick: 0 }; sign(U.pick(EURO), 'EuroLeague', 2, Math.round(90000 * eraPay()), 'Prospect'); return 'There was no women\'s pro league at home yet, so I signed with ' + h().team + ' in Europe.'; }
     if (!pick) {
       x.draft = { year: yr, pick: 0 };
       if (me().gender === 'F') { sign(U.pick(EURO), 'EuroLeague', 1, 90000, 'Prospect'); return 'I went undrafted, so I signed overseas with ' + h().team + '.'; }
-      sign(U.pick(GLEAGUE), 'G League', 1, 40000, 'Two-Way Hopeful');
-      return 'I went undrafted. I signed with the ' + h().team + ' in the G League to prove myself.';
+      sign(U.pick(minorTeams()), 'G League', 1, Math.round(40000 * eraPay()), 'Two-Way Hopeful');
+      return 'I went undrafted. I signed with the ' + h().team + ' in the ' + lgName('G League') + ' to prove myself.';
     }
     var team = U.pick(teams());
     x.draft = { year: yr, pick: pick, team: team };
@@ -465,11 +500,12 @@ TL.hoops = (function () {
     var x = h(), m = me(), pro = x.seasons.filter(function (q) { return q.gp; });
     var avg = function (k) { var g = 0, t = 0; pro.forEach(function (q) { if (q[k] != null) { g += q.gp; t += q[k] * q.gp; } }); return g ? (t / g).toFixed(1) : '—'; };
     var pts = Math.round(pro.reduce(function (t, q) { return t + q.ppg * q.gp; }, 0)), acc = accolades(x), bd = badges(x);
-    var where = x.stage === 'pro' ? x.team + ' · ' + x.league + ' · ' + U.cap(outlook(tq(x.team))) : x.stage === 'college' ? x.team + ' · NCAA' : x.stage === 'hs' ? (S().edu ? S().edu.school : 'High school') + ' varsity' : x.stage === 'retired' ? 'Retired' : 'Free agent';
+    var where = x.stage === 'pro' ? x.team + ' · ' + lgName(x.league) + ' · ' + U.cap(outlook(tq(x.team))) : x.stage === 'college' ? x.team + ' · NCAA' : x.stage === 'hs' ? (S().edu ? S().edu.school : 'High school') + ' varsity' : x.stage === 'retired' ? 'Retired' : 'Free agent';
     return '<div class="hoops-card">' + (x.team && (x.stage === 'pro' || x.stage === 'college') && TL.logos ? '<div class="hc-logo">' + TL.logos.badge(x.team, { shape: 'team' }) + '</div>' : '') + '<div class="hc-num">#' + x.num + '</div><div class="hc-main"><b>' + U.esc(m.first + ' ' + m.last) + '</b><small>' + U.esc(where) + '</small><small>' + POS[x.pos] + ' · ' + cm2ft(x.cm) + (x.draft ? ' · ' + (x.draft.pick ? 'Pick #' + x.draft.pick + ' (' + x.draft.year + ')' : 'Undrafted') : '') + '</small></div><div class="hc-ovr"><b>' + x.ovr + '</b><small>OVR</small></div></div>' +
       '<div class="hb-arch">' + U.esc(archetype(x)) + '</div>' + (bd.length ? '<div class="hc-chips">' + bd.map(function (b) { return '<span class="hc-chip">' + b + '</span>'; }).join('') + '</div>' : '') +
       ATTR.map(function (k) { var v = attr(x, k[0]); return '<div class="minibar wide"><span>' + k[1] + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 85 ? 'hi' : v >= 65 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('') +
       '<div class="minibar wide"><span>Potential ' + x.pot + '</span><span class="track"><span class="fill ' + (x.pot >= 85 ? 'hi' : x.pot >= 70 ? 'mid' : 'lo') + '" style="width:' + x.pot + '%"></span></span></div>' +
+      (x.stage === 'pro' && (x.league === 'NBA' || x.league === 'WNBA') && TL.nba && TL.nba.starsOn(m.gender, x.team, S().year).length ? '<p class="small">🤝 Teammates: ' + U.esc(TL.nba.starsOn(m.gender, x.team, S().year).slice(0, 3).join(', ')) + '</p>' : '') +
       (x.contract && x.stage === 'pro' ? '<p class="small muted">Contract: ' + E.fmt(S().job.salary) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left' + (x.shoe ? ' · 👟 ' + x.shoe.brand : '') + '</p>' : '') +
       (pro.length ? '<p class="small">Career: <b>' + avg('ppg') + '</b> PTS · <b>' + avg('rpg') + '</b> REB · <b>' + avg('apg') + '</b> AST · ' + pts.toLocaleString() + ' points' + (x.high ? ' · high of ' + x.high.pts : '') + '</p>' : '') +
       (acc.length ? '<p class="small">' + acc.join(' · ') + '</p>' : '');
@@ -497,7 +533,7 @@ TL.hoops = (function () {
   }
   function seasonDetail(q) {
     var more = fmtMore(q);
-    ui().alert(q.year + ' · ' + q.team.replace(/^the /, ''), [(q.league || '') + (q.rec ? ' · ' + q.rec : '') + (q.gp ? ' · ' + q.gp + ' games' : ''), fmtLine(q) + (more ? ' · ' + more : ''), q.hi ? 'Season high: ' + q.hi + ' points' : '', q.result || '', q.honors ? 'Honors: ' + q.honors.join(', ') : ''].filter(Boolean).join('. ') + '.', '');
+    ui().alert(q.year + ' · ' + q.team.replace(/^the /, ''), [(q.league || '') + (q.rec ? ' · ' + q.rec : '') + (q.gp ? ' · ' + q.gp + ' games' : ''), fmtLine(q) + (more ? ' · ' + more : ''), q.hi ? 'Season high: ' + q.hi + ' points' : '', q.result || '', q.honors ? 'Honors: ' + q.honors.join(', ') : '', q.mates ? 'Teammates: ' + q.mates.join(', ') : ''].filter(Boolean).join('. ') + '.', '');
   }
   function train(kind) {
     if (!onceAYear('hoops_' + kind)) return done(nope('I already worked on that this year.'));
@@ -544,11 +580,12 @@ TL.hoops = (function () {
         } });
         items.push({ icon: '🧓', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Hang up my sneakers for good?', function () { done(retire()); }); } });
       }
+      if (x && TL.hsocial) TL.hsocial.items().forEach(function (it) { items.push(it); });
       if (x && (x.aw || x.honors || x.rings || x.high)) items.push({ icon: '🏆', label: 'Trophy case', sub: accolades(x).length ? U.plural(accolades(x).length, 'kind') + ' of hardware' : 'Records and honors', onClick: trophyCase });
       if (x && x.seasons.length) {
         items.push({ section: 'Season by season' });
         x.seasons.slice(-12).reverse().forEach(function (q) {
-          items.push({ icon: q.result === 'Won the championship' || /national championship|state title/.test(q.result || '') ? '🏆' : q.honors ? '🏅' : '🏀', label: q.year + ' · ' + q.team.replace(/^the /, ''), sub: (q.league || '') + ' · ' + q.rec + ' · ' + q.ppg + '/' + q.rpg + '/' + q.apg + (q.result ? ' · ' + q.result : '') + (q.honors ? ' · ' + q.honors.join(', ') : ''), onClick: function () { seasonDetail(q); } });
+          items.push({ icon: q.result === 'Won the championship' || /national championship|state title/.test(q.result || '') ? '🏆' : q.honors ? '🏅' : '🏀', label: q.year + ' · ' + q.team.replace(/^the /, ''), sub: lgName(q.league || '', q.year) + ' · ' + q.rec + ' · ' + q.ppg + '/' + q.rpg + '/' + q.apg + (q.result ? ' · ' + q.result : '') + (q.honors ? ' · ' + q.honors.join(', ') : ''), onClick: function () { seasonDetail(q); } });
         });
       }
       return items;
@@ -564,8 +601,8 @@ TL.hoops = (function () {
     if (x.stage === 'college') return done(nope('I\'m playing college ball. The draft comes first.'));
     var p = (x.ovr - 50) / 40 + (m.athl - 60) / 100;
     if (!U.chance(U.clamp(p, 0.03, 0.8))) return done(bad('I didn\'t make it past open tryouts. (OVR ' + x.ovr + ')'));
-    if (x.ovr >= 72) { sign(U.pick(teams()), league(), 1, salaryFor(x.ovr), 'Rotation Player'); return done(good('I earned a contract with the ' + h().team + '! 🏀')); }
-    sign(m.gender === 'F' ? U.pick(EURO) : U.pick(GLEAGUE), m.gender === 'F' ? 'EuroLeague' : 'G League', 1, m.gender === 'F' ? 60000 : 40000, 'Prospect');
+    if (x.ovr >= 72 && homeLeague()) { sign(U.pick(teams()), league(), 1, salaryFor(x.ovr), 'Rotation Player'); return done(good('I earned a contract with the ' + h().team + '! 🏀')); }
+    sign(m.gender === 'F' ? U.pick(EURO) : U.pick(minorTeams()), m.gender === 'F' ? 'EuroLeague' : 'G League', 1, Math.round((m.gender === 'F' ? 60000 : 40000) * eraPay()), 'Prospect');
     done(good('I made the ' + h().team + '! It\'s a start. 🏀'));
   }
   function active() { var x = h(); return !!(x && x.stage); }
