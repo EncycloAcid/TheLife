@@ -762,7 +762,7 @@ TL.eras.rome = (function () {
       { label: 'No thanks', run: function () { return 'I stayed a civilian.'; } }
     ] };
   } });
-  def('r_marriage', { notRuler: true, min: 15, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
+  def('r_marriage', { notRuler: true, min: 16, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
     if (S().job && S().job.career === 'r_vestal') return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + D.gentile(U.pick(c.last), g);
     return { icon: '💍', title: 'An arranged match', text: 'My family has arranged a marriage to ' + nm + ', from a respectable family.', choices: [

@@ -273,7 +273,7 @@ TL.acting = (function () {
   function pay(base) {
     var x = st(), s = S(), amt = E.$(base);
     if (x.agent) amt = Math.round(amt * 0.9);
-    if (!s.job && me().age >= 18 && !s.edu) s.job = { career: 'actor', acting: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: x.agent ? x.agent.name : 'Freelance', salary: 0, title: title() };
+    if (!s.job && me().age >= 18 && !s.edu && !s.prison && !s.retired) s.job = { career: 'actor', acting: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: x.agent ? x.agent.name : 'Freelance', salary: 0, title: title() };
     if (hasJob()) { x.earn += amt; return; }
     E.addMoney(Math.round(amt * (me().age < 18 ? 1 : 0.75)));
   }

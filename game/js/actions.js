@@ -319,6 +319,7 @@ TL.actions = (function () {
     if (m.age < 13 || p.age < 13) return false;
     if (Math.abs(p.age - m.age) > Math.max(4, m.age / 2 - 3)) return false;
     if (m.age >= 18 && p.age < 18) return false;
+    if (m.age < 18 && Math.abs(p.age - m.age) > 2) return false; // minors date people their own age
     if (m.interest !== 'A' && p.gender !== m.interest) return false;
     return !E.partner() || ['partner'].indexOf(E.partner().role) < 0;
   }

@@ -99,7 +99,7 @@ TL.music = (function () {
   function pay(base) {
     var x = st(), s = S(), amt = E.$(base);
     if (amt <= 0) return 0;
-    if (!s.job && me().age >= 18 && !s.edu) s.job = { career: 'musician', music: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: x.label ? x.label.name : 'Independent', salary: 0, title: title() };
+    if (!s.job && me().age >= 18 && !s.edu && !s.prison && !s.retired) s.job = { career: 'musician', music: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: x.label ? x.label.name : 'Independent', salary: 0, title: title() };
     if (hasJob()) { x.earn += amt; return amt; }
     E.addMoney(Math.round(amt * (me().age < 18 ? 1 : 0.75)));
     return amt;

@@ -248,7 +248,7 @@ TL.events = (function () {
       { label: 'Say no', run: function () { E.karma(1); return 'I said no. Smoking is gross.'; } }
     ] };
   } });
-  def('teen_crush', { min: 12, max: 18, w: 7, cond: function () { return !E.partner(); }, build: function () {
+  def('teen_crush', { min: 13, max: 18, w: 7, cond: function () { return !E.partner(); }, build: function () {
     var c = E.makePerson({ age: me().age + U.rand(-1, 1), gender: me().interest === 'A' ? undefined : me().interest, role: 'partner' });
     return { icon: '💌', title: 'Crush', text: 'I have a huge crush on ' + c.first + ' from class.', choices: [
       { label: 'Ask them out', run: function () {

@@ -667,7 +667,7 @@ TL.dynasty = (function () {
       { label: 'Spend my days riding and hunting', run: function () { E.stat('happy', 6); me().athl = Math.min(100, me().athl + 4); return 'Books can wait. I rode until the horses were tired.'; } }
     ] };
   } });
-  hdef('dy_match', { min: 13, max: 24, w: 5, cond: function () { return !E.partner(); }, build: function () {
+  hdef('dy_match', { min: 16, max: 24, w: 5, cond: function () { return !E.partner(); }, build: function () {
     var c = cfg(), R = era().coupCfg('throne').rule, g = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(g === 'F' ? R.brides : R.grooms);
     return { icon: '💌', title: 'A royal match', text: 'Envoys have come to propose a marriage between me and ' + who + '. An alliance would make my claim much stronger.', choices: [
       { label: 'Agree to the match', run: function () { var cty = TL.data.country(S().country), sp = E.addPerson({ role: me().age >= 16 ? 'spouse' : 'fiance', gender: g, age: me().age + U.rand(-3, 3), rel: U.rand(30, 60) }); sp.first = U.pick(g === 'F' ? cty.female : cty.male); sp.job = 'Royal consort'; grow('support', 12); if (me().age >= 16) E.achieve('married'); return good((me().age >= 16 ? 'I married ' : 'I was betrothed to ') + sp.first + ', ' + who + '. Their family\'s swords stand behind me now. 💍'); } },

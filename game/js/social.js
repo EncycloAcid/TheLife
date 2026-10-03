@@ -390,9 +390,50 @@ TL.social = (function () {
     });
   }
 
+  // ------------------------------------------------------------ career fans
+  // How many people would follow me given what I'm famous for. Movie stars,
+  // musicians and athletes pull in followers whether or not they post much;
+  // the platforms themselves were smaller in the early years.
+  function fanTarget() {
+    var s = S(), y = s.year; if (y < 2004 || E.ancient()) return null;
+    var era = y < 2010 ? 0.15 : y < 2015 ? 0.45 : 1, out = { n: 0, why: '' };
+    function take(n, why) { if (n > out.n) { out.n = n; out.why = why; } }
+    take(500 * Math.pow(10, (s.fame || 0) / 20) * ((s.fame || 0) >= 5 ? 1 : 0), 'fame');
+    var mu = s.music; if (mu && mu.fans) take(mu.fans * 0.5, 'music');
+    var ac = s.acting; if (ac && ac.rep >= 20) take(1000 * Math.pow(10, ac.rep / 25), ac.series ? 'TV career' : 'movie career');
+    var pr = s.pro; if (pr && pr.team) take(20000 * Math.pow(10, Math.max(0, (pr.ovr || 60) - 60) / 12), 'pro career');
+    if (s.job && s.job.politics && s.job.level >= 2) take(30000 * Math.pow(4, s.job.level - 2), 'political career');
+    out.n = Math.round(out.n * era);
+    return out.n >= 1000 ? out : null;
+  }
+  var WHY = { fame: 'being famous', music: 'my music', 'movie career': 'my movie career', 'TV career': 'my TV show', 'pro career': 'my pro career', 'political career': 'my political career' };
+  function careerFans() {
+    var s = S(), t = fanTarget(); if (!t || (s.hoops && s.hoops.stage === 'pro')) return; // pro hoopers have their own feed (js/hoopsocial.js)
+    var ids = accounts().filter(function (id) { return live(id); });
+    if (!ids.length) {
+      // Famous with no socials: fans come looking.
+      if (t.n >= 20000 && me().age >= 13 && best() && !s.prison && (!st().fanAsk || s.year - st().fanAsk >= 5)) { st().fanAsk = s.year; s.pending.push({ id: 'soc_fans', data: { year: s.year, n: t.n, why: t.why } }); }
+      return;
+    }
+    var have = total(); if (have >= t.n) return;
+    var gain = Math.round((t.n - have) * U.randf(0.25, 0.45)), m = liveMain();
+    st().acc[m].f += gain; s.followers = total();
+    if (gain >= Math.max(1000, have * 0.1)) E.log('📈 ' + U.cap(WHY[t.why]) + ' brought me ' + big(gain) + ' new followers on ' + pname(m) + '.', 'good');
+  }
+  def('soc_fans', { build: function (d) {
+    var s = S(); if (!d || d.year !== s.year || accounts().length) return null;
+    var b = best(); if (!b) return null;
+    var start = Math.round(d.n * U.randf(0.3, 0.5));
+    return { icon: '📱', title: 'Where can we follow you?', text: (d.why === 'fame' ? 'People' : 'Fans of ' + WHY[d.why]) + ' keep asking where to find me online. I don\'t even have a ' + pname(b) + ' account.', choices: [
+      { label: 'Join ' + pname(b), run: function () { var c = st(); c.acc[b] = { f: start, yr: 1, posts: 1, joined: s.year }; c.platform = true; s.social.platform = true; s.followers = total(); E.fame(1); return good('I posted for the first time on ' + pname(b) + '. ' + big(start) + ' people followed me within a week. 📱'); } },
+      { label: 'Stay offline', run: function () { E.stat('happy', 3); return 'I like my privacy. Fans can watch my work instead.'; } }
+    ] };
+  } });
+
   // ------------------------------------------------------------ the year
   function yearly() {
     var s = S(); if (!s || s.dead || !s.social) return;
+    careerFans();
     var c = st(), ids = accounts(); if (!ids.length) return;
     sync();
     ids.forEach(function (id) {

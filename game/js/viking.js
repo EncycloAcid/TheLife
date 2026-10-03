@@ -615,7 +615,7 @@ TL.eras.viking = (function () {
       { label: 'Throw the plunder overboard', run: function () { E.addMoney(-Math.round(money() * 0.15)); return 'We lightened the ship and rode out the storm, poorer but alive.'; } }
     ] };
   } });
-  def('v_marriage', { notRuler: true, min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !thrall(); }, build: function () {
+  def('v_marriage', { notRuler: true, min: 16, max: 35, w: 7, cond: function () { return !E.partner() && !thrall(); }, build: function () {
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, first = U.pick(g === 'M' ? c.male : c.female), last = patronym(U.pick(c.male), g);
     return { icon: '💍', title: 'A marriage offer', text: 'My family has agreed a match with ' + first + ' ' + last + (great() ? ', who brings land and silver as a dowry.' : ', from a good farm.'), choices: [
       { label: 'Agree', run: function () { var p = E.addPerson({ role: 'spouse', gender: g, age: me().age + U.rand(-3, 8), rel: U.rand(40, 75) }); p.first = first; p.last = last; E.achieve('married'); E.stat('happy', 8); return good('We were married at a feast that went on for days. 💍'); } },

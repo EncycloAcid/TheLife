@@ -170,6 +170,15 @@ TL.engine = (function () {
     }
     for (var t2 = 0; t2 < 6 && !o.first && nm.first === nm.last; t2++) nm.first = randomName(gender, null, o.country).first;
     var age = o.age != null ? o.age : 20;
+    // Romance stays age-appropriate: nobody under 13 dates, a minor's partner is
+    // within two years of them, and nobody under 16 is engaged or married.
+    if (['partner', 'fiance', 'spouse'].indexOf(o.role) >= 0 && S() && S().me) {
+      var my = S().me.age;
+      if (my < 18) age = U.clamp(age, Math.max(13, my - 2), my + 2);
+      else age = Math.max(18, age);
+      if (o.role !== 'partner' && age < 16) age = 16;
+      if (my < 13) o.role = 'friend'; // kids make friends, not boyfriends
+    }
     var p = {
       id: U.uid(), first: o.first || nm.first, last: nm.last, gender: gender, age: age, alive: true,
       role: o.role || 'friend', rel: o.rel != null ? o.rel : U.rand(40, 80),
@@ -718,6 +727,8 @@ TL.engine = (function () {
       income += net;
       lines.push('Salary ' + fmt(net));
     }
+    // Back at a full-time job means I'm not retired anymore (the pension waits).
+    if (s.retired && s.job && !s.job.partTime) { s.retired = false; log('💼 Working full-time again, I\'m officially out of retirement. My pension is on hold.'); }
     if (s.retired && s.pension) { income += s.pension; lines.push('Pension ' + fmt(s.pension)); }
     if (s.social.platform && s.followers >= 10000) income += $(Math.round(s.followers * 0.01));
     // cost of living
@@ -980,6 +991,7 @@ TL.engine = (function () {
     if (TL.health && TL.health.familyDeath) TL.health.familyDeath(p, cause); // family history (js/health.js)
     if (TL.dynasty) TL.dynasty.onDeath(p); // the crown may pass (js/eras.js)
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
+    if ((p.role === 'mother' || p.role === 'father') && me().age >= 18) validateHome(); // no more living with parents who are gone
   }
   function yearlyPeople() {
     var s = S(), m = me();
@@ -1003,6 +1015,10 @@ TL.engine = (function () {
       // Real-world-ish mortality: about 1% a year at 60, 6% at 80, a third at 100,
       // shifted by the country's life expectancy.
       var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life) - (TL.history ? TL.history.lifeGap(s.year) * 0.55 : 0)) / 11.5);
+      // Poor health raises the odds a lot; people who are only a bit run down recover slowly.
+      var ph = p.health == null ? 70 : p.health;
+      hazard *= ph < 10 ? 6 : ph < 25 ? 3 : ph < 45 ? 1.6 : 1;
+      if (ph < 70 && p.age < 75) p.health = Math.min(100, ph + U.rand(0, 5));
       if (U.chance(Math.min(0.8, hazard))) {
         // Causes that fit the person's age and the era.
         var yr = s.year, old = yr < 1950, nd = ancient() && TL.ancient.txt('npcDeaths');
@@ -1262,7 +1278,7 @@ TL.engine = (function () {
       kids.forEach(function (k) { if (k.id !== c.id) { k.role = 'sibling'; newPeople.push(k); } });
       // carry forward the heir's own spouse and children
       s.people.forEach(function (p) {
-        if (p.role === 'in-law' && p.spouseOf === c.id) { p.role = 'spouse'; newPeople.push(p); }
+        if (p.role === 'in-law' && p.spouseOf === c.id) { p.role = 'spouse'; delete p.spouseOf; newPeople.push(p); }
         if (p.role === 'grandchild' && p.parentId === c.id) { p.role = 'child'; p.otherParent = null; newPeople.push(p); }
       });
     }

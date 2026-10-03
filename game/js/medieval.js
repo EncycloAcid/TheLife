@@ -799,7 +799,7 @@ TL.eras.medieval = (function () {
       { label: 'Stay home', run: function () { return 'Someone has to mind the fields.'; } }
     ] };
   } });
-  def('m_marriage', { notRuler: true, min: 15, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest|anchor)/.test(S().job.career)); }, build: function () {
+  def('m_marriage', { notRuler: true, min: 16, max: 35, w: 7, cond: function () { return !E.partner() && !(S().job && /m_(monk|priest|anchor)/.test(S().job.career)); }, build: function () {
     if (S().job && /m_(monk|priest|anchor)/.test(S().job.career)) return null;
     var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + U.pick(c.last);
     var fee = serf() ? Math.min(money(), pen(20)) : 0;
