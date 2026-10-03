@@ -51,6 +51,28 @@ TL.business = (function () {
   }
   function need(a) { return T(a).staff * a.locations; }
 
+  // ------------------------------------------------------------ founder
+  // My own business skills, which grow with what I do and shape every
+  // business I run: management keeps quality up, marketing makes campaigns
+  // land, finance trims costs and raises sale prices, product makes better
+  // things (and better startups).
+  var SKILLS = [['mgmt', 'Management', '🧭'], ['mkt', 'Marketing', '📣'], ['fin', 'Finance', '📊'], ['prod', 'Product', '🛠️']];
+  function F() {
+    var s = S(), m = me();
+    if (!s.founder) s.founder = { mgmt: U.clamp(15 + U.rand(0, 15), 5, 60), mkt: U.clamp(Math.round(10 + m.looks / 8 + U.rand(0, 10)), 5, 60), fin: U.clamp(Math.round(10 + m.smarts / 6 + U.rand(0, 8)), 5, 60), prod: U.clamp(Math.round(10 + m.smarts / 8 + U.rand(0, 10)), 5, 60), sold: 0, best: 0 };
+    return s.founder;
+  }
+  function learn(k, n) { var f = F(); f[k] = U.clamp(Math.round((f[k] + n * Math.max(0.2, (100 - f[k]) / 60)) * 10) / 10, 0, 100); }
+  function sk(k) { return Math.round(F()[k]); }
+  function empire() { return S().assets.filter(function (x) { return x.kind === 'business'; }); }
+  function founderCard() {
+    var f = F(), list = empire(), worth = list.reduce(function (t, a) { return t + (a.value || 0); }, 0);
+    var style = SKILLS.slice().sort(function (a, b) { return f[b[0]] - f[a[0]]; })[0][0];
+    return '<div class="hb-arch">' + { mgmt: 'Operator', mkt: 'Brand builder', fin: 'Dealmaker', prod: 'Product visionary' }[style] + ' · ' + (list.length === 1 ? '1 business' : list.length + ' businesses') + ' worth ' + E.fmt(worth) + (f.sold ? ' · ' + U.plural(f.sold, 'exit') + ' (best ' + E.fmt(f.best) + ')' : '') + '</div>' +
+      SKILLS.map(function (k) { var v = sk(k[0]); return '<div class="minibar wide"><span>' + k[1] + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('');
+  }
+  function sold(price) { var f = F(); f.sold = (f.sold || 0) + 1; if (price > (f.best || 0)) f.best = price; }
+
   // ------------------------------------------------------------ the year
   // Returns the year's profit (negative = the owner covers the loss).
   function year(a) {
@@ -59,15 +81,19 @@ TL.business = (function () {
     if (t.startup) return startupYear(a);
     var tier = TIERS[a.tier], staffRatio = Math.min(1.2, a.staff / Math.max(1, need(a)));
     // Customers follow stars; price tier changes both traffic and ticket size.
-    var demand = (0.55 + a.rep / 110) * tier[2] * (1 + (a.hype || 0) * 0.04) * U.randf(0.88, 1.12) * Math.min(1, 0.4 + staffRatio * 0.6);
+    var demand = (0.55 + a.rep / 110) * tier[2] * (1 + (a.hype || 0) * 0.04 * (0.7 + sk('mkt') / 100)) * U.randf(0.88, 1.12) * Math.min(1, 0.4 + staffRatio * 0.6);
     // Thin-margin businesses (car lots) can only move prices a little.
     var room = Math.min(1, (1 - t.cogs) * 1.6), price = 1 + (tier[1] - 1) * room;
     var goods = 1 + ((a.tier === 'premium' ? 1.15 : a.tier === 'budget' ? 0.9 : 1) - 1) * room;
     var rev = t.rev * a.locations * demand * price;
-    var cost = t.rev * a.locations * demand * t.cogs * goods + t.rent * a.locations + a.staff * t.wage * (a.tier === 'premium' ? 1.1 : a.tier === 'budget' ? 0.92 : 1);
+    // A sharp eye for the books trims overhead (rent deals, scheduling), not the goods themselves.
+    var cost = t.rev * a.locations * demand * t.cogs * goods + (t.rent * a.locations + a.staff * t.wage * (a.tier === 'premium' ? 1.1 : a.tier === 'budget' ? 0.92 : 1)) * (1 - (sk('fin') - 20) / 600);
+    if (a.manager) cost += t.wage * 2.5 * Math.sqrt(a.locations);
+    if (a.debt) { cost += a.debt.pay; a.debt.years--; if (a.debt.years <= 0) { delete a.debt; E.log('🏦 I paid off the loan on ' + a.name + '.', 'good'); } }
     var profit = Math.round(rev - cost);
     // Reputation settles toward what customers get for what they pay.
-    a.quality = U.clamp(Math.round(a.quality + (staffRatio < 0.8 ? -6 : staffRatio > 1.05 ? 2 : 0) + U.rand(-3, 2) - (S().job && !S().job.partTime ? 1 : 0)), 5, 100);
+    a.quality = U.clamp(Math.round(a.quality + (staffRatio < 0.8 ? -6 : staffRatio > 1.05 ? 2 : 0) + U.rand(-3, 2) - (S().job && !S().job.partTime && !a.manager ? 1 : 0) + (a.manager ? 1 : 0) + (sk('mgmt') - 20) / 50), 5, 100);
+    learn('mgmt', 0.5); learn('fin', 0.4);
     var target = U.clamp(50 + (a.quality - tier[3]) * 1.2, 0, 100);
     a.rep = U.clamp(Math.round(a.rep + (target - a.rep) * 0.35 + U.rand(-4, 4)), 0, 100);
     a.hype = 0;
@@ -76,7 +102,8 @@ TL.business = (function () {
     if (a.history.length > 12) a.history.shift();
     // Valuation: a multiple of recent profit, with a floor for the fixtures.
     var recent = a.history.slice(-3).reduce(function (s, h) { return s + h.profit; }, 0) / Math.min(3, a.history.length);
-    a.value = Math.max(E.$(Math.round(t.rev * a.locations * 0.08)), Math.round(recent * t.mult * (0.8 + a.rep / 250)));
+    a.value = Math.max(E.$(Math.round(t.rev * a.locations * 0.08)), Math.round(recent * t.mult * (0.8 + a.rep / 250) * (0.96 + sk('fin') / 500)));
+    milestones();
     // Three bad years in a row with no cushion: the doors close.
     a.losing = profit < 0 ? (a.losing || 0) + 1 : 0;
     if (a.losing >= 3 && U.chance(0.4)) a.bankrupt = true;
@@ -90,7 +117,8 @@ TL.business = (function () {
     if (a.stage === 'public') { a.value = Math.round(a.value * Math.exp(U.gauss(0.07, 0.3))); a.valuation = Math.round(a.value / Math.max(0.01, a.share)); return 0; }
     if (a.stage === 'acquired') return 0;
     // Users grow with product quality; revenue follows users; the team burns cash.
-    a.quality = U.clamp(Math.round(a.quality + U.rand(-5, 5) + (me().smarts - 60) / 25 + (s.skills && s.skills.coding ? s.skills.coding / 40 : 0)), 5, 100);
+    a.quality = U.clamp(Math.round(a.quality + U.rand(-5, 5) + (me().smarts - 60) / 25 + (s.skills && s.skills.coding ? s.skills.coding / 40 : 0) + (sk('prod') - 20) / 40), 5, 100);
+    learn('prod', 0.6);
     // Growth slows as the user base gets big.
     var growth = U.gauss(0.6 + (a.quality - 50) / 60 - Math.max(0, Math.log(Math.max(a.users, 1) / 1e4) / Math.LN10) * 0.4, 0.7);
     a.users = Math.max(0, Math.round(Math.max(a.users, 500) * Math.exp(U.clamp(growth, -1.5, 2.2))));
@@ -114,7 +142,7 @@ TL.business = (function () {
     var s = S(), t = T(a);
     if (s.prison || !U.chance(0.4)) return;
     var food = /Food|Coffee|Restaurant/.test(a.type);
-    var pool = [['biz_review', 3], ['biz_theft', 2], ['biz_competitor', 2], ['biz_buyout', a.value > E.$(200000) ? 2 : 0], ['biz_inspection', food ? 3 : 0], ['biz_lawsuit', 1], ['biz_franchise', a.locations >= 3 && a.rep >= 70 ? 2 : 0]];
+    var pool = [['biz_review', 3], ['biz_theft', 2], ['biz_competitor', 2], ['biz_buyout', a.value > E.$(200000) ? 2 : 0], ['biz_inspection', food ? 3 : 0], ['biz_lawsuit', 1], ['biz_franchise', a.locations >= 3 && a.rep >= 70 ? 2 : 0], ['biz_strike', a.staff >= 6 ? 2 : 0], ['biz_supply', t.cogs >= 0.25 ? 2 : 0], ['biz_influencer', 2], ['biz_bestof', a.rep >= 75 ? 2 : 0]];
     var pick = U.weighted(pool.filter(function (p) { return p[1]; }).map(function (p) { return { w: p[1], id: p[0] }; }));
     if (pick) s.pending.push({ id: pick.id, data: { id: a.id } });
   }
@@ -168,7 +196,7 @@ TL.business = (function () {
     var a = biz(d); if (!a) return null;
     var offer = Math.round(a.value * U.randf(1.1, 1.6));
     return { icon: '💼', title: 'Buyout offer', text: 'A group of investors wants to buy ' + a.name + ' for ' + E.fmt(offer) + '.', choices: [
-      { label: 'Sell it', run: function () { E.addMoney(offer); S().assets = S().assets.filter(function (x) { return x !== a; }); E.stat('happy', 10); return good('I sold ' + a.name + ' for ' + E.fmt(offer) + '. 💰'); } },
+      { label: 'Sell it', run: function () { E.addMoney(offer); sold(offer); S().assets = S().assets.filter(function (x) { return x !== a; }); E.stat('happy', 10); return good('I sold ' + a.name + ' for ' + E.fmt(offer) + '. 💰'); } },
       { label: 'Not for sale', run: function () { return 'I turned them down. ' + a.name + ' is my baby.'; } }
     ] };
   } });
@@ -193,11 +221,49 @@ TL.business = (function () {
     var a = biz(d); if (!a) return null;
     var buyer = U.pick(['Google', 'Microsoft', 'Apple', 'Meta', 'Amazon', 'Salesforce', 'Adobe']), price = Math.round(a.valuation * U.randf(1.1, 1.5));
     return { icon: '🔔', title: 'Exit time', text: buyer + ' offered to acquire ' + a.name + ' for ' + E.fmt(price) + '. Bankers also say we could go public.', choices: [
-      { label: 'Sell to ' + buyer, run: function () { var mine = Math.round(price * a.share); E.addMoney(mine); a.stage = 'acquired'; S().assets = S().assets.filter(function (x) { return x !== a; }); E.stat('happy', 20); E.fame(5); return good(buyer + ' acquired ' + a.name + '. My stake was worth ' + E.fmt(mine) + '. 🎉'); } },
+      { label: 'Sell to ' + buyer, run: function () { var mine = Math.round(price * a.share); E.addMoney(mine); sold(mine); a.stage = 'acquired'; S().assets = S().assets.filter(function (x) { return x !== a; }); E.stat('happy', 20); E.fame(5); return good(buyer + ' acquired ' + a.name + '. My stake was worth ' + E.fmt(mine) + '. 🎉'); } },
       { label: 'Ring the bell: IPO', run: function () { var pop = U.randf(0.6, 1.8), mine = Math.round(a.valuation * pop * a.share * 0.25); E.addMoney(mine); a.share *= 0.75; a.stage = 'public'; a.value = Math.round(a.valuation * pop * a.share); E.fame(8); E.achieve('ipo'); return pop >= 1 ? good(a.name + ' went public and soared on day one. I cashed out ' + E.fmt(mine) + ' and still own ' + Math.round(a.share * 100) + '%. 🔔') : bad(a.name + '\'s IPO flopped, but I still cashed out ' + E.fmt(mine) + '.'); } },
       { label: 'Keep building', run: function () { return 'I\'m not done building. The best is yet to come.'; } }
     ] };
   } });
+
+  def('biz_strike', { cond: function () { return true; }, build: function (d) {
+    var a = biz(d); if (!a || T(a).startup) return null;
+    var raise = E.$(Math.round(T(a).wage * a.staff * 0.08));
+    return { icon: '✊', title: 'Staff walkout', text: 'The staff at ' + a.name + ' want a raise and are threatening to walk out.', choices: [
+      { label: 'Give everyone a raise (' + E.fmt(raise) + ' this year)', run: function () { E.addMoney(-raise); a.quality = Math.min(100, a.quality + 6); E.karma(3); learn('mgmt', 2); return good('I gave the team a raise. Morale has never been better.'); } },
+      { label: 'Negotiate', run: function () { learn('mgmt', 2); if (U.chance(0.35 + sk('mgmt') / 200)) { E.addMoney(-Math.round(raise / 3)); return good('We met in the middle. Everyone went back to work happy.'); } a.quality = Math.max(5, a.quality - 6); return bad('Talks broke down. A few of my best people quit.'); } },
+      { label: 'Refuse and replace anyone who walks', run: function () { a.quality = Math.max(5, a.quality - 10); a.rep = Math.max(0, a.rep - 5); E.karma(-4); return bad('Half the staff walked out. Service fell apart for months.'); } }
+    ] };
+  } });
+  def('biz_supply', { cond: function () { return true; }, build: function (d) {
+    var a = biz(d); if (!a || T(a).startup) return null;
+    return { icon: '📦', title: 'Supplier prices', text: 'My main supplier for ' + a.name + ' is raising prices by 20%.', choices: [
+      { label: 'Raise my prices to match', run: function () { a.rep = Math.max(0, a.rep - 4); learn('fin', 1); return 'I passed the cost on. A few customers grumbled.'; } },
+      { label: 'Shop around for a new supplier', run: function () { learn('fin', 2); if (U.chance(0.4 + sk('fin') / 200)) { a.quality = Math.min(100, a.quality + 2); return good('I found a better supplier for less. Win-win.'); } a.quality = Math.max(5, a.quality - 6); return bad('The cheaper supplier\'s goods were worse. Customers noticed.'); } },
+      { label: 'Eat the cost', run: function () { E.addMoney(-E.$(Math.round(T(a).rev * a.locations * T(a).cogs * 0.1))); return 'I absorbed the increase to keep customers happy.'; } }
+    ] };
+  } });
+  def('biz_influencer', { cond: function () { return true; }, build: function (d) {
+    var a = biz(d); if (!a) return null;
+    return { icon: '📱', title: 'Influencer', text: 'A big influencer with 3 million followers wants to feature ' + a.name + '. Their manager is asking for ' + E.fmt(E.$(8000)) + '.', choices: [
+      { label: 'Pay for the feature', run: function () { E.addMoney(-E.$(8000)); learn('mkt', 2); a.hype = (a.hype || 0) + U.rand(3, 8); if (T(a).startup) a.users = Math.round((a.users || 500) * U.randf(1.05, 1.4)); return good('The video went up. Our phones haven\'t stopped buzzing. 📱'); } },
+      { label: 'Invite them for free instead', run: function () { learn('mkt', 1); if (U.chance(0.3 + sk('mkt') / 250)) { a.hype = (a.hype || 0) + 4; return good('They came anyway and loved it. Free buzz!'); } return 'They never showed up.'; } }
+    ] };
+  } });
+  def('biz_bestof', { cond: function () { return true; }, build: function (d) {
+    var a = biz(d); if (!a || T(a).startup) return null;
+    (a.awards = a.awards || []).push(S().year);
+    return { icon: '🏅', title: 'Best in town', text: a.name + ' was voted the best ' + T(a).noun + ' in town by readers of the local paper.', choices: [
+      { label: 'Frame it by the door', run: function () { a.rep = Math.min(100, a.rep + 5); a.hype = (a.hype || 0) + 3; return good('The plaque is up and the line is out the door. 🏅'); } }
+    ] };
+  } });
+  // Empire milestones.
+  function milestones() {
+    var s = S(), worth = empire().reduce(function (t, a) { return t + (a.value || 0); }, 0), f = F();
+    if (!f.u30 && me().age < 30 && worth >= E.$(5e6)) { f.u30 = s.year; E.log('📰 I made the Forbes 30 Under 30 list!', 'good'); E.fame(6); }
+    if (!f.mogul && worth >= E.$(5e7)) { f.mogul = s.year; E.log('🏙️ My businesses are now worth over ' + E.fmt(E.$(5e7)) + '. People call me a mogul.', 'good'); E.fame(5); E.achieve('mogul'); }
+  }
 
   // ------------------------------------------------------------ menu
   function card(a) {
@@ -222,6 +288,11 @@ TL.business = (function () {
       if (a.round < ROUNDS.length) out.push({ icon: '💸', label: 'Pitch investors', sub: 'Next: ' + ROUNDS[a.round], disabled: count('bz_pitch' + a.id) > 0, onClick: function () { bump('bz_pitch' + a.id); if (U.chance(0.25 + a.quality / 200)) { S().pending.push({ id: 'biz_round', data: { id: a.id } }); ui().runPending(); return done('An investor wants in. Let\'s talk terms.'); } done(bad('Every VC passed. "Come back when you have more traction."')); } });
       return out;
     }
+    out.push({ section: 'Founder' });
+    out.push({ info: true, html: founderCard() });
+    out.push({ icon: '📚', label: 'Study the business', sub: 'Books, podcasts and courses (' + E.fmt(E.$(1500)) + ')', disabled: count('bz_study') > 0, onClick: function () {
+      ui().choose('📚 Study', 'What do I want to get better at?', SKILLS.map(function (k) { return { label: k[2] + ' ' + k[1] + ' (' + sk(k[0]) + ')', fn: function () { if (count('bz_study')) return done(nope('I already studied this year.')); if (S().money < E.$(1500)) return done(nope('Courses cost ' + E.fmt(E.$(1500)) + '.')); bump('bz_study'); E.addMoney(-E.$(1500)); learn(k[0], U.rand(4, 7)); done('I spent the year studying ' + k[1].toLowerCase() + '. (' + k[1].toLowerCase() + ' ' + sk(k[0]) + ')'); } }; }));
+    } });
     out.push({ section: 'Run it' });
     out.push({ icon: '🏷️', label: 'Pricing', sub: TIERS[a.tier][0] + ' prices', onClick: function () {
       ui().choose('Pricing', 'Premium prices need high quality; budget prices bring crowds but thin margins.', Object.keys(TIERS).map(function (k) { return { label: (a.tier === k ? '✓ ' : '') + TIERS[k][0], fn: function () { a.tier = k; done('I switched ' + a.name + ' to ' + TIERS[k][0].toLowerCase() + ' pricing.'); } }; }));
@@ -234,10 +305,24 @@ TL.business = (function () {
       ]);
     } });
     var up = E.$(Math.round(T(a).rev * a.locations * 0.04));
-    out.push({ icon: '✨', label: 'Improve quality', sub: 'Training, equipment, renovation', right: E.fmt(up), disabled: count('bz_q' + a.id) > 0, onClick: function () { if (S().money < up) return done(nope('That costs ' + E.fmt(up) + '.')); bump('bz_q' + a.id); E.addMoney(-up); a.quality = Math.min(100, a.quality + U.rand(8, 14)); done(good('I invested in ' + a.name + '. Customers will notice. ✨')); } });
+    out.push({ icon: '✨', label: 'Improve quality', sub: 'Training, equipment, renovation', right: E.fmt(up), disabled: count('bz_q' + a.id) > 0, onClick: function () { if (S().money < up) return done(nope('That costs ' + E.fmt(up) + '.')); bump('bz_q' + a.id); E.addMoney(-up); a.quality = Math.min(100, a.quality + U.rand(8, 14) + Math.round((sk('prod') - 20) / 20)); learn('prod', 1.5); done(good('I invested in ' + a.name + '. Customers will notice. ✨')); } });
     var mk = E.$(Math.round(T(a).rev * a.locations * 0.02));
-    out.push({ icon: '📣', label: 'Marketing campaign', right: E.fmt(mk), disabled: count('bz_mkt' + a.id) > 0, onClick: function () { if (S().money < mk) return done(nope('That costs ' + E.fmt(mk) + '.')); bump('bz_mkt' + a.id); E.addMoney(-mk); a.hype = (a.hype || 0) + U.rand(3, 6); done('I launched a marketing campaign for ' + a.name + '. 📣'); } });
+    out.push({ icon: '📣', label: 'Marketing campaign', right: E.fmt(mk), disabled: count('bz_mkt' + a.id) > 0, onClick: function () { if (S().money < mk) return done(nope('That costs ' + E.fmt(mk) + '.')); bump('bz_mkt' + a.id); E.addMoney(-mk); a.hype = (a.hype || 0) + U.rand(3, 6); learn('mkt', 1.5); done('I launched a marketing campaign for ' + a.name + '. 📣'); } });
+    out.push({ icon: '💡', label: 'Launch something new', sub: 'A new menu, line or service', disabled: count('bz_new' + a.id) > 0, onClick: function () {
+      ui().choose('💡 Something new at ' + a.name, 'Play it safe, or swing big?', [
+        { label: 'A safe crowd-pleaser', fn: function () { bump('bz_new' + a.id); learn('prod', 1); a.quality = Math.min(100, a.quality + 3); a.hype = (a.hype || 0) + 2; done('Customers liked the new addition. Steady wins.'); } },
+        { label: 'Something bold nobody else does', fn: function () { bump('bz_new' + a.id); learn('prod', 2); if (U.chance(0.35 + (sk('prod') + sk('mkt')) / 400)) { a.hype = (a.hype || 0) + 8; a.rep = Math.min(100, a.rep + 6); return done(good('It was a sensation. People are lining up around the block. 💡')); } a.rep = Math.max(0, a.rep - 6); E.addMoney(-E.$(Math.round(T(a).rev * 0.02))); done(bad('It flopped. We quietly pulled it after a month.')); } }
+      ]);
+    } });
+    out.push({ icon: '👔', label: a.manager ? 'Let the general manager go' : 'Hire a general manager', sub: a.manager ? 'Runs it day to day · ' + E.fmt(E.$(Math.round(T(a).wage * 2.5 * Math.sqrt(a.locations)))) + '/yr' : 'Keeps quality up even if I have another job', onClick: function () {
+      a.manager = !a.manager; done(a.manager ? good('I hired a seasoned general manager to run ' + a.name + ' day to day. 👔') : 'I let the general manager go and took the reins back myself.');
+    } });
     out.push({ section: 'Grow' });
+    if (!a.debt) out.push({ icon: '🏦', label: 'Take a business loan', sub: '8% a year, paid back over 5 years', right: E.fmt(E.$(Math.round(T(a).rev * a.locations * 0.6))), onClick: function () {
+      var amt = E.$(Math.round(T(a).rev * a.locations * 0.6)), pay = E.$(Math.round(T(a).rev * a.locations * 0.6 * 1.25 / 5));
+      ui().confirm('Business loan', 'Borrow ' + E.fmt(amt) + ' for ' + a.name + '? I\'ll pay ' + E.fmt(pay) + ' a year for 5 years out of its profits.', function () { E.addMoney(amt); a.debt = { years: 5, pay: Math.round(T(a).rev * a.locations * 0.6 * 1.25 / 5) }; learn('fin', 1); done('The bank approved a ' + E.fmt(amt) + ' loan for ' + a.name + '. 🏦'); });
+    } });
+    else out.push({ info: true, html: '<p class="small muted">🏦 Loan: ' + E.fmt(E.$(a.debt.pay)) + '/yr for ' + U.plural(a.debt.years, 'more year') + '.</p>' });
     var open = Math.round((a.price || a.value) * 0.8);
     out.push({ icon: '📍', label: 'Open a new location', sub: 'Needs 4+ stars to go well', right: E.fmt(open), disabled: a.locations >= 20, onClick: function () {
       if (S().money < open) return done(nope('A new ' + T(a).noun + ' costs ' + E.fmt(open) + '.'));

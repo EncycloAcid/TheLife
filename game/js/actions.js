@@ -953,7 +953,7 @@ TL.actions = (function () {
         items.push({ icon: '📣', label: 'Marketing campaign', right: E.fmt(Math.round(a.value * 0.05)), onClick: function () { var c = Math.round(a.value * 0.05); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.hype = (a.hype || 0) + U.rand(1, 5); done('I launched a marketing campaign for ' + a.name + '.'); } });
         items.push({ icon: '💵', label: 'Invest more', right: E.fmt(Math.round(a.value * 0.2)), onClick: function () { var c = Math.round(a.value * 0.2); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.value += Math.round(c * U.randf(0.7, 1.3)); done('I invested ' + E.fmt(c) + ' into ' + a.name + '.'); } });
       }
-      if (a.kind === 'business') items.push({ section: ' ' });
+      if (a.kind === 'business') items.push({ section: 'Sell' });
       if (a.loan) items.push({ icon: '🏦', label: 'Pay off loan', right: E.fmt(a.loan), onClick: function () { if (!afford(a.loan)) return done(noMoney(a.loan)); E.addMoney(-a.loan); a.loan = 0; done(good('I paid off the loan on ' + a.name + '.')); } });
       items.push({ icon: '🏷️', label: 'Sell', right: E.fmt(saleValue - (a.loan || 0)), danger: true, onClick: function () {
         ui().confirm('Sell ' + a.name + '?', 'You\'ll receive ' + E.fmt(saleValue - (a.loan || 0)) + ' after paying off any loan.', function () {
