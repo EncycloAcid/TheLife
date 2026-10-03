@@ -921,7 +921,10 @@ TL.engine = (function () {
     // Earlier eras: far more children died young.
     if (a < 5) hazard = 0.001 * (1 - gap / 3);
     else if (a < 40) hazard = 0.0008;
-    else hazard = 0.012 * Math.exp((a - life) / 5.5);
+    // Modern lives follow a real-world-shaped curve (about 2% a year at 70,
+    // 5% around life expectancy, 15% at 90), so even a perfectly cared-for
+    // body wears out; earlier eras keep their own curve.
+    else hazard = ancient() ? 0.012 * Math.exp((a - life) / 5.5) : 0.05 * Math.exp((a - life) / 9);
     hazard *= 1.6 - m.health / 100;
     if (a > 110) hazard = 0.8;
     if (U.chance(Math.min(hazard, 0.75))) {

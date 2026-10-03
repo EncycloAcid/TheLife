@@ -251,7 +251,9 @@ TL.ui = (function () {
     // A ruler of an earlier era is remembered by an epithet (js/eras.js).
     var lg = TL.ancient && TL.ancient.on() && TL.coup && TL.coup.legacy('the realm');
     if (lg) parts.push('History remembers ' + (m.gender === 'M' ? 'him' : 'her') + ' as ' + (S().job && TL.ancient.st().rule ? E.jobTitle(S().job).split(' ')[0] + ' ' : '') + lg.name + '.');
-    var careers = s.jobHistory.map(function (h) { return h.title; }).concat(s.job ? [E.jobTitle(s.job)] : []);
+    // Job titles read as prose ("a busser", "a senior software engineer"); acronyms like CEO stay.
+    var prose = function (t) { return String(t || '').replace(/\b([A-Z])([a-z]+)\b/g, function (w, a, b) { return a.toLowerCase() + b; }); };
+    var careers = s.jobHistory.map(function (h) { return prose(h.title); }).concat(s.job ? [prose(E.jobTitle(s.job))] : []).filter(Boolean);
     if (careers.length) parts.push(they + ' worked as ' + (careers.length > 1 ? E.an(careers[careers.length - 2]) + ' and later ' : '') + E.an(careers[careers.length - 1]) + '.');
     var deg = E.highestDegree();
     if (deg && deg.type !== 'hs') parts.push(they + ' held a ' + E.degreeName(deg) + '.');
