@@ -232,9 +232,10 @@ TL.social = (function () {
   }
   // Use my following for my actual work.
   function promos() {
-    var s = S(), out = [], x;
-    if ((x = s.acting) && x.slate && x.slate.length) out.push({ icon: '🎬', label: 'Promote "' + x.slate[0].title + '"', sub: 'Better buzz when it comes out this year', fn: function () { x.press = s.year; return 'I posted behind-the-scenes clips from "' + x.slate[0].title + '". The fans are hyped.'; } });
-    if ((x = s.music) && x.fans) out.push({ icon: '🎵', label: 'Tease my new music', sub: 'Turn followers into fans', fn: function () { var n = Math.round(total() * U.randf(0.02, 0.06) + 50); x.fans += n; return 'I teased a snippet of a new song. ' + big(n) + ' new fans started streaming me.'; } });
+    // Each promo keeps its own reference (one shared variable sent movie buzz to the wrong career).
+    var s = S(), out = [], ac = s.acting, mu = s.music;
+    if (ac && ac.slate && ac.slate.length) { var film = ac.slate[0].title; out.push({ icon: '🎬', label: 'Promote "' + film + '"', sub: 'Better buzz when it comes out this year', fn: function () { ac.press = S().year; return 'I posted behind-the-scenes clips from "' + film + '". The fans are hyped.'; } }); }
+    if (mu && mu.fans) out.push({ icon: '🎵', label: 'Tease my new music', sub: 'Turn followers into fans', fn: function () { var n = Math.round(total() * U.randf(0.02, 0.06) + 50); mu.fans += n; return 'I teased a snippet of a new song. ' + big(n) + ' new fans started streaming me.'; } });
     s.assets.filter(function (a) { return a.kind === 'business'; }).slice(0, 2).forEach(function (b) { out.push({ icon: '🏪', label: 'Promote ' + b.name, sub: 'More customers this year', fn: function () { b.hype = (b.hype || 0) + 2 + Math.min(4, Math.round(Math.log10(1 + total()) - 2)); return 'I posted about ' + b.name + '. My followers are showing up in person.'; } }); });
     if (s.job && s.job.politics) out.push({ icon: '🗳️', label: 'Post a campaign message', sub: 'Approval, if it lands', fn: function () { var j = S().job; if (U.chance(0.7)) { j.perf = Math.min(100, (j.perf || 50) + 2); return 'My message to voters got shared thousands of times.'; } j.perf = Math.max(0, (j.perf || 50) - 3); return bad('Someone dug up an old post that contradicted it. Oops.'); } });
     if ((s.hoops && s.hoops.stage === 'pro') || (s.pro && s.pro.team)) out.push({ icon: '🏟️', label: 'Hype up the season', sub: 'Fans love it', fn: function () { E.fame(1); return 'I posted my training montage. The fans are fired up for the season.'; } });
