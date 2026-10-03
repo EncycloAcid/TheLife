@@ -300,8 +300,10 @@ TL.engine = (function () {
     }
     // yearly grade change
     e.grade = U.clamp(Math.round(e.grade + (m.smarts - 50) / 12 + e.study * 3 + U.rand(-7, 7) - (m.happy < 25 ? 5 : 0)), 0, 100);
-    if (e.stage !== 'grad' && e.stage !== 'uni') stat('smarts', U.rand(0, 3) + e.study);
-    else stat('smarts', U.rand(1, 3) + e.study);
+    // Learning gets harder near the top, so not every kid maxes out by 12.
+    var room = U.clamp((115 - me().smarts) / 60, 0.25, 1);
+    if (e.stage !== 'grad' && e.stage !== 'uni') stat('smarts', Math.round((U.rand(0, 3) + e.study) * room));
+    else stat('smarts', Math.round((U.rand(1, 3) + e.study) * room));
     e.study = 0;
     e.year++;
     var total = eduYears(e.stage, e.grad);
@@ -763,7 +765,7 @@ TL.engine = (function () {
     if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
     // Debt: say how much, and only when it starts, grows a lot, or ends.
     if (s.money < 0) {
-      stat('happy', -8);
+      stat('happy', -Math.round(2 + 6 * Math.min(1, -s.money / $(20000))));
       if (s.money < -$(20000) && U.chance(0.35)) bankruptcy();
       else {
         var owe = -s.money, last = s.flags.debtLogged || 0;
@@ -870,6 +872,8 @@ TL.engine = (function () {
     else stat('health', -U.rand(0, a > 60 ? 3 : 1));
     if (a > 35 && U.chance(0.5)) stat('looks', -U.rand(0, a > 60 ? 3 : 1));
     if (a > 30 && U.chance(0.5)) m.athl = U.clamp(m.athl - U.rand(0, a > 55 ? 3 : 1), 0, 100);
+    if (a >= 22 && a < 65 && s.job && !s.job.partTime && D.career(s.job.career) && D.career(s.job.career).stat === 'smarts' && U.chance(0.3)) stat('smarts', 1);
+    if (a > 70 && U.chance(0.4)) stat('smarts', -U.rand(0, a > 82 ? 3 : 1));
     if (a < 18 && U.chance(0.5)) m.athl = U.clamp(m.athl + U.rand(0, 2), 0, 100);
     if (a < 16 && U.chance(0.3)) stat('looks', U.rand(-3, 4));
     if (a >= 12 && a <= 18 && U.chance(0.25)) stat('looks', U.rand(-4, 6));
@@ -906,9 +910,12 @@ TL.engine = (function () {
   function deathCheck() {
     var s = S(), m = me(), a = m.age, gap = TL.history ? TL.history.lifeGap(s.year) : 0, life = country().life + (s.karma - 50) / 10 + gap * 0.55;
     if (m.health <= 0) {
-      var c = s.conditions.filter(function (n) { var i = D.illness(n); return i && i.dmg >= 8; })[0];
+      // Blame the most serious condition; a passing cold or flu only gets the
+      // blame for the very young, the very old or the already frail.
+      var c = s.conditions.map(function (n) { return D.illness(n); }).filter(function (i) { return i && i.dmg >= 6 && (!i.selfHeal || i.selfHeal < 0.5 || a < 5 || a >= 75); })
+        .sort(function (x, y) { return (y.incurable || y.selfHeal === 0 ? 4 : 0) + y.dmg - ((x.incurable || x.selfHeal === 0 ? 4 : 0) + x.dmg); })[0];
       var hid = !c && TL.health && TL.health.deathCause();
-      return die(c ? 'complications from ' + illName(c).toLowerCase() : hid || 'poor health');
+      return die(c ? 'complications from ' + illName(c.name).toLowerCase() : hid || (a >= 70 && !ancient() ? U.pick(['heart failure', 'natural causes', 'old age', 'a stroke']) : 'poor health'));
     }
     var hazard;
     // Earlier eras: far more children died young.
