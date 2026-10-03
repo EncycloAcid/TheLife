@@ -47,7 +47,7 @@ TL.acting = (function () {
   var STUDIOS = { indie: ['A24', 'Neon', 'Searchlight Pictures', 'Focus Features', 'IFC Films', 'Magnolia Pictures'], studio: ['Warner Bros.', 'Universal', 'Paramount', 'Sony Pictures', 'Lionsgate', '20th Century Studios'], blockbuster: ['Marvel Studios', 'Lucasfilm', 'Warner Bros.', 'Universal', 'Legendary', 'DreamWorks'], series: ['Netflix', 'HBO', 'Apple TV+', 'Hulu', 'Prime Video', 'FX', 'NBC', 'ABC'], kids: ['Disney Channel', 'Nickelodeon'], guest: ['NBC', 'CBS', 'ABC', 'Fox', 'Netflix'], broadway: ['Broadway'], theater: ['a community theater'], student: ['a film school'], commercial: ['a national brand'] };
   // Studios, networks and agencies only turn up in the years they existed:
   // [first year, last year, older name, older name's first year].
-  var ERA = { 'Marvel Studios': [2008], 'Lucasfilm': [1971], 'Fox': [1986], 'American International Pictures': [1954, 1980], 'A24': [2013], 'Neon': [2017], 'Searchlight Pictures': [2020, 0, 'Fox Searchlight', 1994], '20th Century Studios': [2020, 0, '20th Century Fox', 1935], 'Sony Pictures': [1989, 0, 'Columbia Pictures', 1924], 'Legendary': [2000], 'DreamWorks': [1994], 'Lionsgate': [1997], 'Focus Features': [2002], 'IFC Films': [2000], 'Magnolia Pictures': [2001], 'Netflix': [2013], 'Apple TV+': [2019], 'Hulu': [2011], 'Prime Video': [2015], 'FX': [2002], 'HBO': [1983], 'Showtime': [1976], 'Disney Channel': [1983], 'Nickelodeon': [1979], 'Miramax': [1979, 2010], 'Orion Pictures': [1978, 1998], 'New Line Cinema': [1967, 2008], 'Carolco Pictures': [1976, 1995], 'UTA': [1991], 'WME': [2009, 0, 'William Morris', 1898], 'CAA': [1975], 'ICM': [1975, 2022] };
+  var ERA = { 'Marvel Studios': [2008], 'RKO Pictures': [1928, 1959], 'Lucasfilm': [1971], 'Fox': [1986], 'American International Pictures': [1954, 1980], 'A24': [2013], 'Neon': [2017], 'Searchlight Pictures': [2020, 0, 'Fox Searchlight', 1994], '20th Century Studios': [2020, 0, '20th Century Fox', 1935], 'Sony Pictures': [1989, 0, 'Columbia Pictures', 1924], 'Legendary': [2000], 'DreamWorks': [1994], 'Lionsgate': [1997], 'Focus Features': [2002], 'IFC Films': [2000], 'Magnolia Pictures': [2001], 'Netflix': [2013], 'Apple TV+': [2019], 'Hulu': [2011], 'Prime Video': [2015], 'FX': [2002], 'HBO': [1983], 'Showtime': [1976], 'Disney Channel': [1983], 'Nickelodeon': [1979], 'Miramax': [1979, 2010], 'Orion Pictures': [1978, 1998], 'New Line Cinema': [1967, 2008], 'Carolco Pictures': [1976, 1995], 'UTA': [1991], 'WME': [2009, 0, 'William Morris', 1898], 'CAA': [1975], 'ICM': [1975, 2022] };
   var OLD = { indie: ['Miramax', 'Orion Pictures', 'New Line Cinema', 'United Artists', 'American International Pictures'], studio: ['MGM', 'Columbia Pictures', 'United Artists'], blockbuster: ['Carolco Pictures', 'Paramount', 'Columbia Pictures', '20th Century Studios'], series: ['CBS', 'Showtime'] };
   function eraName(n, y) {
     var e = ERA[n]; y = y || S().year;
@@ -68,6 +68,25 @@ TL.acting = (function () {
   var TIERS = [[0, 'Aspiring'], [10, 'Working'], [25, 'Character'], [42, 'Rising Star'], [58, 'Star'], [74, 'A-List'], [90, 'Hollywood Legend']];
   // Directors I can work with again (and again).
   var DIRECTORS = ['Mara Lindqvist', 'Dev Okafor', 'Julian Reyes', 'Sofia Marchetti', 'Theo Nakamura', 'Hannah Brooks', 'Omar Haddad', 'Claire Dumont', 'Rafael Ortiz', 'Ingrid Holm', 'Marcus Bell', 'Yuki Tanaka', 'Priya Raman', 'Elliot Shaw'];
+  // Real directors and stars, by the years they were working (they keep
+  // going a while past our data; invented names fill in the future).
+  var REAL_DIRECTORS = [['Alfred Hitchcock', 1925, 1976], ['John Ford', 1920, 1966], ['Frank Capra', 1927, 1961], ['Billy Wilder', 1942, 1981], ['Orson Welles', 1941, 1973], ['Elia Kazan', 1945, 1976], ['Stanley Kubrick', 1953, 1999], ['Sidney Lumet', 1957, 2007], ['Mike Nichols', 1966, 2007], ['Francis Ford Coppola', 1963, 2024], ['Martin Scorsese', 1967, 2040], ['Steven Spielberg', 1971, 2035], ['George Lucas', 1971, 2005], ['Ridley Scott', 1977, 2035], ['Robert Zemeckis', 1980, 2030], ['Ron Howard', 1982, 2040], ['James Cameron', 1984, 2040], ['John Hughes', 1984, 1991], ['Penny Marshall', 1986, 1996], ['Spike Lee', 1986, 2040], ['Kathryn Bigelow', 1987, 2035], ['Nora Ephron', 1992, 2009], ['Quentin Tarantino', 1992, 2026], ['David Fincher', 1992, 2040], ['Ang Lee', 1992, 2030], ['Guillermo del Toro', 1993, 2045], ['Wes Anderson', 1996, 2045], ['Sofia Coppola', 1999, 2045], ['Christopher Nolan', 2000, 2050], ['Bong Joon-ho', 2003, 2045], ['Denis Villeneuve', 2010, 2050], ['Ava DuVernay', 2010, 2050], ['Ryan Coogler', 2013, 2055], ['Damien Chazelle', 2014, 2055], ['Chloé Zhao', 2015, 2055], ['Barry Jenkins', 2016, 2055], ['Greta Gerwig', 2017, 2055], ['Jordan Peele', 2017, 2055], ['Emerald Fennell', 2020, 2055]];
+  var COSTARS = [['Clark Gable', 'M', 1931, 1960], ['Bette Davis', 'F', 1931, 1970], ['Cary Grant', 'M', 1932, 1966], ['Katharine Hepburn', 'F', 1932, 1981], ['James Stewart', 'M', 1935, 1975], ['Humphrey Bogart', 'M', 1936, 1956], ['Ingrid Bergman', 'F', 1939, 1978], ['Elizabeth Taylor', 'F', 1944, 1980], ['Marlon Brando', 'M', 1950, 1980], ['Marilyn Monroe', 'F', 1950, 1962], ['Audrey Hepburn', 'F', 1953, 1976], ['Sidney Poitier', 'M', 1955, 1990], ['Paul Newman', 'M', 1956, 2005], ['Jack Nicholson', 'M', 1969, 2010], ['Al Pacino', 'M', 1971, 2030], ['Diane Keaton', 'F', 1972, 2020], ['Robert De Niro', 'M', 1973, 2030], ['Meryl Streep', 'F', 1977, 2035], ['Harrison Ford', 'M', 1977, 2023], ['Tom Cruise', 'M', 1983, 2035], ['Tom Hanks', 'M', 1984, 2035], ['Whoopi Goldberg', 'F', 1985, 2005], ['Denzel Washington', 'M', 1987, 2035], ['Julia Roberts', 'F', 1988, 2035], ['Brad Pitt', 'M', 1991, 2040], ['Leonardo DiCaprio', 'M', 1993, 2045], ['Sandra Bullock', 'F', 1994, 2035], ['Halle Berry', 'F', 1995, 2030], ['Will Smith', 'M', 1995, 2030], ['Angelina Jolie', 'F', 1999, 2040], ['Scarlett Johansson', 'F', 2003, 2050], ['Ryan Gosling', 'M', 2006, 2050], ['Viola Davis', 'F', 2008, 2045], ['Emma Stone', 'F', 2010, 2055], ['Michael B. Jordan', 'M', 2013, 2055], ['Lupita Nyong\'o', 'F', 2013, 2055], ['Margot Robbie', 'F', 2013, 2055], ['Zendaya', 'F', 2017, 2065], ['Timothée Chalamet', 'M', 2017, 2065], ['Daniel Kaluuya', 'M', 2017, 2060], ['Florence Pugh', 'F', 2019, 2065], ['Pedro Pascal', 'M', 2019, 2045], ['Anya Taylor-Joy', 'F', 2020, 2065], ['Austin Butler', 'M', 2022, 2065], ['Sydney Sweeney', 'F', 2022, 2065]];
+  // Late-night TV by era (radio before television).
+  var TALK = [['The Ed Sullivan Show', 1948, 1971], ['The Tonight Show with Johnny Carson', 1962, 1992], ['Late Night with David Letterman', 1982, 1993], ['The Oprah Winfrey Show', 1986, 2011], ['The Tonight Show with Jay Leno', 1992, 2014], ['the Late Show with David Letterman', 1993, 2015], ['Jimmy Kimmel Live!', 2003, 2040], ['The Graham Norton Show', 2007, 2045], ['The Tonight Show Starring Jimmy Fallon', 2014, 2045], ['The Late Show with Stephen Colbert', 2015, 2026]];
+  function active(list, y, a, b) { return list.filter(function (q) { return y >= q[a] && y <= q[b]; }); }
+  function pickDirector() { var y = S().year, real = active(REAL_DIRECTORS, y, 1, 2); return real.length && U.chance(0.65) ? U.pick(real)[0] : U.pick(DIRECTORS); }
+  function pickCostar() { var y = S().year, me0 = me().first + ' ' + me().last, real = active(COSTARS, y, 2, 3).filter(function (q) { return q[0] !== me0; }); return real.length && U.chance(0.75) ? U.pick(real)[0] : null; }
+  function talkShow() { var l = active(TALK, S().year, 1, 2); return l.length ? U.pick(l)[0] : null; }
+  // What exists in a given year: no TV before 1949, no movies before 1910.
+  function eraKind(kind) { var y = S().year; if (y < 1949 && /series|guest/.test(kind)) return y < 1910 ? 'theater' : U.chance(0.5) ? 'theater' : 'indie'; if (y < 1910 && /indie|studio|blockbuster|student/.test(kind)) return 'theater'; return kind; }
+  // Critics of the day.
+  function critic(v, y) {
+    if (y < 1967) return ' The New York Times called it ' + (v >= 80 ? '"a triumph."' : v >= 50 ? '"pleasant enough."' : '"a dreary mess."');
+    if (y >= 1975 && y <= 1999) return ' Siskel & Ebert gave it ' + (v >= 70 ? 'two thumbs up.' : v >= 45 ? 'a split decision.' : 'two thumbs down.');
+    if (y <= 2012) return ' Roger Ebert gave it ' + (v >= 85 ? 'four stars.' : v >= 65 ? 'three stars.' : v >= 40 ? 'two stars.' : 'one star.');
+    return '';
+  }
 
   // ------------------------------------------------------------ range
   // Four skills kept as offsets from my overall craft (they average zero):
@@ -154,15 +173,19 @@ TL.acting = (function () {
     if (!kid) LADDER.forEach(function (l) { if (reach >= l[0]) pool = l[1]; });
     var n = x.agent ? 4 : 3, list = [];
     for (var i = 0; i < n; i++) {
-      var kind = U.pick(pool), k = KINDS[kind], parts = Object.keys(k.parts);
+      var kind = eraKind(U.pick(pool)), k = KINDS[kind], parts = Object.keys(k.parts);
       // A bigger name gets offered the bigger part more often.
       var part = parts.length > 1 && U.chance(0.3 + x.rep / 150) ? parts[1] : parts[0];
       var p = k.parts[part], studio = pickStudio(kid && kind === 'series' ? 'kids' : kind);
       var pay = Math.round(U.randf(p[0], p[1]) * (0.7 + x.rep / 120) / 100) * 100;
       if (kid) pay = Math.round(pay * 0.4);
       var tc = typecast(x), genre = kind === 'commercial' ? 'ad' : tc && U.chance(0.5) ? U.pick(GENRES.filter(function (g) { return GENRE_CRAFT[g] === tc; })) : U.pick(GENRES);
-      var dir = kind === 'commercial' || kind === 'student' || kind === 'theater' ? null : x.muse && i === 0 && U.chance(0.6) ? x.muse : U.pick(DIRECTORS);
-      list.push({ kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: studio, genre: genre, director: dir, pay: pay, diff: p[2] + (kid ? -6 : 0) - (dir && dir === x.muse ? 6 : 0), rep: p[3] });
+      var dir = kind === 'commercial' || kind === 'student' || kind === 'theater' ? null : x.muse && i === 0 && U.chance(0.6) ? x.muse : kind === 'broadway' ? U.pick(DIRECTORS) : pickDirector(); // film directors don't stage Broadway
+      var call = { kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: studio, genre: genre, director: dir, pay: pay, diff: p[2] + (kid ? -6 : 0) - (dir && dir === x.muse ? 6 : 0), rep: p[3] };
+      if (k.film && kind !== 'student' || k.series) call.costar = pickCostar();
+      // Streaming movies: a big upfront fee, no box office.
+      if (kind === 'studio' && s.year >= 2015 && U.chance(0.3)) { var sv = ['Netflix', 'Prime Video', 'Apple TV+'].map(function (n) { return eraName(n); }).filter(Boolean); if (sv.length) { call.studio = U.pick(sv); call.streaming = true; call.pay = Math.round(call.pay * 1.3 / 100) * 100; } }
+      list.push(call);
     }
     x.calls = { year: s.year, list: list };
     return list;
@@ -197,13 +220,15 @@ TL.acting = (function () {
     }
     return done(good(msg));
   }
+  // Who was advertising, by era.
+  function brand() { var y = S().year; return U.pick(y < 1950 ? ['a soap company', 'a soda brand', 'a car company', 'a cereal', 'a department store', 'a radio maker'] : y < 1985 ? ['a soda brand', 'a car company', 'a cereal', 'a burger chain', 'a laundry detergent', 'an airline'] : ['a soda brand', 'a car company', 'a phone carrier', 'a burger chain', 'a cereal', 'an insurance company', 'a streaming app']); }
   function phrase(c) {
-    if (c.kind === 'commercial') return 'I\'m in a national commercial for ' + (c.brand = c.brand || U.pick(['a soda brand', 'a car company', 'a phone carrier', 'a burger chain', 'a cereal', 'an insurance company'])) + '.';
+    if (c.kind === 'commercial') return 'I\'m in a national ' + (S().year < 1949 ? 'radio ad' : 'commercial') + ' for ' + (c.brand = c.brand || brand()) + '.';
     if (c.kind === 'guest') return 'I\'m guest starring on the ' + c.studio + ' show "' + c.title + '".';
     if (c.kind === 'student') return 'I\'m the lead in a student film, "' + c.title + '".';
-    if (c.kind === 'series') return 'I\'m a ' + (c.part === 'Series lead' ? 'series lead' : 'series regular') + ' on the ' + c.studio + ' show "' + c.title + '".';
-    var where = c.kind === 'theater' ? 'a community theater production of "' + c.title + '"' : c.kind === 'broadway' ? 'the Broadway show "' + c.title + '"' : 'the ' + c.studio + ' ' + KINDS[c.kind].name.toLowerCase() + ' "' + c.title + '"';
-    return 'I\'m playing ' + (c.part === 'Lead' ? 'the lead' : 'a supporting role') + ' in ' + where + '.';
+    if (c.kind === 'series') return 'I\'m a ' + (c.part === 'Series lead' ? 'series lead' : 'series regular') + ' on the ' + c.studio + ' show "' + c.title + '"' + (c.costar ? ', alongside ' + c.costar : '') + '.';
+    var where = c.kind === 'theater' ? 'a community theater production of "' + c.title + '"' : c.kind === 'broadway' ? 'the Broadway show "' + c.title + '"' : 'the ' + c.studio + ' ' + (c.streaming ? 'movie' : S().year < 1928 ? 'silent picture' : KINDS[c.kind].name.toLowerCase()) + ' "' + c.title + '"';
+    return 'I\'m playing ' + (c.part === 'Lead' ? 'the lead' : 'a supporting role') + ' in ' + where + (c.costar ? ', opposite ' + c.costar : '') + (c.director && !/^(a |the )/.test(c.director) && REAL_DIRECTORS.some(function (d) { return d[0] === c.director; }) ? ', directed by ' + c.director : '') + '.';
   }
   // Pay goes through my acting job (taxed with my salary) when acting is my job.
   function pay(base) {
@@ -276,6 +301,16 @@ TL.acting = (function () {
     if (r >= 85) { x.rep += 3; x.calls = null; return done(good('I hit it off with a famous director at a Hollywood party. New auditions are coming my way! 🥂')); }
     x.rep += 1; E.stat('happy', 4);
     return done('I mingled at an industry party and made a few useful connections. 🥂');
+  }
+  function talk() {
+    var x = st(), sh = S().year < 1948 ? 'the radio' : talkShow() || 'a late-night show';
+    if (count('ac_talk')) return done(nope('I already did the talk-show circuit this year.'));
+    bump('ac_talk');
+    var charm = (me().looks + me().smarts) / 2 + ca(x, 'com') / 3 + U.rand(-25, 25);
+    if (x.slate.length) x.press = S().year;
+    if (charm >= 70) { E.fame(3); x.rep = Math.min(100, x.rep + 2); return done(good('I was a hit on ' + sh + '. ' + U.pick(['My story about my first audition had the audience crying with laughter.', 'The host and I played a game and I won.', 'The clip of me doing impressions went viral.']))); }
+    if (charm < 35) { if (U.chance(0.4)) { E.fame(2); return done('My awkward interview on ' + sh + ' became a meme. Somehow it helped.'); } x.rep = Math.max(0, x.rep - 1); E.stat('happy', -4); return done(bad('I froze on ' + sh + '. The silence was unbearable.')); }
+    E.fame(1); return done('I went on ' + sh + ' and plugged my work. Solid, if forgettable.');
   }
   function pressTour() {
     var x = st();
@@ -354,7 +389,7 @@ TL.acting = (function () {
       items.push({ section: 'Casting calls · ' + Math.max(0, left) + ' auditions left' });
       calls().forEach(function (c) {
         var k = KINDS[c.kind], p = odds(x, c);
-        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + (c.genre && c.genre !== 'ad' ? ' · ' + c.genre : '') + (c.director ? ' · dir. ' + c.director.split(' ').pop() + (collabs(x, c.director) ? ' (' + collabs(x, c.director) + '× before)' : '') : '') + ' · ' + oddsWord(p) + fitWord(c), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
+        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + (c.genre && c.genre !== 'ad' ? ' · ' + c.genre : '') + (c.director ? ' · dir. ' + c.director.split(' ').pop() + (collabs(x, c.director) ? ' (' + collabs(x, c.director) + '× before)' : '') : '') + (c.costar ? ' · with ' + c.costar : '') + (c.streaming ? ' · streaming' : '') + ' · ' + oddsWord(p) + fitWord(c), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
       });
       if (!x.calls.list.length) items.push({ info: true, html: '<p class="muted">No more casting calls this year.</p>' });
       items.push({ section: 'Career' });
@@ -362,6 +397,8 @@ TL.acting = (function () {
       if (!x.headshots || S().year - x.headshots >= 10) items.push({ icon: '📸', label: 'Get headshots', right: E.fmt(E.$(600)), onClick: headshots });
       if (me().age >= 16) items.push({ icon: '🤝', label: x.agent ? 'Look for a bigger agency' : 'Find an agent', sub: x.agent ? 'Now: ' + x.agent.name : 'Better auditions, 10% fee', disabled: count('ac_agent') > 0, onClick: findAgent });
       if (me().age >= 18) items.push({ icon: '🥂', label: 'Go to an industry party', disabled: count('ac_party') > 0, onClick: party });
+      if (x.contract) items.push({ info: true, html: '<p class="small muted">📜 Under contract with ' + U.esc(x.contract.studio) + ' through ' + x.contract.until + ': they pick a picture for me every year.</p>' });
+      if (x.rep >= 25 && me().age >= 16) items.push({ icon: S().year < 1948 ? '📻' : '🛋️', label: S().year < 1948 ? 'Do a radio interview' : 'Go on ' + (talkShow() || 'a talk show'), sub: 'Charm the audience (or go viral for the wrong reasons)', disabled: count('ac_talk') > 0, onClick: talk });
       if (x.slate.length) items.push({ icon: '🎤', label: 'Do a press tour', sub: 'Better buzz for this year\'s releases', disabled: count('ac_press') > 0, onClick: pressTour });
       if (x.series && x.series.seasons) items.push({ icon: '💰', label: 'Ask for a raise', sub: 'Now ' + E.fmt(E.$(x.series.pay)) + '/season · could backfire', disabled: count('ac_raise') > 0, onClick: askRaise });
       if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
@@ -405,7 +442,7 @@ TL.acting = (function () {
       if (!x.credits.length) return [{ info: true, html: '<p class="muted">No credits yet.</p>' }];
       return x.credits.slice().reverse().map(function (r) {
         var k = KINDS[r.kind];
-        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.director ? ' · dir. ' + r.director : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) + (r.budget ? ' on ' + big(r.budget * 1e6) : '') : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : r.verdict === 'smash' ? '🍿' : r.verdict === 'bomb' ? '💣' : '' };
+        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.director ? ' · dir. ' + r.director : '') + (r.costar ? ' · with ' + r.costar : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) + (r.budget ? ' on ' + big(r.budget * 1e6) : '') : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : r.verdict === 'smash' ? '🍿' : r.verdict === 'bomb' ? '💣' : '' };
       });
     });
   }
@@ -496,7 +533,7 @@ TL.acting = (function () {
   }
   function shootSequel(x, g, fee, legacy, title) {
     var lead = /Lead/.test(g.part) || legacy;
-    var c = { kind: g.kind, part: lead ? 'Lead' : g.part, title: title || sequelTitle(g, legacy), studio: eraName(g.studio) || g.studio, genre: g.genre, director: g.director && U.chance(0.6) ? g.director : U.pick(DIRECTORS), pay: fee, rep: KINDS[g.kind].parts[lead ? 'Lead' : 'Supporting'][3], saga: g.id, legacy: !!legacy };
+    var c = { kind: g.kind, part: lead ? 'Lead' : g.part, title: title || sequelTitle(g, legacy), studio: eraName(g.studio) || g.studio, genre: g.genre, director: g.director && U.chance(0.6) ? g.director : pickDirector(), pay: fee, rep: KINDS[g.kind].parts[lead ? 'Lead' : 'Supporting'][3], saga: g.id, legacy: !!legacy };
     g.fee = fee; if (g.contract > 0) g.contract--;
     x.slate.push(c); pay(fee); E.stat('happy', 8);
     return c;
@@ -513,17 +550,28 @@ TL.acting = (function () {
     var review = U.clamp(Math.round(q), 4, 99);
     var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review, genre: r.genre, director: r.director };
     if (sg) credit.saga = sg.id;
+    if (r.costar) credit.costar = r.costar;
+    if (r.streaming) credit.streaming = 1;
     if (r.kind !== 'commercial') shiftCraft(x, GENRE_CRAFT[r.genre], 0.4);
     if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than a ' + typeName(tc).toLowerCase() + '. Critics are calling it a revelation.', 'good');
     if (r.director && again >= 2 && review >= 85 && x.muse !== r.director) { x.muse = r.director; E.log('🎬 ' + r.director + ' calls me their muse. Expect more of their scripts.', 'good'); }
     var lead = /Lead/.test(r.part), msg, cls = '', after = null;
     // Every credit builds my name; good reviews and leading parts build it faster, flops can cost me.
     var dr = r.rep * U.clamp(0.5 + (review - 50) / 40, 0.15, 1.8) * (lead ? 1.2 : 1);
-    if (k.film && k.gross) {
+    if (r.streaming) {
+      // Streaming movies report households, not box office.
+      var views = Math.max(1, Math.round((x.rep / 100 * 50 + review / 3) * U.randf(0.6, 1.4)));
+      credit.views = views;
+      dr += views >= 60 ? 1.5 : views < 20 ? -1 : 0;
+      msg = '📺 "' + r.title + '" (' + r.genre + ')' + (r.costar ? ', co-starring ' + r.costar + ',' : '') + ' premiered on ' + r.studio + ' and was watched by ' + views + ' million households in its first month, with ' + rt(review) + '.' + (views >= 60 ? ' It was the #1 movie on ' + r.studio + '. 🍿' : '');
+      cls = views >= 60 || review >= 85 ? 'good' : '';
+    } else if (k.film && k.gross) {
       var bud = budget(r, prev && sg), base = U.randf(k.gross[0], k.gross[1]) * (0.4 + review / 100) * (1 + x.rep / 200) * (r.franchise ? 1.6 : 1);
       // A sequel opens to the fans the last film made, minus franchise fatigue;
       // a legacy sequel decades later rides on nostalgia.
       if (prev) base = Math.max(base * 0.6, (prev.base || prev.gross) * U.randf(0.75, 1.3) * (0.55 + review / 110)) * (r.legacy ? 1.3 : Math.pow(0.9, Math.max(0, sg.films.length - 2)));
+      // The pandemic emptied theaters in 2020; 2021 was half a recovery.
+      var covid = s.year === 2020 ? 0.2 : s.year === 2021 ? 0.65 : 1; base *= covid;
       // Dollars in the money of the day: a 1985 smash didn't make a billion.
       var pl = Math.min(1, TL.history ? TL.history.priceLevel(s.year) : 1), gross = Math.max(1, Math.round(base * pl)), ratio = base / bud;
       var verdict = ratio < 1.2 ? 'bomb' : ratio < 2.2 ? 'flop' : ratio < 3 ? 'even' : ratio < 5 ? 'hit' : 'smash';
@@ -536,12 +584,16 @@ TL.acting = (function () {
         x.produced = (x.produced || 0) + 1;
       }
       // Leads carry a film's box office; a bomb sticks to them.
-      dr += { bomb: -3, flop: -1, even: 0, hit: 0.7, smash: 1.5 }[verdict] * (lead ? 1 : 0.5);
+      dr += { bomb: -3, flop: -1, even: 0, hit: 0.7, smash: 1.5 }[verdict] * (lead ? 1 : 0.5) * (covid < 1 && /bomb|flop/.test(verdict) ? 0 : 1); // nobody blames you for an empty theater in 2020
       msg = k.icon + ' "' + r.title + '" (' + r.genre + (prev ? (r.legacy ? ', legacy sequel' : ', film ' + (sg.films.length + 1) + ' of the franchise') : '') + ') opened to ' + big(gross * 1e6 * U.randf(0.14, 0.3)) + ' and grossed ' + big(gross * 1e6) + ' worldwide on a ' + big(credit.budget * 1e6) + ' budget, with ' + rt(review) + '. ' + (verdict === 'smash' && gross >= 1000 ? 'A billion-dollar smash! 🍿' : VERDICT[verdict]);
       cls = verdict === 'smash' || verdict === 'hit' ? 'good' : (verdict === 'bomb' || verdict === 'flop') && lead ? 'bad' : '';
+      if (r.costar) msg = msg.replace('" (' + r.genre + ')', '" (' + r.genre + ', with ' + r.costar + ')');
+      if (s.year < 1928) msg = msg.replace('" (' + r.genre, '" (a silent ' + r.genre);
+      if (covid < 1) msg += s.year === 2020 ? ' Theaters were mostly closed by the pandemic.' : ' Audiences were only starting to come back to theaters.';
+      msg += critic(review, s.year);
       if (r.kind !== 'student') after = function () { if (sg) sagaFilm(x, sg, r, credit); else maybeSequel(x, r, credit); };
     } else if (r.kind === 'commercial') {
-      msg = '📺 My commercial for ' + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
+      msg = (s.year < 1949 ? '📻 My radio ad for ' : '📺 My commercial for ') + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
     } else {
       msg = k.icon + ' ' + (k.stage ? 'My show "' + r.title + '" opened' : '"' + r.title + '" premiered') + ' to ' + (review >= 85 ? 'rave reviews' : review >= 60 ? 'good reviews' : review >= 40 ? 'mixed reviews' : 'terrible reviews') + ' (' + rt(review) + ').';
     }
@@ -609,6 +661,16 @@ TL.acting = (function () {
       else if (x.rep >= 50 && U.chance(0.06)) s.pending.push({ id: 'ac_scandal', data: {} });
     }
     sagaTick(x);
+    // The 2023 actors' strike shut Hollywood down for months.
+    if (s.year === 2023 && !x.retired && (results.length || x.series)) { x.earn = Math.round(x.earn * 0.6); E.log('🪧 The SAG-AFTRA strike shut down film and TV for months. I walked the picket line.', 'bad'); E.karma(1); }
+    // Hollywood's studio system: a seven-year contract means a steady check and the studio picks my roles.
+    if (x.contract) {
+      if (s.year > x.contract.until || x.retired) { E.log('📜 My contract with ' + x.contract.studio + ' ended. I\'m a free agent now.', ''); x.contract = null; }
+      else {
+        x.earn += Math.round(E.$(x.contract.pay) * (x.agent ? 0.9 : 1));
+        if (busy(x) < 2) { var part = x.rep >= 45 ? 'Lead' : 'Supporting', kp = KINDS.studio.parts[part]; x.slate.push({ kind: 'studio', part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: x.contract.studio, genre: U.pick(GENRES), director: pickDirector(), costar: pickCostar(), pay: 0, diff: kp[2], rep: kp[3], assigned: true }); E.log('🎬 ' + x.contract.studio + ' cast me in "' + x.slate[x.slate.length - 1].title + '". I didn\'t get a say.', ''); }
+      }
+    } else if (!x.retired && !s.prison && s.year >= 1930 && s.year <= 1959 && x.rep >= 15 && me().age >= 16 && U.chance(0.25)) s.pending.push({ id: 'ac_contract', data: { year: s.year } });
     var earned = x.earn; x.earn = 0;
     if (j && j.acting) { j.salary = earned; j.title = title(); j.perf = U.clamp(Math.round(x.rep), 0, 100); }
     if (x.rep >= 74) E.achieve('famous');
@@ -632,8 +694,16 @@ TL.acting = (function () {
   def('ac_franchise', { build: function () {
     var x = st(), fee = Math.round(U.rand(4, 12) * (1 + x.rep / 100)) * 1e6, hero = U.pick(['a superhero', 'a space captain', 'a vampire hunter', 'a secret agent', me().gender === 'F' ? 'a fantasy queen' : 'a fantasy king', 'a dragon rider']), studio = pickStudio('blockbuster');
     return { icon: '🦸', title: 'Franchise offer', text: studio + ' wants me to play ' + hero + ' in a three-picture franchise. ' + E.fmt(E.$(fee)) + ' for the first film.', choices: [
-      { label: 'Sign the deal', run: function () { x.franchise = true; var t = U.pick(W1) + ' ' + U.pick(W2), g = newSaga(x, { name: t, studio: studio, genre: U.pick(['action', 'sci-fi']), kind: 'blockbuster', part: 'Lead', role: hero.replace(/^an? /, 'the '), fee: fee, contract: 2, director: U.pick(DIRECTORS) }); x.slate.push({ kind: 'blockbuster', part: 'Lead', title: t, studio: studio, genre: g.genre, director: g.director, pay: fee, rep: 12, franchise: true, saga: g.id }); pay(fee); E.achieve('big_break'); E.stat('happy', 12); return good('I\'m the new face of the "' + t + '" franchise, signed for three films! 🦸'); } },
+      { label: 'Sign the deal', run: function () { x.franchise = true; var t = U.pick(W1) + ' ' + U.pick(W2), g = newSaga(x, { name: t, studio: studio, genre: U.pick(['action', 'sci-fi']), kind: 'blockbuster', part: 'Lead', role: hero.replace(/^an? /, 'the '), fee: fee, contract: 2, director: pickDirector() }); x.slate.push({ kind: 'blockbuster', part: 'Lead', title: t, studio: studio, genre: g.genre, director: g.director, pay: fee, rep: 12, franchise: true, saga: g.id }); pay(fee); E.achieve('big_break'); E.stat('happy', 12); return good('I\'m the new face of the "' + t + '" franchise, signed for three films! 🦸'); } },
       { label: 'Pass. I want serious roles.', run: function () { x.skill = Math.min(100, x.skill + 1); return 'I turned down the franchise. My agent cried a little.'; } }
+    ] };
+  } });
+  def('ac_contract', { build: function (d) {
+    var x = S().acting; if (!x || !d || d.year !== S().year || x.contract) return null;
+    var studio = U.pick(['MGM', 'Paramount', 'Warner Bros.', '20th Century Studios', 'Columbia Pictures', 'Universal', 'RKO Pictures'].map(function (n) { return eraName(n); }).filter(Boolean)), pay = Math.round((20000 + x.rep * 1500) / 1000) * 1000;
+    return { icon: '📜', title: 'A studio contract', text: studio + ' offered me a seven-year contract: ' + E.fmt(E.$(pay)) + ' a year, a picture every year, and the studio decides what I play. That\'s how Hollywood works.', choices: [
+      { label: 'Sign with ' + studio, run: function () { x.contract = { studio: studio, until: S().year + 7, pay: pay }; E.stat('happy', 8); E.fame(2); return good('I\'m a contract player at ' + studio + ' now. 🎬'); } },
+      { label: 'Stay independent', run: function () { x.skill = Math.min(100, x.skill + 0.5); return 'I turned the studio down. Nobody tells me what to play.'; } }
     ] };
   } });
   def('ac_passion', { build: function () {
@@ -685,7 +755,7 @@ TL.acting = (function () {
     if (!g || d.year !== S().year || x.retired) return null;
     var fee = Math.round(KINDS.studio.parts.Lead[0] * U.randf(1, 2) * (1 + x.rep / 150) / 1000) * 1000, t = g.role.replace(/^the /, '').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
     return { icon: '🌟', title: 'Spin-off', text: 'Fans can\'t get enough of ' + g.role + '. ' + g.studio + ' wants to give my character their own movie, "' + t + '", with me as the lead. ' + E.fmt(E.$(fee)) + ' to start.', choices: [
-      { label: 'Lead the spin-off', run: function () { var n = newSaga(x, { name: t, studio: g.studio, genre: g.genre, kind: 'studio', part: 'Lead', role: g.role, fee: fee }); x.slate.push({ kind: 'studio', part: 'Lead', title: t, studio: g.studio, genre: g.genre, director: U.pick(DIRECTORS), pay: fee, rep: 10, saga: n.id }); pay(fee); E.stat('happy', 10); return good('"' + t + '" is happening, and I\'m the star. 🌟'); } },
+      { label: 'Lead the spin-off', run: function () { var n = newSaga(x, { name: t, studio: g.studio, genre: g.genre, kind: 'studio', part: 'Lead', role: g.role, fee: fee }); x.slate.push({ kind: 'studio', part: 'Lead', title: t, studio: g.studio, genre: g.genre, director: pickDirector(), pay: fee, rep: 10, saga: n.id }); pay(fee); E.stat('happy', 10); return good('"' + t + '" is happening, and I\'m the star. 🌟'); } },
       { label: 'Stay a scene-stealer', run: function () { return 'I passed. Some characters work best in small doses.'; } }
     ] };
   } });
