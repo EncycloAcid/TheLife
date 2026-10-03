@@ -83,9 +83,17 @@ TL.acting = (function () {
   function tier() { var r = st().rep, t = TIERS[0][1]; TIERS.forEach(function (q) { if (r >= q[0]) t = q[1]; }); return t; }
   function title() { var t = tier(); if (t === 'Star') return S().acting && S().acting.series ? 'TV Star' : 'Movie Star'; return /Star|Legend|A-List/.test(t) ? (t === 'A-List' ? 'A-List ' + noun() : t) : t + ' ' + noun(); }
   function hasJob() { var j = S().job; return !!(j && j.acting); }
+  // How well a part's genre suits me: comedy chops, athleticism for action,
+  // a singing voice for musicals, looks for romance.
+  function fit(c) {
+    var m = me(), sk = S().skills || {}, g = c && c.genre;
+    var f = g === 'comedy' ? (sk.comedy || 0) / 8 - 1 : g === 'action' ? (m.athl - 55) / 5 : g === 'musical' ? (sk.singing || 0) / 8 - 2 : g === 'romance' ? (m.looks - 55) / 6 : 0;
+    return U.clamp(Math.round(f), -4, 8);
+  }
+  function fitWord(c) { var f = fit(c); return f >= 4 ? ' · Perfect fit' : f <= -3 ? ' · Not my type' : ''; }
   function power(x, c) {
     var m = me();
-    return x.skill * 0.45 + x.rep * 0.45 + m.looks * 0.1 + (x.headshots && S().year - x.headshots < 10 ? 2 : 0) + (x.agent ? x.agent.tier * 2.5 : -3) + (c && c.kind === 'commercial' ? m.looks / 10 : 0);
+    return fit(c) + x.skill * 0.45 + x.rep * 0.45 + m.looks * 0.1 + (x.headshots && S().year - x.headshots < 10 ? 2 : 0) + (x.agent ? x.agent.tier * 2.5 : -3) + (c && c.kind === 'commercial' ? m.looks / 10 : 0);
   }
   function odds(x, c) { return U.clamp(0.38 + (power(x, c) - c.diff) / 36, 0.03, 0.85); }
   function oddsWord(p) { return p >= 0.7 ? 'Strong chance' : p >= 0.45 ? 'Good chance' : p >= 0.25 ? 'Long shot' : 'Very long shot'; }
@@ -216,6 +224,35 @@ TL.acting = (function () {
     bump('ac_press'); x.press = S().year; E.fame(2); E.stat('happy', -2);
     return done('I did a whirlwind press tour: late-night shows, podcasts and a dozen junkets. 🎤');
   }
+  // Ask the network for more money: a hit show and a big name help, but push
+  // too hard and the writers might kill off my character.
+  function askRaise() {
+    var x = st(), sr = x.series;
+    if (!sr || !sr.seasons) return done(nope('I need a season under my belt before I ask for more.'));
+    if (count('ac_raise')) return done(nope('I already negotiated this year.'));
+    bump('ac_raise');
+    var p = U.clamp(0.3 + ((sr.quality || 50) - 55) / 80 + x.rep / 200 + (x.agent ? x.agent.tier * 0.04 : 0), 0.08, 0.85);
+    if (U.chance(p)) { var up = U.randf(1.2, 1.6); sr.pay = Math.round(sr.pay * up / 1000) * 1000; E.stat('happy', 6); return done(good(sr.network + ' gave me a raise on "' + sr.title + '"! I now make ' + E.fmt(E.$(sr.pay)) + ' a season. 💰')); }
+    if (U.chance(0.25)) { var t = sr.title; x.series = null; E.stat('happy', -10); return done(bad('The negotiations got ugly. The writers killed off my character on "' + t + '".')); }
+    E.stat('happy', -3); return done(sr.network + ' said no to a raise. I\'m staying on "' + sr.title + '" at the same rate.');
+  }
+  // Big names can bankroll their own film: risky, but a hit pays far more than a fee.
+  function produce() {
+    var x = st();
+    if (count('ac_produce')) return done(nope('I\'m already developing a project this year.'));
+    if (busy(x) >= 2) return done(nope('My schedule is too full to produce a film this year.'));
+    var opts = [['indie', 'A small indie', 2000000], ['studio', 'A studio-size film', 20000000]];
+    ui().choose('🎬 Produce my own film', 'I put up the budget and star in it. As the producer I keep 20% of an indie\'s box office, or 25% of a studio-size film\'s. What kind of film?', opts.map(function (o) {
+      return { label: o[1] + ' (' + E.fmt(E.$(o[2])) + ')', fn: function () {
+        if (S().money < E.$(o[2])) return done(nope('I don\'t have ' + E.fmt(E.$(o[2])) + ' to put up.'));
+        bump('ac_produce'); E.addMoney(-E.$(o[2]));
+        var g = U.pick(GENRES.filter(function (q) { return q !== 'musical' || ((S().skills || {}).singing || 0) > 30; }));
+        var c = { kind: o[0], part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: o[0] === 'indie' ? 'a self-financed production' : U.pick(STUDIOS.studio), genre: g, pay: 0, diff: 0, rep: KINDS[o[0]].parts.Lead[3], produced: true, budget: o[2] };
+        x.slate.push(c); grow(x, 1); E.stat('happy', 8);
+        done(good('I\'m producing and starring in "' + c.title + '", a ' + g + '. It comes out at the end of the year. 🎬'));
+      } };
+    }).concat([{ label: 'Not now', fn: function () { done(null); } }]));
+  }
   function leaveShow() {
     var x = st();
     ui().confirm('Leave the show?', 'Leave "' + x.series.title + '"?', function () {
@@ -254,7 +291,7 @@ TL.acting = (function () {
       items.push({ section: 'Casting calls · ' + Math.max(0, left) + ' auditions left' });
       calls().forEach(function (c) {
         var k = KINDS[c.kind], p = odds(x, c);
-        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + ' · ' + c.studio + ' · ' + oddsWord(p), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
+        items.push({ icon: TL.logos && !/^(a |the )/.test(c.studio) ? TL.logos.badge(c.studio) : k.icon, label: '"' + c.title + '"', sub: k.name + ' · ' + c.part + ' · ' + c.studio + ' · ' + oddsWord(p) + fitWord(c), right: c.pay ? E.fmt(E.$(c.pay)) + (k.series ? '/season' : '') : 'Unpaid', disabled: left <= 0, onClick: function () { audition(c); } });
       });
       if (!x.calls.list.length) items.push({ info: true, html: '<p class="muted">No more casting calls this year.</p>' });
       items.push({ section: 'Career' });
@@ -263,6 +300,8 @@ TL.acting = (function () {
       if (me().age >= 16) items.push({ icon: '🤝', label: x.agent ? 'Look for a bigger agency' : 'Find an agent', sub: x.agent ? 'Now: ' + x.agent.name : 'Better auditions, 10% fee', disabled: count('ac_agent') > 0, onClick: findAgent });
       if (me().age >= 18) items.push({ icon: '🥂', label: 'Go to an industry party', disabled: count('ac_party') > 0, onClick: party });
       if (x.slate.length) items.push({ icon: '🎤', label: 'Do a press tour', sub: 'Better buzz for this year\'s releases', disabled: count('ac_press') > 0, onClick: pressTour });
+      if (x.series && x.series.seasons) items.push({ icon: '💰', label: 'Ask for a raise', sub: 'Now ' + E.fmt(E.$(x.series.pay)) + '/season · could backfire', disabled: count('ac_raise') > 0, onClick: askRaise });
+      if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
       if (x.series) items.push({ icon: '🚪', label: 'Leave "' + x.series.title + '"', onClick: leaveShow });
       items.push({ icon: '🎞️', label: 'Filmography', sub: U.plural(x.credits.length, 'credit'), onClick: filmography });
       if (x.credits.length) items.push({ icon: '🌅', label: 'Retire from acting', danger: true, onClick: retire });
@@ -284,7 +323,7 @@ TL.acting = (function () {
   // Everything I shot this year comes out; returns this year's acting pay.
   function release(r, x) {
     var k = KINDS[r.kind], s = S();
-    var q = x.skill * 0.35 + U.rand(5, 60) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (x.press === s.year ? 4 : 0);
+    var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (x.press === s.year ? 4 : 0);
     var review = U.clamp(Math.round(q), 4, 99);
     var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review };
     var lead = /Lead/.test(r.part), msg, cls = '';
@@ -294,6 +333,12 @@ TL.acting = (function () {
       var gross = Math.round(U.randf(k.gross[0], k.gross[1]) * (0.4 + review / 100) * (1 + x.rep / 200) * (r.franchise ? 1.6 : 1));
       credit.gross = gross;
       if (gross >= 1000) { E.achieve('box_office'); dr += 4; }
+      if (r.produced) {
+        var cut = Math.round(gross * 1e6 * (r.kind === 'indie' ? 0.2 : 0.25)), net = cut - r.budget;
+        E.addMoney(E.$(cut));
+        E.log('🎬 As producer, my share of "' + r.title + '" came to ' + E.fmt(E.$(cut)) + (net >= 0 ? ', a ' + E.fmt(E.$(net)) + ' profit on my ' + E.fmt(E.$(r.budget)) + ' investment.' : '. I lost ' + E.fmt(E.$(-net)) + ' of my ' + E.fmt(E.$(r.budget)) + ' investment.'), net >= 0 ? 'good' : 'bad');
+        x.produced = (x.produced || 0) + 1;
+      }
       msg = k.icon + ' "' + r.title + '" (' + r.genre + ') opened with ' + review + '% on Rotten Tomatoes and grossed ' + big(gross * 1e6) + ' worldwide.';
       if (r.kind === 'blockbuster' && review < 40) { msg += ' Critics called it a box-office bomb.'; dr -= 4; cls = 'bad'; }
       else if (gross >= 1000) { msg += ' A billion-dollar hit! 🍿'; cls = 'good'; }
