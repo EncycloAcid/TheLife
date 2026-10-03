@@ -17,7 +17,7 @@ TL.acting = (function () {
   function def(id, o) { o.id = id; o.scripted = true; TL.events.defs[id] = o; }
   function count(key) { var y = S().yearActs || (S().yearActs = {}); return y[key] || 0; }
   function bump(key) { var y = S().yearActs || (S().yearActs = {}); y[key] = (y[key] || 0) + 1; }
-  function big(n) { return n >= 1e9 ? '$' + (n / 1e9).toFixed(2).replace(/0$/, '') + 'B' : '$' + Math.round(n / 1e6) + 'M'; }
+  function big(n) { return n < 1e6 ? '$' + Math.max(1, Math.round(n / 1e3)) + 'K' : n >= 1e9 ? '$' + (n / 1e9).toFixed(2).replace(/0$/, '') + 'B' : '$' + Math.round(n / 1e6) + 'M'; }
   function noun() { return me().gender === 'F' ? 'Actress' : 'Actor'; }
 
   // ------------------------------------------------------------ projects
@@ -45,6 +45,22 @@ TL.acting = (function () {
   ];
   var KID_KINDS = ['commercial', 'student', 'theater', 'guest', 'series'];
   var STUDIOS = { indie: ['A24', 'Neon', 'Searchlight Pictures', 'Focus Features', 'IFC Films', 'Magnolia Pictures'], studio: ['Warner Bros.', 'Universal', 'Paramount', 'Sony Pictures', 'Lionsgate', '20th Century Studios'], blockbuster: ['Marvel Studios', 'Lucasfilm', 'Warner Bros.', 'Universal', 'Legendary', 'DreamWorks'], series: ['Netflix', 'HBO', 'Apple TV+', 'Hulu', 'Prime Video', 'FX', 'NBC', 'ABC'], kids: ['Disney Channel', 'Nickelodeon'], guest: ['NBC', 'CBS', 'ABC', 'Fox', 'Netflix'], broadway: ['Broadway'], theater: ['a community theater'], student: ['a film school'], commercial: ['a national brand'] };
+  // Studios, networks and agencies only turn up in the years they existed:
+  // [first year, last year, older name, older name's first year].
+  var ERA = { 'Marvel Studios': [2008], 'Lucasfilm': [1971], 'Fox': [1986], 'American International Pictures': [1954, 1980], 'A24': [2013], 'Neon': [2017], 'Searchlight Pictures': [2020, 0, 'Fox Searchlight', 1994], '20th Century Studios': [2020, 0, '20th Century Fox', 1935], 'Sony Pictures': [1989, 0, 'Columbia Pictures', 1924], 'Legendary': [2000], 'DreamWorks': [1994], 'Lionsgate': [1997], 'Focus Features': [2002], 'IFC Films': [2000], 'Magnolia Pictures': [2001], 'Netflix': [2013], 'Apple TV+': [2019], 'Hulu': [2011], 'Prime Video': [2015], 'FX': [2002], 'HBO': [1983], 'Showtime': [1976], 'Disney Channel': [1983], 'Nickelodeon': [1979], 'Miramax': [1979, 2010], 'Orion Pictures': [1978, 1998], 'New Line Cinema': [1967, 2008], 'Carolco Pictures': [1976, 1995], 'UTA': [1991], 'WME': [2009, 0, 'William Morris', 1898], 'CAA': [1975], 'ICM': [1975, 2022] };
+  var OLD = { indie: ['Miramax', 'Orion Pictures', 'New Line Cinema', 'United Artists', 'American International Pictures'], studio: ['MGM', 'Columbia Pictures', 'United Artists'], blockbuster: ['Carolco Pictures', 'Paramount', 'Columbia Pictures', '20th Century Studios'], series: ['CBS', 'Showtime'] };
+  function eraName(n, y) {
+    var e = ERA[n]; y = y || S().year;
+    if (!e || (y >= e[0] && (!e[1] || y <= e[1]))) return n;
+    return e[2] && y >= e[3] && y < e[0] ? e[2] : null;
+  }
+  function pickStudio(kind) {
+    var all = (STUDIOS[kind] || ['a studio']).concat(OLD[kind] || []), l = all.map(function (n) { return eraName(n); }).filter(function (n, i, a) { return n && a.indexOf(n) === i; });
+    return U.pick(l.length ? l : /series|kids|guest/.test(kind) ? ['NBC', 'CBS', 'ABC'] : all);
+  }
+  function agencyName(n) { return eraName(n) || (S().year >= 1975 ? 'ICM' : 'William Morris'); }
+  // Rotten Tomatoes only launched in 1998.
+  function rt(v, y) { return (y || S().year) >= 1999 ? v + '% on Rotten Tomatoes' : v + '% positive reviews'; }
   var GENRES = ['drama', 'comedy', 'thriller', 'romance', 'horror', 'sci-fi', 'action', 'period drama', 'crime drama', 'musical'];
   var W1 = ['Midnight', 'Silent', 'Golden', 'Broken', 'Last', 'Paper', 'Crimson', 'Hidden', 'Glass', 'Wild', 'Northern', 'Electric', 'Quiet', 'Burning', 'Lost'];
   var W2 = ['Summer', 'Kingdom', 'Hearts', 'Harbor', 'Hours', 'River', 'Signal', 'Season', 'Road', 'Witness', 'Empire', 'Promise', 'Orbit', 'Garden', 'Frontier'];
@@ -96,7 +112,7 @@ TL.acting = (function () {
       var lv = j.level || 0, kind = lv >= 4 ? 'studio' : lv >= 3 ? 'studio' : lv >= 2 ? 'series' : null;
       if (kind) {
         var part = kind === 'series' ? 'Series regular' : lv >= 4 ? 'Lead' : 'Supporting', p = KINDS[kind].parts[part];
-        var c = { kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: U.pick(STUDIOS[kind]), genre: U.pick(GENRES), pay: Math.round((p[0] + p[1]) / 2), diff: p[2], rep: p[3] };
+        var c = { kind: kind, part: part, title: U.pick(W1) + ' ' + U.pick(W2), studio: pickStudio(kind), genre: U.pick(GENRES), pay: Math.round((p[0] + p[1]) / 2), diff: p[2], rep: p[3] };
         if (kind === 'series') x.series = { title: c.title, network: c.studio, part: part, pay: c.pay, seasons: 0, genre: c.genre, quality: 0 };
         else { x.slate.push(c); x.earn += E.$(c.pay); }
       }
@@ -141,7 +157,7 @@ TL.acting = (function () {
       var kind = U.pick(pool), k = KINDS[kind], parts = Object.keys(k.parts);
       // A bigger name gets offered the bigger part more often.
       var part = parts.length > 1 && U.chance(0.3 + x.rep / 150) ? parts[1] : parts[0];
-      var p = k.parts[part], studio = U.pick(kid && kind === 'series' ? STUDIOS.kids : STUDIOS[kind] || ['a studio']);
+      var p = k.parts[part], studio = pickStudio(kid && kind === 'series' ? 'kids' : kind);
       var pay = Math.round(U.randf(p[0], p[1]) * (0.7 + x.rep / 120) / 100) * 100;
       if (kid) pay = Math.round(pay * 0.4);
       var tc = typecast(x), genre = kind === 'commercial' ? 'ad' : tc && U.chance(0.5) ? U.pick(GENRES.filter(function (g) { return GENRE_CRAFT[g] === tc; })) : U.pick(GENRES);
@@ -245,10 +261,11 @@ TL.acting = (function () {
     var best = null;
     AGENCIES.forEach(function (a) { if (x.rep >= a[2] && x.skill >= a[3] && (!x.agent || a[1] > x.agent.tier)) best = a; });
     if (!best) return done(bad(x.agent ? 'No bigger agency was interested in me yet.' : 'Agents passed on me. I need more credits or better training.'));
-    if (!U.chance(0.55 + (x.rep - best[2]) / 50)) return done(bad(best[0] === AGENCIES[0][0] ? 'The agency passed. Maybe next year.' : best[0] + ' took a meeting but passed for now.'));
-    x.agent = { name: best[0], tier: best[1] };
-    if (hasJob()) S().job.company = best[0];
-    return done(good('I signed with ' + best[0] + '! My agent will send me better auditions. 🤝'));
+    if (!U.chance(0.55 + (x.rep - best[2]) / 50)) return done(bad(best[0] === AGENCIES[0][0] ? 'The agency passed. Maybe next year.' : agencyName(best[0]) + ' took a meeting but passed for now.'));
+    var an = agencyName(best[0]);
+    x.agent = { name: an, tier: best[1] };
+    if (hasJob()) S().job.company = an;
+    return done(good('I signed with ' + an + '! My agent will send me better auditions. 🤝'));
   }
   function party() {
     var x = st();
@@ -290,7 +307,7 @@ TL.acting = (function () {
         if (S().money < E.$(o[2])) return done(nope('I don\'t have ' + E.fmt(E.$(o[2])) + ' to put up.'));
         bump('ac_produce'); E.addMoney(-E.$(o[2]));
         var g = U.pick(GENRES.filter(function (q) { return q !== 'musical' || ((S().skills || {}).singing || 0) > 30; }));
-        var c = { kind: o[0], part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: o[0] === 'indie' ? 'a self-financed production' : U.pick(STUDIOS.studio), genre: g, pay: 0, diff: 0, rep: KINDS[o[0]].parts.Lead[3], produced: true, budget: o[2] };
+        var c = { kind: o[0], part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: o[0] === 'indie' ? 'a self-financed production' : pickStudio('studio'), genre: g, pay: 0, diff: 0, rep: KINDS[o[0]].parts.Lead[3], produced: true, budget: o[2], bud: o[2] / 1e6 };
         x.slate.push(c); grow(x, 1); E.stat('happy', 8);
         done(good('I\'m producing and starring in "' + c.title + '", a ' + g + '. It comes out at the end of the year. 🎬'));
       } };
@@ -349,6 +366,11 @@ TL.acting = (function () {
       if (x.series && x.series.seasons) items.push({ icon: '💰', label: 'Ask for a raise', sub: 'Now ' + E.fmt(E.$(x.series.pay)) + '/season · could backfire', disabled: count('ac_raise') > 0, onClick: askRaise });
       if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
       if (x.series) items.push({ icon: '🚪', label: 'Leave "' + x.series.title + '"', onClick: leaveShow });
+      if ((x.sagas || []).length) {
+        items.push({ section: 'Franchises' });
+        x.sagas.forEach(function (g) { items.push({ icon: '🍿', label: '"' + g.name + '"', sub: U.plural(g.films.length, 'film') + ' · ' + sagaStatus(g), onClick: function () { sagaMenu(g); } }); });
+        items.push({ section: 'History' });
+      }
       items.push({ icon: '🎞️', label: 'Filmography', sub: U.plural(x.credits.length, 'credit'), onClick: filmography });
       items.push({ icon: '🏆', label: 'Career highlights', sub: 'Awards, box office and milestones', onClick: highlights });
       if (x.credits.length) items.push({ icon: '🌅', label: 'Retire from acting', danger: true, onClick: retire });
@@ -368,7 +390,7 @@ TL.acting = (function () {
       if (bil) rows.push({ icon: '🍿', label: U.plural(bil, 'billion-dollar film') });
       if (total) rows.push({ icon: '🎟️', label: big(total * 1e6) + ' career box office', sub: U.plural(films.length, 'film') });
       if (top) rows.push({ icon: '🎬', label: 'Biggest hit: "' + top.title + '"', sub: big(top.gross * 1e6) + ' worldwide (' + top.year + ')' });
-      if (best) rows.push({ icon: '⭐', label: 'Best reviewed: "' + best.title + '"', sub: best.review + '% on Rotten Tomatoes (' + best.year + ')' });
+      if (best) rows.push({ icon: '⭐', label: 'Best reviewed: "' + best.title + '"', sub: rt(best.review, best.year) + ' (' + best.year + ')' });
       if (fav && dirs[fav] >= 2) rows.push({ icon: '🎥', label: 'Favorite director: ' + fav, sub: U.plural(dirs[fav], 'project') + ' together' + (x.muse === fav ? ' · their muse' : '') });
       if (x.produced) rows.push({ icon: '🎥', label: 'Produced ' + U.plural(x.produced, 'film') });
       if (x.walk) rows.push({ icon: '⭐', label: 'Star on the Hollywood Walk of Fame', sub: 'Unveiled in ' + x.walk });
@@ -383,9 +405,101 @@ TL.acting = (function () {
       if (!x.credits.length) return [{ info: true, html: '<p class="muted">No credits yet.</p>' }];
       return x.credits.slice().reverse().map(function (r) {
         var k = KINDS[r.kind];
-        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.director ? ' · dir. ' + r.director : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : '' };
+        return { icon: TL.logos && r.studio && !/^(a |the )/.test(r.studio) ? TL.logos.badge(r.studio) : k.icon, label: '"' + r.title + '" (' + r.year + ')', sub: k.name + ' · ' + r.part + (r.studio ? ' · ' + r.studio : '') + (r.director ? ' · dir. ' + r.director : '') + (r.review != null ? ' · ' + r.review + '% reviews' : '') + (r.gross ? ' · ' + big(r.gross * 1e6) + (r.budget ? ' on ' + big(r.budget * 1e6) : '') : ''), right: r.award ? '🏆' : r.nom ? '🎗️' : r.verdict === 'smash' ? '🍿' : r.verdict === 'bomb' ? '💣' : '' };
       });
     });
+  }
+
+  // ------------------------------------------------------------ franchises
+  // A hit can turn into a franchise: sequels every few years, contracts,
+  // holdouts and recasts, fatigue, spin-offs and a legacy sequel decades later.
+  var VERDICT = { bomb: 'A box-office bomb. 💣', flop: 'It lost money.', even: 'It about broke even.', hit: 'A hit!', smash: 'A smash hit! 🍿' };
+  var SEQUEL_ODDS = { action: 1.4, 'sci-fi': 1.4, horror: 1.6, comedy: 1, thriller: 0.9, musical: 0.5, romance: 0.4, 'crime drama': 0.6, drama: 0.25, 'period drama': 0.2 };
+  var HEROES = ['Captain Nova', 'Agent Cross', 'Nightshade', 'the Ranger', 'Commander Vale', 'Ghost', 'Talon', 'Ember', 'the Warden', 'Specter'];
+  // Production budget in millions (today's money); a studio wants about
+  // 2.5 times that back before a film counts as a hit.
+  function budget(r, prev) {
+    if (!r.bud) r.bud = prev && prev.bud ? Math.round(prev.bud * U.randf(1.1, 1.4)) : r.kind === 'indie' ? U.rand(4, 20) : r.kind === 'studio' ? U.rand(30, 120) : U.rand(150, 300);
+    return r.bud;
+  }
+  function saga(x, id) { return (x.sagas || []).filter(function (g) { return g.id === id; })[0] || null; }
+  function role(genre) { return /action|sci-fi/.test(genre) ? U.pick(HEROES) : U.pick(['Jack', 'Maggie', 'Danny', 'Rosa', 'Eli', 'Nora', 'Frankie', 'Lucy', 'Sam', 'Tess']) + ' ' + U.pick(['Cole', 'Rivera', 'Hart', 'Monroe', 'Quinn', 'Bishop', 'Lane', 'Brooks']); }
+  function newSaga(x, o) { x.sagas = x.sagas || []; o.id = x.sagas.length + 1; o.films = []; o.status = 'active'; o.contract = o.contract || 0; x.sagas.push(o); return o; }
+  function maybeSequel(x, r, c) {
+    var p = (c.verdict === 'smash' ? 0.42 : c.verdict === 'hit' ? 0.18 : 0) * (SEQUEL_ODDS[r.genre] || 1) * (r.kind === 'indie' ? 0.5 : 1);
+    if (!U.chance(p)) return;
+    var g = newSaga(x, { name: r.title, studio: r.produced || r.kind === 'indie' ? pickStudio('studio') : r.studio, genre: r.genre, kind: r.kind === 'blockbuster' ? 'blockbuster' : 'studio', part: r.part, role: role(r.genre), fee: Math.max(r.pay || 0, KINDS.studio.parts[r.part === 'Lead' ? 'Lead' : 'Supporting'][0]), director: r.director });
+    sagaFilm(x, g, r, c);
+    E.log('🍿 ' + g.studio + ' greenlit a sequel to "' + r.title + '". They want me back as ' + g.role + '.', 'good');
+  }
+  // Record a franchise film and decide what happens next.
+  function sagaFilm(x, g, r, c) {
+    var y = S().year, n;
+    g.films.push({ title: c.title, year: y, gross: c.gross, base: c.base, review: c.review, verdict: c.verdict, part: r.part, bud: budget(r) });
+    c.saga = g.id; g.bud = budget(r); n = g.films.length;
+    if (r.legacy) { g.status = 'ended'; g.legacy = true; return; }
+    if (n >= 3 && g.films.filter(function (f) { return /Lead/.test(f.part); }).length >= 3) E.achieve('franchise_star');
+    if (g.contract > 0 || n === 1) { g.due = y + U.rand(2, 3); return; }
+    if (c.verdict === 'bomb' || c.verdict === 'flop' || (n >= 3 && U.chance(0.2 + (n - 3) * 0.2))) {
+      g.status = 'ended'; g.ended = y;
+      E.log('🎬 ' + g.studio + ' closed the book on the "' + g.name + '" franchise after ' + U.plural(n, 'film') + '.', '');
+      return;
+    }
+    g.due = y + U.rand(2, 3);
+    // A scene-stealing supporting part can earn its own movie.
+    if (!/Lead/.test(r.part) && c.verdict === 'smash' && n >= 2 && U.chance(0.3)) S().pending.push({ id: 'ac_spinoff', data: { id: g.id, year: y } });
+  }
+  function sequelTitle(g, legacy) {
+    var n = g.films.length + 1, b = g.name, used = g.films.map(function (f) { return f.title; }), t;
+    for (var i = 0; i < 6; i++) {
+      t = legacy ? b + ': ' + U.pick(['Legacy', 'Resurrection', 'Homecoming', 'Reckoning'])
+        : n === 2 ? b + U.pick([' 2', ' II', ': Reloaded', ' Returns', ': The Next Chapter'])
+        : n === 3 ? b + U.pick([' 3', ': Endgame', ': Rise of the Fallen', ' III'])
+        : b + U.pick([' ' + n, ': Origins', ': Dead Reckoning', ': The Final Chapter', ': Revelations', ': Reborn']);
+      if (used.indexOf(t) < 0) break;
+    }
+    return t;
+  }
+  function sequelFee(x, g) {
+    var last = g.films[g.films.length - 1], up = { bomb: 0.8, flop: 0.9, even: 1.05, hit: 1.35, smash: 1.8 }[last ? last.verdict : 'even'] || 1;
+    var floor = KINDS[g.kind].parts[/Lead/.test(g.part) ? 'Lead' : 'Supporting'][0];
+    return Math.round(Math.max(floor, Math.min(g.fee * up * (1 + x.rep / 300), 30000000)) / 1000) * 1000;
+  }
+  // Called every year: offers for sequels that are due, and the franchises I left.
+  function sagaTick(x) {
+    var s = S(), y = s.year;
+    (x.sagas || []).forEach(function (g) {
+      if (g.status === 'active' && g.due && y >= g.due && g.asked !== y) {
+        if (x.retired || s.prison) { g.status = 'recast'; g.due = y + 1; return; }
+        g.asked = y; s.pending.push({ id: 'ac_sequel', data: { id: g.id, year: y } });
+      } else if (g.status === 'recast' && y >= g.due) {
+        g.status = 'ended'; g.ended = y;
+        var gr = Math.round(((g.films[g.films.length - 1] || {}).gross || 50) * U.randf(0.4, 0.9)) || 1;
+        E.log('🍿 "' + sequelTitle(g) + '" came out with a new actor as ' + g.role + '. It grossed ' + big(gr * 1e6) + '. ' + U.pick(['Fans said it wasn\'t the same without me.', 'Critics said the new lead was fine.', 'Nobody seemed to miss me.']), '');
+      } else if ((g.status === 'ended' || g.status === 'left') && !g.legacy && !x.retired && me().age >= 45 && g.films.length) {
+        var last = g.films[g.films.length - 1], wasHit = g.films.some(function (f) { return f.verdict === 'hit' || f.verdict === 'smash'; });
+        if (wasHit && y - last.year >= 15 && U.chance(0.08)) { g.legacy = true; s.pending.push({ id: 'ac_sequel', data: { id: g.id, year: y, legacy: true } }); }
+      }
+    });
+  }
+  function sagaStatus(g) {
+    return g.status === 'active' ? (g.contract ? U.plural(g.contract, 'film') + ' left on my contract · ' : '') + 'next film ' + (g.due || S().year + 1)
+      : g.status === 'recast' ? 'recast without me' : g.status === 'left' ? 'I walked away' : 'ended' + (g.ended ? ' in ' + g.ended : '');
+  }
+  function sagaMenu(g) {
+    ui().menu('"' + g.name + '"', function () {
+      var total = g.films.reduce(function (t, f) { return t + (f.gross || 0); }, 0);
+      var rows = [{ info: true, html: '<div class="hb-arch">🍿 ' + U.esc(g.studio) + ' · ' + U.esc(g.genre) + ' · I play ' + U.esc(g.role) + '</div><p class="small muted">' + U.plural(g.films.length, 'film') + ' · ' + big(total * 1e6) + ' worldwide · ' + sagaStatus(g) + '</p>' }];
+      g.films.forEach(function (f) { rows.push({ icon: f.verdict === 'smash' ? '🍿' : f.verdict === 'bomb' ? '💣' : '🎬', label: '"' + f.title + '" (' + f.year + ')', sub: f.part + ' · ' + f.review + '% reviews · ' + big((f.gross || 0) * 1e6) + ' on a ' + big((f.bud || 1) * 1e6 * Math.min(1, TL.history ? TL.history.priceLevel(f.year) : 1)) + ' budget', right: { bomb: 'Bomb', flop: 'Flop', even: 'Even', hit: 'Hit', smash: 'Smash' }[f.verdict] || '' }); });
+      return rows;
+    });
+  }
+  function shootSequel(x, g, fee, legacy, title) {
+    var lead = /Lead/.test(g.part) || legacy;
+    var c = { kind: g.kind, part: lead ? 'Lead' : g.part, title: title || sequelTitle(g, legacy), studio: eraName(g.studio) || g.studio, genre: g.genre, director: g.director && U.chance(0.6) ? g.director : U.pick(DIRECTORS), pay: fee, rep: KINDS[g.kind].parts[lead ? 'Lead' : 'Supporting'][3], saga: g.id, legacy: !!legacy };
+    g.fee = fee; if (g.contract > 0) g.contract--;
+    x.slate.push(c); pay(fee); E.stat('happy', 8);
+    return c;
   }
 
   // ------------------------------------------------------------ the year
@@ -393,36 +507,48 @@ TL.acting = (function () {
   function release(r, x) {
     var k = KINDS[r.kind], s = S();
     var tc = typecast(x), again = collabs(x, r.director);
-    var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (x.press === s.year ? 4 : 0) + Math.min(4, again * 1.5) + (r.method ? 5 : 0);
+    var sg = r.saga ? saga(x, r.saga) : null, prev = sg && sg.films.length ? sg.films[sg.films.length - 1] : null;
+    // Sequels tend to review a little worse than the film that earned them.
+    var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (prev ? -3 * sg.films.length + (r.legacy ? 6 : 0) : 0) + (x.press === s.year ? 4 : 0) + Math.min(4, again * 1.5) + (r.method ? 5 : 0);
     var review = U.clamp(Math.round(q), 4, 99);
     var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review, genre: r.genre, director: r.director };
+    if (sg) credit.saga = sg.id;
     if (r.kind !== 'commercial') shiftCraft(x, GENRE_CRAFT[r.genre], 0.4);
     if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than a ' + typeName(tc).toLowerCase() + '. Critics are calling it a revelation.', 'good');
     if (r.director && again >= 2 && review >= 85 && x.muse !== r.director) { x.muse = r.director; E.log('🎬 ' + r.director + ' calls me their muse. Expect more of their scripts.', 'good'); }
-    var lead = /Lead/.test(r.part), msg, cls = '';
+    var lead = /Lead/.test(r.part), msg, cls = '', after = null;
     // Every credit builds my name; good reviews and leading parts build it faster, flops can cost me.
     var dr = r.rep * U.clamp(0.5 + (review - 50) / 40, 0.15, 1.8) * (lead ? 1.2 : 1);
     if (k.film && k.gross) {
-      var gross = Math.round(U.randf(k.gross[0], k.gross[1]) * (0.4 + review / 100) * (1 + x.rep / 200) * (r.franchise ? 1.6 : 1));
-      credit.gross = gross;
+      var bud = budget(r, prev && sg), base = U.randf(k.gross[0], k.gross[1]) * (0.4 + review / 100) * (1 + x.rep / 200) * (r.franchise ? 1.6 : 1);
+      // A sequel opens to the fans the last film made, minus franchise fatigue;
+      // a legacy sequel decades later rides on nostalgia.
+      if (prev) base = Math.max(base * 0.6, (prev.base || prev.gross) * U.randf(0.75, 1.3) * (0.55 + review / 110)) * (r.legacy ? 1.3 : Math.pow(0.9, Math.max(0, sg.films.length - 2)));
+      // Dollars in the money of the day: a 1985 smash didn't make a billion.
+      var pl = Math.min(1, TL.history ? TL.history.priceLevel(s.year) : 1), gross = Math.max(1, Math.round(base * pl)), ratio = base / bud;
+      var verdict = ratio < 1.2 ? 'bomb' : ratio < 2.2 ? 'flop' : ratio < 3 ? 'even' : ratio < 5 ? 'hit' : 'smash';
+      credit.gross = gross; credit.budget = Math.max(1, Math.round(bud * pl)); credit.verdict = verdict; credit.base = Math.round(base);
       if (gross >= 1000) { E.achieve('box_office'); dr += 4; }
       if (r.produced) {
-        var cut = Math.round(gross * 1e6 * (r.kind === 'indie' ? 0.2 : 0.25)), net = cut - r.budget;
+        var cut = Math.round(base * 1e6 * (r.kind === 'indie' ? 0.2 : 0.25)), net = cut - r.budget;
         E.addMoney(E.$(cut));
         E.log('🎬 As producer, my share of "' + r.title + '" came to ' + E.fmt(E.$(cut)) + (net >= 0 ? ', a ' + E.fmt(E.$(net)) + ' profit on my ' + E.fmt(E.$(r.budget)) + ' investment.' : '. I lost ' + E.fmt(E.$(-net)) + ' of my ' + E.fmt(E.$(r.budget)) + ' investment.'), net >= 0 ? 'good' : 'bad');
         x.produced = (x.produced || 0) + 1;
       }
-      msg = k.icon + ' "' + r.title + '" (' + r.genre + ') opened with ' + review + '% on Rotten Tomatoes and grossed ' + big(gross * 1e6) + ' worldwide.';
-      if (r.kind === 'blockbuster' && review < 40) { msg += ' Critics called it a box-office bomb.'; dr -= 4; cls = 'bad'; }
-      else if (gross >= 1000) { msg += ' A billion-dollar hit! 🍿'; cls = 'good'; }
+      // Leads carry a film's box office; a bomb sticks to them.
+      dr += { bomb: -3, flop: -1, even: 0, hit: 0.7, smash: 1.5 }[verdict] * (lead ? 1 : 0.5);
+      msg = k.icon + ' "' + r.title + '" (' + r.genre + (prev ? (r.legacy ? ', legacy sequel' : ', film ' + (sg.films.length + 1) + ' of the franchise') : '') + ') opened to ' + big(gross * 1e6 * U.randf(0.14, 0.3)) + ' and grossed ' + big(gross * 1e6) + ' worldwide on a ' + big(credit.budget * 1e6) + ' budget, with ' + rt(review) + '. ' + (verdict === 'smash' && gross >= 1000 ? 'A billion-dollar smash! 🍿' : VERDICT[verdict]);
+      cls = verdict === 'smash' || verdict === 'hit' ? 'good' : (verdict === 'bomb' || verdict === 'flop') && lead ? 'bad' : '';
+      if (r.kind !== 'student') after = function () { if (sg) sagaFilm(x, sg, r, credit); else maybeSequel(x, r, credit); };
     } else if (r.kind === 'commercial') {
       msg = '📺 My commercial for ' + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
     } else {
-      msg = k.icon + ' ' + (k.stage ? 'My show "' + r.title + '" opened' : '"' + r.title + '" premiered') + ' to ' + (review >= 85 ? 'rave reviews' : review >= 60 ? 'good reviews' : review >= 40 ? 'mixed reviews' : 'terrible reviews') + ' (' + review + '%).';
+      msg = k.icon + ' ' + (k.stage ? 'My show "' + r.title + '" opened' : '"' + r.title + '" premiered') + ' to ' + (review >= 85 ? 'rave reviews' : review >= 60 ? 'good reviews' : review >= 40 ? 'mixed reviews' : 'terrible reviews') + ' (' + rt(review) + ').';
     }
     x.rep = U.clamp(x.rep + dr + 0.5, 0, 100);
     if (review >= 85 && cls !== 'bad') cls = 'good';
     E.log(msg, cls);
+    if (after) after();
     E.fame(Math.max(0, r.rep * review / 120 * (lead ? 1.4 : 1) - 1));
     x.credits.push(credit);
     if (credit.review > x.best) x.best = credit.review;
@@ -456,7 +582,7 @@ TL.acting = (function () {
       x.earn += Math.round(E.$(sr.pay * (1 + (sr.seasons - 1) * 0.15)) * (x.agent ? 0.9 : 1));
       x.rep = U.clamp(x.rep + KINDS.series.parts[sr.part][3] * (q - 55) / 50 + 0.3, 0, 100);
       E.fame(Math.max(0, q / 25 - 1));
-      E.log('📺 Season ' + sr.seasons + ' of "' + sr.title + '" aired on ' + sr.network + ' (' + q + '% on Rotten Tomatoes).', q >= 85 ? 'good' : '');
+      E.log('📺 Season ' + sr.seasons + ' of "' + sr.title + '" aired on ' + sr.network + ' (' + rt(q) + ').', q >= 85 ? 'good' : '');
       results.push({ credit: { year: s.year, title: sr.title, kind: 'series', part: sr.part, review: q }, review: q, lead: /lead/.test(sr.part) });
       if (U.chance(q >= 75 ? 0.08 : q >= 55 ? 0.25 : 0.6) || sr.seasons >= 9) {
         E.log('📺 ' + sr.network + (sr.seasons >= 9 ? ' wrapped "' + sr.title + '" after ' + sr.seasons + ' seasons. What a run.' : ' canceled "' + sr.title + '" after ' + U.plural(sr.seasons, 'season') + '.'), sr.seasons >= 5 ? '' : 'bad');
@@ -482,6 +608,7 @@ TL.acting = (function () {
       else if (x.rep >= 35 && U.chance(0.1)) s.pending.push({ id: 'ac_passion', data: {} });
       else if (x.rep >= 50 && U.chance(0.06)) s.pending.push({ id: 'ac_scandal', data: {} });
     }
+    sagaTick(x);
     var earned = x.earn; x.earn = 0;
     if (j && j.acting) { j.salary = earned; j.title = title(); j.perf = U.clamp(Math.round(x.rep), 0, 100); }
     if (x.rep >= 74) E.achieve('famous');
@@ -497,22 +624,22 @@ TL.acting = (function () {
     var s = S();
     if (!s || s.dead || !s.acting || hasJob()) return;
     var x = st();
-    if (!x.slate.length && !x.series) { if (x.rep > 0 && U.chance(0.5)) x.rep = Math.max(0, x.rep - 1); return; }
+    if (!x.slate.length && !x.series) { sagaTick(x); if (x.rep > 0 && U.chance(0.5)) x.rep = Math.max(0, x.rep - 1); return; }
     var earned = year();
     if (earned) { E.addMoney(Math.round(earned * 0.75)); E.log('🎬 Acting income: ' + E.fmt(Math.round(earned * 0.75)), 'money'); }
   }
 
   def('ac_franchise', { build: function () {
-    var x = st(), fee = Math.round(U.rand(4, 12) * (1 + x.rep / 100)) * 1e6, hero = U.pick(['a superhero', 'a space captain', 'a vampire hunter', 'a secret agent', 'a fantasy queen', 'a dragon rider']);
-    return { icon: '🦸', title: 'Franchise offer', text: U.pick(STUDIOS.blockbuster) + ' wants me to play ' + hero + ' in a three-picture franchise. ' + E.fmt(E.$(fee)) + ' for the first film.', choices: [
-      { label: 'Sign the deal', run: function () { x.franchise = true; var c = { kind: 'blockbuster', part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: U.pick(STUDIOS.blockbuster), genre: 'action', pay: fee, rep: 12, franchise: true }; x.slate.push(c); pay(fee); E.achieve('big_break'); E.stat('happy', 12); return good('I\'m the new face of a blockbuster franchise! 🦸'); } },
+    var x = st(), fee = Math.round(U.rand(4, 12) * (1 + x.rep / 100)) * 1e6, hero = U.pick(['a superhero', 'a space captain', 'a vampire hunter', 'a secret agent', me().gender === 'F' ? 'a fantasy queen' : 'a fantasy king', 'a dragon rider']), studio = pickStudio('blockbuster');
+    return { icon: '🦸', title: 'Franchise offer', text: studio + ' wants me to play ' + hero + ' in a three-picture franchise. ' + E.fmt(E.$(fee)) + ' for the first film.', choices: [
+      { label: 'Sign the deal', run: function () { x.franchise = true; var t = U.pick(W1) + ' ' + U.pick(W2), g = newSaga(x, { name: t, studio: studio, genre: U.pick(['action', 'sci-fi']), kind: 'blockbuster', part: 'Lead', role: hero.replace(/^an? /, 'the '), fee: fee, contract: 2, director: U.pick(DIRECTORS) }); x.slate.push({ kind: 'blockbuster', part: 'Lead', title: t, studio: studio, genre: g.genre, director: g.director, pay: fee, rep: 12, franchise: true, saga: g.id }); pay(fee); E.achieve('big_break'); E.stat('happy', 12); return good('I\'m the new face of the "' + t + '" franchise, signed for three films! 🦸'); } },
       { label: 'Pass. I want serious roles.', run: function () { x.skill = Math.min(100, x.skill + 1); return 'I turned down the franchise. My agent cried a little.'; } }
     ] };
   } });
   def('ac_passion', { build: function () {
     var x = st(), dir = U.pick(['an acclaimed auteur', 'a festival-darling director', 'a legendary filmmaker']);
     return { icon: '🎞️', title: 'A passion project', text: dir.charAt(0).toUpperCase() + dir.slice(1) + ' offered me the lead in a small, daring film. The pay is tiny, but the script is incredible.', choices: [
-      { label: 'Do it for the art', run: function () { if (st().slate.length >= 2) return 'My schedule was too full. I had to say no.'; x.slate.push({ kind: 'indie', part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: U.pick(STUDIOS.indie), genre: U.pick(['drama', 'period drama', 'thriller']), pay: 30000, rep: 8, passion: true }); pay(30000); return good('I signed on to the passion project. This one could be special. 🎞️'); } },
+      { label: 'Do it for the art', run: function () { if (st().slate.length >= 2) return 'My schedule was too full. I had to say no.'; x.slate.push({ kind: 'indie', part: 'Lead', title: U.pick(W1) + ' ' + U.pick(W2), studio: pickStudio('indie'), genre: U.pick(['drama', 'period drama', 'thriller']), pay: 30000, rep: 8, passion: true }); pay(30000); return good('I signed on to the passion project. This one could be special. 🎞️'); } },
       { label: 'Hold out for a paycheck', run: function () { return 'I passed on the indie. Bills don\'t pay themselves.'; } }
     ] };
   } });
@@ -522,6 +649,44 @@ TL.acting = (function () {
       { label: 'Post a sincere apology', run: function () { x.rep = Math.max(0, x.rep - 2); E.karma(2); return 'I apologized. Most people moved on.'; } },
       { label: 'Deny everything', run: function () { if (U.chance(0.5)) return 'I denied it and the story died.'; x.rep = Math.max(0, x.rep - 8); E.stat('happy', -8); return bad('Receipts came out. My denial made it so much worse.'); } },
       { label: 'Lean into it', run: function () { E.fame(4); x.rep = Math.max(0, x.rep - 4); return 'I leaned into the villain era. Everyone\'s talking about me, for better or worse.'; } }
+    ] };
+  } });
+
+  def('ac_sequel', { build: function (d) {
+    var x = S().acting, g = x && d && saga(x, d.id);
+    if (!g || d.year !== S().year || x.retired) return null;
+    var fee = sequelFee(x, g), last = g.films[g.films.length - 1], t = sequelTitle(g, d.legacy), bound = g.contract > 0 && !d.legacy;
+    if (d.legacy) fee = Math.round(fee * 1.3 / 1000) * 1000;
+    // Too busy: the studio waits a year (a legacy sequel moves on without me).
+    if (busy(x) >= 2 && !bound) { if (d.legacy) g.legacy = false; else g.due = S().year + 1; return null; }
+    var text = d.legacy ? 'It\'s been ' + (S().year - last.year) + ' years since "' + last.title + '". ' + g.studio + ' wants me back as ' + g.role + ', older and grayer, in "' + t + '", passing the torch to a new cast.'
+      : g.studio + ' is making "' + t + '", film ' + (g.films.length + 1) + ' of the "' + g.name + '" franchise, and wants me back as ' + g.role + '. ' + (last ? 'The last one ' + (last.verdict === 'smash' ? 'was a smash' : last.verdict === 'hit' ? 'was a hit' : last.verdict === 'even' ? 'broke even' : 'lost money') + '.' : '') + (bound ? ' I\'m under contract for ' + U.plural(g.contract, 'more film') + '.' : '');
+    return { icon: '🍿', title: d.legacy ? 'Legacy sequel' : 'Sequel offer', text: text + ' The offer: ' + E.fmt(E.$(fee)) + '.', choices: [
+      { label: 'Sign on', run: function () { shootSequel(x, g, fee, d.legacy, t); return good('I\'m back as ' + g.role + ' in "' + t + '". 🍿'); } },
+      { label: 'Hold out for more money', run: function () {
+        var p = U.clamp(0.35 + ({ smash: 0.3, hit: 0.15, even: 0, flop: -0.15, bomb: -0.3 }[last ? last.verdict : 'even'] || 0) + x.rep / 250 - (bound ? 0.25 : 0), 0.05, 0.9);
+        if (U.chance(p)) { var more = Math.round(fee * U.randf(1.4, 2) / 1000) * 1000; shootSequel(x, g, more, d.legacy, t); E.stat('happy', 4); return good('The studio blinked. I\'m getting ' + E.fmt(E.$(more)) + ' to play ' + g.role + ' again. 💰'); }
+        if (bound) { shootSequel(x, g, fee, d.legacy, t); x.rep = Math.max(0, x.rep - 1); return bad('My contract says I\'m doing it anyway. The studio leaked that I was "difficult".'); }
+        if (d.legacy) { g.status = 'ended'; return bad('The studio said no and wrote my character out of the script.'); }
+        g.status = 'recast'; g.due = S().year + 1;
+        return bad('The studio said no and recast ' + g.role + '. Someone else is wearing my costume now.');
+      } },
+      { label: bound ? 'Break my contract' : d.legacy ? 'Pass' : 'Walk away from the franchise', run: function () {
+        if (d.legacy) return 'I passed. Some characters should stay retired.';
+        g.status = 'recast'; g.due = S().year + 1;
+        if (bound) { var hit = E.$(Math.round(fee * 0.5)); E.addMoney(-hit); x.rep = Math.max(0, x.rep - 3); g.contract = 0; return bad('I walked out on my contract. The studio sued, and I settled for ' + E.fmt(hit) + '.'); }
+        x.skill = Math.min(100, x.skill + 0.5);
+        return 'I hung up ' + g.role + '\'s costume for good. Time for something new.';
+      } }
+    ] };
+  } });
+  def('ac_spinoff', { build: function (d) {
+    var x = S().acting, g = x && d && saga(x, d.id);
+    if (!g || d.year !== S().year || x.retired) return null;
+    var fee = Math.round(KINDS.studio.parts.Lead[0] * U.randf(1, 2) * (1 + x.rep / 150) / 1000) * 1000, t = g.role.replace(/^the /, '').replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+    return { icon: '🌟', title: 'Spin-off', text: 'Fans can\'t get enough of ' + g.role + '. ' + g.studio + ' wants to give my character their own movie, "' + t + '", with me as the lead. ' + E.fmt(E.$(fee)) + ' to start.', choices: [
+      { label: 'Lead the spin-off', run: function () { var n = newSaga(x, { name: t, studio: g.studio, genre: g.genre, kind: 'studio', part: 'Lead', role: g.role, fee: fee }); x.slate.push({ kind: 'studio', part: 'Lead', title: t, studio: g.studio, genre: g.genre, director: U.pick(DIRECTORS), pay: fee, rep: 10, saga: n.id }); pay(fee); E.stat('happy', 10); return good('"' + t + '" is happening, and I\'m the star. 🌟'); } },
+      { label: 'Stay a scene-stealer', run: function () { return 'I passed. Some characters work best in small doses.'; } }
     ] };
   } });
 

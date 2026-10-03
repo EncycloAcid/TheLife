@@ -369,6 +369,7 @@ TL.data = (function () {
     { id: 'drafted', name: 'Going Pro', desc: 'Get drafted into a pro league from college', icon: '📝' },
     { id: 'big_break', name: 'Big Break', desc: 'Land the lead in a studio film', icon: '🎬' },
     { id: 'box_office', name: 'Billion-Dollar Star', desc: 'Star in a movie that grosses $1 billion', icon: '🍿' },
+    { id: 'franchise_star', name: 'Franchise Player', desc: 'Lead three films in the same franchise', icon: '🦸' },
     { id: 'oscar', name: 'Oscar Winner', desc: 'Win an Academy Award', icon: '🏆' },
     { id: 'egot', name: 'EGOT', desc: 'Win an Emmy, Grammy, Oscar and Tony', icon: '👑' },
     { id: 'number_one', name: 'Number One', desc: 'Top the Billboard charts', icon: '🥇' },
