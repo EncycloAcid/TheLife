@@ -62,6 +62,17 @@ TL.market = (function () {
   // ------------------------------------------------------------ the year
   var GOOD = ['beat earnings expectations', 'launched a hit product', 'raised its forecast', 'won a huge contract', 'announced a stock buyback'];
   var BAD = ['missed earnings', 'got hit with a lawsuit', 'recalled a product', 'lost its CEO', 'warned of a slowdown'];
+  // Real returns (percent) and headlines for famous stock years.
+  var REAL = {
+    AAPL: { 1997: [-37, 'Apple was weeks from bankruptcy until Steve Jobs came back.'], 1998: [212, 'The iMac saved Apple.'], 1999: [151], 2000: [-71, 'The dot-com crash hammered Apple.'], 2001: [47, 'Apple launched the iPod.'], 2004: [201, 'iPod sales exploded.'], 2005: [123], 2007: [133, 'Apple launched the iPhone.'], 2008: [-57], 2009: [146], 2019: [86], 2020: [81], 2022: [-27] },
+    MSFT: { 1998: [114], 1999: [68], 2000: [-63, 'Microsoft lost its antitrust case and the dot-com bubble popped.'], 2008: [-45], 2023: [57, 'Microsoft bet big on AI.'] },
+    NVDA: { 2008: [-76], 2016: [224, 'Gamers and crypto miners bought every Nvidia chip they could find.'], 2018: [-31], 2022: [-50], 2023: [239, 'The AI boom made Nvidia the hottest stock on Earth.'], 2024: [171, 'Nvidia briefly became the world\'s most valuable company.'] },
+    TSLA: { 2013: [344, 'The Model S made Tesla a Wall Street darling.'], 2020: [743, 'Tesla joined the S&P 500 and its stock went to the moon.'], 2022: [-65], 2023: [102] },
+    AMZN: { 1998: [966, 'Amazon was the face of the internet boom.'], 1999: [41], 2000: [-80, 'The dot-com crash wiped out 80% of Amazon\'s value.'], 2001: [-30], 2009: [162, 'The Kindle and the cloud pulled Amazon out of the crash.'], 2022: [-50] },
+    PFE: { 2021: [60, 'Pfizer\'s COVID vaccine sent its stock soaring.'], 2023: [-44] },
+    GS: { 2008: [-60, 'Goldman Sachs needed a bailout in the financial crisis.'], 2009: [103] },
+    KO: { 1998: [1] }, WMT: { 1999: [70] }
+  };
   // Called from engine.yearlyFinances; returns dividend income for the year.
   function year() {
     // Log returns, so the long-run median growth matches each stock's drift.
@@ -70,8 +81,11 @@ TL.market = (function () {
     else if (U.chance(0.06)) { lr = U.randf(0.24, 0.34); mood = 'boom'; }
     // Historic years follow what really happened (1929, 2008, the '90s boom...).
     var forced = TL.history ? TL.history.marketYear(s.year) : null;
-    if (forced != null) { lr = forced + U.gauss(0, 0.03); mood = forced <= -0.2 ? 'crash' : forced >= 0.24 ? 'boom' : null; }
+    if (forced != null) { lr = forced; mood = forced <= -0.2 ? 'crash' : forced >= 0.24 ? 'boom' : null; }
     var r = Math.exp(lr) - 1;
+    // The year in markets, for anyone paying attention (adults, or anyone invested).
+    var hn = TL.history && TL.history.marketNews(s.year);
+    if (hn && (me().age >= 18 || held().length)) E.log('📈 ' + hn + (TL.history.marketTotal(s.year) != null ? ' (S&P 500 ' + pct(TL.history.marketTotal(s.year)) + ')' : ''));
     m.hist.push({ year: s.year, r: r }); if (m.hist.length > 12) m.hist.shift();
     var divs = 0, news = [];
     D.STOCKS.forEach(function (x) {
@@ -85,6 +99,9 @@ TL.market = (function () {
       if (TL.history && !TL.history.listed(k)) return;
       divs += Math.round((s.stocks[k] || 0) * p * x.div);
       var own = U.gauss(0, x.vol), ret = Math.max(-0.85, Math.exp(Math.log(1 + x.drift) - x.beta * 0.068 + x.beta * lr + own) - 1);
+      // The famous real years: Apple's comeback, the dot-com crash, Nvidia and AI.
+      var real = REAL[k] && REAL[k][s.year];
+      if (real) { ret = real[0] / 100; own = real[0] / 100 - lr; if (s.stocks[k] > 0 && real[1]) news.unshift(real[1] + ' ' + k + ' ' + pct(ret) + '.'); }
       s.prices[k] = Math.max(0.01 * E.k(), Math.round(p * (1 + ret) * 100) / 100);
       var h = m.ph[k] || (m.ph[k] = [p]); h.push(s.prices[k]); if (h.length > 11) h.shift();
       // Stock splits keep share prices in a normal range: more shares, same value.
@@ -94,7 +111,7 @@ TL.market = (function () {
         s.prices[k] = Math.round(s.prices[k] / n * 100) / 100; m.ph[k] = h.map(function (q) { return Math.round(q / n * 100) / 100; });
         if (s.stocks[k] > 0) { s.stocks[k] *= n; news.unshift(x.name + ' did a ' + n + '-for-1 stock split. I now own ' + s.stocks[k].toLocaleString() + ' shares.'); }
       }
-      if (s.stocks[k] > 0 && Math.abs(own) > 0.18 && x.vol > 0.06) news.push(x.name + ' ' + U.pick(own > 0 ? GOOD : BAD) + '. ' + k + ' ' + pct(ret) + '.');
+      if (!real && s.stocks[k] > 0 && Math.abs(own) > 0.18 && x.vol > 0.06) news.push(x.name + ' ' + U.pick(own > 0 ? GOOD : BAD) + '. ' + k + ' ' + pct(ret) + '.');
     });
     m.divs += divs;
     if (held().length) {

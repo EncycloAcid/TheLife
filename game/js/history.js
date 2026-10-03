@@ -131,10 +131,14 @@ TL.history = (function () {
     if (h.seen.length >= 10) E.achieve('history_buff');
   }
   // Forced market years for js/market.js (log return), or null.
-  function marketYear(y) {
-    return { 1929: -0.35, 1930: -0.4, 1931: -0.6, 1932: -0.15, 1937: -0.4, 1973: -0.2, 1974: -0.35, 1987: -0.05, 2000: -0.1, 2001: -0.14, 2002: -0.25, 2008: -0.45,
-      1933: 0.4, 1954: 0.4, 1958: 0.35, 1975: 0.3, 1995: 0.32, 1997: 0.28, 2009: 0.24, 2013: 0.28, 2019: 0.27, 2020: 0.16, 2021: 0.25, 2022: -0.2 }[y];
-  }
+  // The S&P 500's real total return each year, 1928-2025 (percent, dividends
+  // included); the market follows it exactly. Returned as a log price return.
+  var SP = [43.8, -8.3, -25.1, -43.8, -8.6, 50.0, -1.2, 46.7, 31.9, -35.3, 29.3, -1.1, -10.7, -12.8, 19.2, 25.1, 19.0, 35.8, -8.4, 5.2, 5.7, 18.3, 30.8, 23.7, 18.2, -1.2, 52.6, 32.6, 7.4, -10.5, 43.7, 12.1, 0.3, 26.6, -8.8, 22.6, 16.4, 12.4, -10.0, 23.8, 10.8, -8.2, 3.6, 14.2, 18.8, -14.3, -25.9, 37.0, 23.8, -7.0, 6.5, 18.5, 31.7, -4.7, 20.4, 22.3, 6.1, 31.2, 18.5, 5.8, 16.5, 31.5, -3.1, 30.2, 7.5, 10.0, 1.3, 37.2, 22.7, 33.1, 28.3, 20.9, -9.0, -11.9, -22.0, 28.4, 10.7, 4.8, 15.6, 5.5, -36.6, 25.9, 14.8, 2.1, 15.9, 32.1, 13.5, 1.4, 11.8, 21.6, -4.2, 31.2, 18.0, 28.5, -18.0, 26.1, 24.9, 17.9];
+  function marketYear(y) { var t = SP[y - 1928]; return t == null ? null : Math.log(1 + t / 100) - 0.025; } // minus dividends: the price return
+  function marketTotal(y) { var t = SP[y - 1928]; return t == null ? null : t / 100; }
+  // What the papers said about the market that year.
+  var MARKET_NEWS = { 1929: 'The stock market crashed in October. Black Tuesday wiped out fortunes overnight.', 1931: 'The Great Depression deepened. Stocks lost nearly half their value this year.', 1933: 'Stocks roared back 50% as the New Deal began.', 1937: 'A second crash hit the recovering market.', 1954: 'The market finally passed its 1929 peak, a quarter century later.', 1973: 'The oil embargo sent stocks into a long bear market.', 1974: 'Stagflation: stocks fell a quarter as prices kept rising.', 1987: 'Black Monday: the Dow fell 22% in a single day in October, but the market still finished the year up.', 1995: 'The internet boom lifted stocks 37%.', 1999: 'Dot-com mania: anything with ".com" in its name soared.', 2000: 'The dot-com bubble burst.', 2002: 'Three straight losing years for the market after the dot-com crash.', 2008: 'The financial crisis: Lehman Brothers collapsed and stocks fell 37%.', 2009: 'Stocks rebounded off the March lows as the crisis eased.', 2013: 'A 32% year: the best for stocks since the 1990s.', 2018: 'A rough December dragged stocks into the red for the year.', 2020: 'COVID crashed the market in March, then it roared back to finish up 18%.', 2021: 'Meme stocks, crypto and a 28% year for the S&P 500.', 2022: 'Inflation and rising rates: the worst year for stocks since 2008.', 2023: 'The AI boom sent tech stocks soaring.', 2024: 'A second straight year above 20% for the S&P 500.' };
+  function marketNews(y) { return MARKET_NEWS[y] || null; }
 
   // ------------------------------------------------------------ events
   def('hist_draft', { build: function (d) {
@@ -175,5 +179,5 @@ TL.history = (function () {
 
   // Wars being fought in a year (js/maps.js world map).
   function wars(yr) { return WARS.filter(function (w) { return yr >= w.from && yr <= w.to; }); }
-  return { wars: wars, priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
+  return { wars: wars, priceLevel: priceLevel, lifeGap: lifeGap, exists: exists, notYet: notYet, listed: listed, ipoYear: ipoYear, yearly: yearly, marketYear: marketYear, marketTotal: marketTotal, marketNews: marketNews, aboutRow: aboutRow, eraName: eraName, LABEL: LABEL, SINCE: SINCE, NOW: NOW };
 })();
