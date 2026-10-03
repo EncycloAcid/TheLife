@@ -109,7 +109,7 @@ TL.social = (function () {
     if (count('sp_' + id) >= 3) return done(nope('I\'ve posted enough on ' + pname(id) + ' this year. Any more and people will mute me.'));
     bump('sp_' + id); a.yr++; a.posts++;
     var q = p[3] ? E.statValue(p[3]) : 50, fit = (c.niche && p[5].indexOf(c.niche) >= 0 ? 18 : 0) + (onTrend ? 22 : 0) + (id === 'tt' ? 6 : 0);
-    var score = U.clamp(q * 0.55 + fit + U.rand(0, 40) + (s.fame || 0) / 6, 1, 100);
+    var score = U.clamp(q * 0.55 + fit + U.rand(0, 40) + (s.fame || 0) / 6 + (TL.talents && TL.talents.has('charm') ? 8 : 0), 1, 100);
     var reach = a.f * engagement() * 1.6 + U.rand(3, 40) + (s.fame || 0) * 25;
     var viral = U.chance(0.02 + score / 1500 + (onTrend ? 0.05 : 0) + (id === 'tt' ? 0.03 : 0));
     var likes = Math.round(reach * (0.4 + score / 60) * (viral ? U.rand(15, 120) : 1));

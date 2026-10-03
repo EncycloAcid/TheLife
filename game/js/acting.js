@@ -122,7 +122,7 @@ TL.acting = (function () {
   function st() {
     var s = S(), x = s.acting;
     if (!x) {
-      x = s.acting = { talent: U.clamp(Math.round(U.gauss(58, 16) + me().looks / 12), 25, 99), skill: U.clamp(15 + (s.flags.acting || 0) * 3 + Math.round(me().looks / 10), 5, 45), rep: 0, agent: null, credits: [], slate: [], series: null, earn: 0, headshots: 0, noms: 0, wins: 0, best: 0 };
+      x = s.acting = { talent: U.clamp(Math.round(U.gauss(58, 16) + me().looks / 12 + (TL.talents ? TL.talents.ceiling('acting') : 0)), 25, 99), skill: U.clamp(15 + (s.flags.acting || 0) * 3 + Math.round(me().looks / 10), 5, 45), rep: 0, agent: null, credits: [], slate: [], series: null, earn: 0, headshots: 0, noms: 0, wins: 0, best: 0 };
     }
     var j = s.job;
     // Saves from before v1.14: an old "actor" job becomes an acting career.

@@ -443,6 +443,7 @@ TL.ui = (function () {
     if (TL.creator) rows = rows.concat(TL.creator.aboutRows());
     var sr = TL.sports && TL.sports.aboutRow(); if (sr) rows.push(sr);
     var ar = TL.acting && TL.acting.aboutRow(); if (ar) rows.push(ar);
+    var tal = TL.talents && TL.talents.aboutRow(); if (tal) rows.splice(1, 0, tal); // gifts near the top
     var mu = TL.music && TL.music.aboutRow(); if (mu) rows.push(mu);
     var pr = TL.pro && TL.pro.aboutRow(); if (pr) rows.push(pr);
     if (TL.ancient && TL.ancient.on()) rows = TL.ancient.aboutRows().concat(rows);

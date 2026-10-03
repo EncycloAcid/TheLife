@@ -238,6 +238,7 @@ TL.engine = (function () {
     var wealthTier = tiers.filter(function (t) { return t.t === opts.wealth; })[0] || U.weighted(tiers);
     if (opts.stats) ['happy', 'health', 'smarts', 'looks'].forEach(function (k) { if (opts.stats[k] != null) st.me[k] = U.clamp(Math.round(opts.stats[k]), 0, 100); });
     st.flags.wealth = wealthTier.t;
+    if (TL.talents) TL.talents.roll(); // born with a gift? (js/talents.js)
     var momAge = U.rand(18, 42), dadAge = momAge + U.rand(-4, 8);
     var parentsMarried = U.chance(0.7);
     var mom = addPerson({ role: 'mother', gender: 'F', age: momAge, last: parentsMarried ? st.me.last : undefined, rel: U.rand(55, 100), money: $(wealthTier.m * U.randf(0.5, 1.5)) });
@@ -929,7 +930,7 @@ TL.engine = (function () {
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
       if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name) || (TL.health && TL.health.has(ill.name))) return;
-      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1);
+      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1) * (TL.talents ? TL.talents.sickMult() : 1);
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
@@ -1081,6 +1082,7 @@ TL.engine = (function () {
       else { log(pt.first + ' broke up with me. 💔', 'bad'); pt.role = 'ex'; s.counts.exes++; stat('happy', -15); }
     }
     if (TL.mind) TL.mind.yearly(); // the people in my life act on their own (js/mind.js)
+    if (TL.talents) TL.talents.yearly(); // a hidden gift may show itself
   }
   function inherit(p) {
     var s = S(), share;
@@ -1292,6 +1294,7 @@ TL.engine = (function () {
       }
     });
     st.year = s.year;
+    if (TL.talents) TL.talents.roll(dead.talents); // gifts can run in the family
     if (s.city) st.city = st.birthCity = s.city; // the family stays in the same city
     st.log[0] = { age: c.age, year: s.year, entries: [] };
     log('👑 Generation ' + gen + ': I am ' + c.first + ' ' + c.last + ', age ' + c.age + '.');

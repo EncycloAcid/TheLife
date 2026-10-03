@@ -74,7 +74,7 @@ TL.hoops = (function () {
     var sp = S().sports, ms = sp && sp.sport === 'Basketball Team' ? (sp.skill - 40) / 8 : 0; // middle school hoops count
     var ovr = U.clamp(Math.round(23 + m.athl * 0.32 + (cm - (g === 'F' ? 178 : 196)) * 0.5 + ms + U.rand(-6, 6)), 20, 70);
     S().hoops = { stage: stage, cm: cm, pos: posFor(cm, g), num: U.pick([0, 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 15, 21, 23, 24, 30, 32, 33, 34, 35]), ovr: ovr,
-      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(7, 8)) + (m.athl - 70) / 6 + (U.chance(0.06) ? U.rand(8, 20) : 0)), ovr + 4, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
+      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(7, 8)) + (m.athl - 70) / 6 + (U.chance(0.06) ? U.rand(8, 20) : 0) + (TL.talents ? TL.talents.ceiling('hoops') : 0)), ovr + 4, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
     prof(S().hoops);
     return S().hoops;
   }

@@ -66,7 +66,7 @@ TL.sports = (function () {
     // edu.team is the source of truth for "on a team right now".
     if (x.team && !(e && e.team === x.team)) { x.team = null; x.captain = false; }
     if (!x.team && e && e.team && SPORTS[e.team]) { x.team = e.team; if (!x.pos || x.sport !== e.team) { x.pos = U.pick(SPORTS[e.team].pos); x.sport = e.team; } if (x.skill < 10) x.skill = start(); }
-    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58)), 40, 99);
+    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58) + (TL.talents ? TL.talents.ceiling('sports') : 0)), 40, 99);
     // Talent part of my ceiling; the rest grows with my athleticism.
     if (x.potB == null) x.potB = x.pot - Math.round(me().athl * 0.4);
     return x;
@@ -91,7 +91,7 @@ TL.sports = (function () {
     var x = st(), e = S().edu;
     e.team = t;
     if (x.sport !== t) { x.sport = t; x.pos = U.pick(SPORTS[t].pos); x.skill = start(); x.captain = false; }
-    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58)), 40, 99);
+    if (x.pot == null) x.pot = U.clamp(Math.round(me().athl * 0.4 + U.rand(28, 58) + (TL.talents ? TL.talents.ceiling('sports') : 0)), 40, 99);
     x.team = t;
     me().athl = U.clamp(me().athl + 3, 0, 100);
     if (me().athl > 80 && me().age >= 15) S().flags.athleteScholar = true;

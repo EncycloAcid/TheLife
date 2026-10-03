@@ -69,7 +69,7 @@ TL.music = (function () {
   function fresh(genre, name) {
     var m = me(), s = S();
     var sing = (s.skills && s.skills.singing) || 0;
-    s.music = { genre: genre, name: name, talent: U.clamp(Math.round(U.gauss(58, 16) + m.smarts / 15), 25, 99), skill: U.clamp(12 + (s.flags.music || 0) * 3 + sing / 4, 5, 45), fans: U.rand(20, 120), label: null, songs: [], vault: [], albums: [], released: 0, streams: 0, earn: 0, noms: 0, wins: 0, started: s.year };
+    s.music = { genre: genre, name: name, talent: U.clamp(Math.round(U.gauss(58, 16) + m.smarts / 15 + (TL.talents ? TL.talents.ceiling('music') : 0)), 25, 99), skill: U.clamp(12 + (s.flags.music || 0) * 3 + sing / 4 + (TL.talents && TL.talents.has('music') ? 8 : 0), 5, 50), buzz: 0, fans: U.rand(20, 120), label: null, songs: [], vault: [], albums: [], released: 0, streams: 0, earn: 0, noms: 0, wins: 0, started: s.year };
     return s.music;
   }
   // Saves from before v1.16: an old "musician" job becomes a music career.
@@ -160,32 +160,40 @@ TL.music = (function () {
   // Streams from fans, from quality reaching new listeners, label push and luck.
   function streamsFor(x, q, promo) {
     // Great songs find new listeners; the occasional viral moment changes everything.
-    var reach = x.fans * U.randf(1.5, 4.5) + Math.pow(q, 2.6) * U.randf(2, 10) * promo;
+    var reach = x.fans * U.randf(1.5, 4.5) + Math.pow(q, 2.6) * U.randf(2, 10) * promo * (1 + (x.buzz || 0) / 40); // buzz finds new listeners
     var viral = U.chance(0.004 + Math.max(0, q - 65) / 500 + (promo > 1.4 ? 0.01 : 0));
     return { n: Math.round(reach * (viral ? U.rand(20, 150) : 1)), viral: viral };
   }
   // Chart bars an established star can reach (they used to need freak viral hits).
   function hot100(streams) { return streams >= 2e8 ? 1 : streams >= 6e7 ? U.rand(2, 10) : streams >= 1.8e7 ? U.rand(11, 40) : streams >= 5e6 ? U.rand(41, 100) : 0; }
   function cert(units) { return units >= 1e7 ? 'Diamond' : units >= 2e6 ? (Math.floor(units / 1e6)) + '× Platinum' : units >= 1e6 ? 'Platinum' : units >= 5e5 ? 'Gold' : null; }
+  // New artists turn listeners into fans faster: every new fan is a big share of a small base.
+  function early(x) { return 1 + 1.5 / (1 + x.fans / 1e5); }
   function labelPromo(x) { return x.label ? (x.label.kind === 'major' ? 1.8 : 1.3) : 1; }
   function royalties(x, streams) { return Math.round(streams * 0.004 * (x.label ? x.label.rate : 0.85)); }
   function single() {
     var x = st();
     if (!x.vault.length) return done(nope('I need to write a song first.'));
     if (count('mu_single') >= 3) return done(nope('Three singles a year is plenty. Let the last one breathe.'));
-    var best = catchiest(x);
+    // Pick the song: the catchiest isn't always the one I believe in.
+    var picks = x.vault.slice().sort(function (a, b) { return hookOf(b) - hookOf(a); }).slice(0, 4);
+    ui().choose('🎧 Release a single', 'Which song goes out next? Hooks stream; depth wins critics and awards.' + ((x.buzz || 0) >= 30 ? ' I\'ve got buzz right now, so people are listening.' : ''), picks.map(function (song) {
+      return { label: '"' + song.title + '" · hook ' + hookOf(song) + ', depth ' + song.q, fn: function () { promoteSingle(song); } };
+    }));
+  }
+  function promoteSingle(best) {
+    var tease = S().year >= 2019 ? 'Tease it on TikTok first' : S().year >= 2006 ? 'Leak a snippet on YouTube' : S().year >= 1981 ? 'Get it to radio DJs first' : null;
     ui().choose('🎧 Release "' + best.title + '" (hook ' + hookOf(best) + ')', 'How do I put it out?', [
-      { label: 'Just drop it on streaming', fn: function () { releaseSingle(best, 0, 1); } },
-      { label: 'Shoot a music video (' + E.fmt(E.$(5000)) + ')', fn: function () { if (S().money < E.$(5000)) return done(nope('A music video costs ' + E.fmt(E.$(5000)) + '.')); E.addMoney(-E.$(5000)); releaseSingle(best, 6, 1.25); } },
-      { label: 'Tease it on TikTok first', fn: function () { releaseSingle(best, 0, U.chance(0.3) ? 1.9 : 1.05); } }
-    ]);
+      { label: S().year >= 2005 ? 'Just drop it on streaming' : 'Just put it out', fn: function () { releaseSingle(best, 0, 1); } },
+      { label: (S().year >= 1981 ? 'Shoot a music video' : 'Pay for a radio push') + ' (' + E.fmt(E.$(5000)) + ')', fn: function () { if (S().money < E.$(5000)) return done(nope('That costs ' + E.fmt(E.$(5000)) + '.')); E.addMoney(-E.$(5000)); releaseSingle(best, 6, 1.25); } }
+    ].concat(tease ? [{ label: tease, fn: function () { releaseSingle(best, 0, U.chance(0.3 + hookOf(best) / 400) ? 1.9 : 1.05); } }] : []));
   }
   function releaseSingle(song, bonus, promo) {
     var x = st();
     bump('mu_single');
     x.vault = x.vault.filter(function (v) { return v !== song; });
     var q = U.clamp(hookOf(song) + bonus, 1, 100), r = streamsFor(x, q, promo * labelPromo(x));
-    var peak = hot100(r.n), gain = r.n * U.randf(0.008, 0.016) * (q / 70) / (1 + x.fans / 6e6);
+    var peak = hot100(r.n), gain = r.n * U.randf(0.008, 0.016) * (q / 70) / (1 + x.fans / 6e6) * early(x);
     addFans(x, gain); x.streams += r.n; x.released++;
     var rec = { title: song.title, year: S().year, q: song.q, h: q, streams: r.n, peak: peak, kind: 'single' };
     if (bonus >= 6) rec.video = true;
@@ -198,6 +206,7 @@ TL.music = (function () {
     pay(royalties(x, r.n));
     E.fame(Math.min(8, Math.log10(1 + gain) - 1));
     if (peak === 1) E.achieve('number_one');
+    x.buzz = U.clamp((x.buzz || 0) + (r.viral ? 30 : 0) + (peak ? (peak <= 10 ? 25 : peak <= 40 ? 15 : 8) : q >= 70 ? 3 : 0), 0, 100);
     var msg = (r.viral ? '🔥 "' + song.title + '" blew up on TikTok! ' : '🎧 I released "' + song.title + '". ') + 'It got ' + big(r.n) + ' streams' + (peak ? ' and peaked at #' + peak + ' on the Billboard Hot 100' + (rec.top ? ' (' + U.plural(rec.top, 'week') + ' at #1)' : ', ' + U.plural(rec.weeks, 'week') + ' on the chart') : '') + (c ? '. Certified ' + c + '!' : '.') + ' +' + big(gain) + ' fans.';
     return done(peak && peak <= 10 || r.viral ? good(msg) : msg);
   }
@@ -226,7 +235,7 @@ TL.music = (function () {
     shift(x, 'pro', 0.5);
     var peak = week >= 3e5 ? 1 : week >= 1e5 ? U.rand(2, 5) : week >= 3e4 ? U.rand(6, 20) : week >= 8e3 ? U.rand(21, 100) : week >= 3e3 ? U.rand(101, 200) : 0;
     var total = Math.round(week * U.randf(3, 7)), streams = total * 1500;
-    var gain = week * U.randf(2.5, 6) * (review / 70) / (1 + x.fans / 6e6);
+    var gain = week * U.randf(2.5, 6) * (review / 70) / (1 + x.fans / 6e6) * early(x);
     addFans(x, gain); x.streams += streams; x.released++;
     var title = U.chance(0.4) ? tracks[0].title : U.pick(W1) + ' ' + U.pick(W2);
     var rec = { title: title, year: s.year, kind: lp ? 'album' : 'EP', review: review, week: week, peak: peak, units: total };
@@ -241,10 +250,54 @@ TL.music = (function () {
     if (peak === 1) E.achieve('number_one');
     E.log('💿 My ' + (lp ? 'album' : 'EP') + ' "' + title + '" got a ' + review + ' on Metacritic' + (peak ? ' and debuted at #' + peak + ' on the Billboard 200 with ' + big(week) + ' first-week units' : '') + '.' + (c ? ' Certified ' + c + '! 💿' : ''), review >= 80 || (peak && peak <= 10) ? 'good' : review < 45 ? 'bad' : '');
     rec.nomEligible = review >= 80;
+    x.buzz = U.clamp((x.buzz || 0) + (peak && peak <= 10 ? 20 : peak ? 8 : 0) + (review >= 80 ? 10 : 0), 0, 100);
     if (fulfilled) s.pending.push({ id: 'mu_label_done', data: {} });
     if (c && /Platinum|Diamond/.test(c)) E.achieve('platinum');
     return done({ text: '💿 "' + title + '" is out now. ' + (review >= 80 ? 'Critics love it.' : review >= 60 ? 'Solid reviews.' : 'Critics were not kind.'), cls: '', quiet: true });
   }
+
+  // Getting heard without a label: whatever the era offered.
+  function online() {
+    var y = S().year;
+    return y >= 2019 ? ['🎵', 'Post a snippet on TikTok', 'TikTok'] : y >= 2010 ? ['☁️', 'Upload a song to SoundCloud', 'SoundCloud'] : y >= 2006 ? ['▶️', 'Post a song on YouTube', 'YouTube'] : y >= 2004 ? ['🎸', 'Put a song on MySpace', 'MySpace'] : y >= 1999 ? ['💽', 'Upload an MP3 online', 'the internet'] : ['📻', 'Send a demo tape to a radio DJ', 'local radio'];
+  }
+  function postOnline() {
+    var x = st(); if (!x.vault.length) return done(nope('I need a song first.'));
+    if (count('mu_online')) return done(nope('I already did that this year.'));
+    bump('mu_online'); x.lastActive = S().year;
+    var song = catchiest(x), h = hookOf(song), ol = online();
+    var chance = U.clamp((h - 60) / 220 + (TL.talents && TL.talents.has('music') ? 0.04 : 0) + (x.fans < 5000 ? 0.03 : 0), 0.01, 0.3);
+    if (U.chance(chance)) {
+      var gain = Math.round(Math.pow(h, 2.2) * U.randf(4, 14) * (S().year >= 2019 ? 2 : 1));
+      addFans(x, gain); x.buzz = U.clamp((x.buzz || 0) + 35, 0, 100); E.fame(3);
+      return done(good('🚀 "' + song.title + '" blew up on ' + ol[2] + '! +' + big(gain) + ' fans, and people are asking when the full song drops.'));
+    }
+    var small = Math.round(Math.max(10, h * U.randf(0.5, 3) + x.fans * U.randf(0.002, 0.01)));
+    addFans(x, small);
+    return done(ol[2] === 'local radio' ? 'The DJ played "' + song.title + '" once, late at night. +' + big(small) + ' fans.' : 'I posted "' + song.title + '" on ' + ol[2] + '. A few people shared it. +' + big(small) + ' fans.');
+  }
+  def('mu_talentshow', { min: 9, max: 17, w: 3, cond: function () { return (!!S().music || (TL.talents && TL.talents.mine().some(function (t) { return t.id === 'music' && t.known; }))) && !S().prison; }, build: function () {
+    var x = S().music;
+    return { icon: '🎤', title: 'School talent show', text: 'The school talent show is next week. Everyone will be there.', choices: [
+      { label: 'Sing my heart out', run: function () {
+        var gift = TL.talents && TL.talents.has('music'), r = U.rand(0, 100) + (gift ? 30 : 0) + (x ? x.skill / 3 : 0);
+        S().flags.music = (S().flags.music || 0) + 1;
+        if (r >= 70) { if (x) { x.fans += U.rand(80, 400); x.buzz = U.clamp((x.buzz || 0) + 10, 0, 100); } E.stat('happy', 10); E.fame(1); return good('I won the talent show. Someone\'s video of it got passed around the whole town. 🏆'); }
+        if (r >= 35) { E.stat('happy', 5); return 'I placed third. Not bad for a first time on a real stage.'; }
+        E.stat('happy', -6); return bad('My voice cracked on the high note. Everyone saw.');
+      } },
+      { label: 'Stay in the audience', run: function () { return 'I watched from the bleachers. Next year, maybe.'; } }
+    ] };
+  } });
+  def('mu_discovered', { build: function (d) {
+    var x = st(); if (!x || x.label || x.retired) return null;
+    var who = U.pick(['a producer who works with big names', 'an A&R scout from a major label', 'a famous songwriter']);
+    return { icon: '🌟', title: 'Discovered', text: 'My song "' + d.title + '" reached ' + who + '. They want to work with me.', choices: [
+      { label: 'Sign a development deal', run: function () { x.label = { name: U.pick(['Republic Records', 'Atlantic Records', 'Interscope Records']), kind: 'major', rate: 0.15, tier: 2, owed: 2 }; x.buzz = U.clamp((x.buzz || 0) + 20, 0, 100); pay(25000); E.achieve('signed'); if (hasJob()) S().job.company = x.label.name; return good('I signed a development deal with ' + x.label.name + '. They believe in me. 📝'); } },
+      { label: 'Take them on as a mentor', run: function () { x.talent = Math.min(99, x.talent + 4); grow(x, 5); return good('A year in the studio with a real pro taught me more than any class. My ceiling just went up.'); } },
+      { label: 'Stay DIY', run: function () { addFans(x, 500); return 'I said thanks but no thanks. I\'ll do it my way.'; } }
+    ] };
+  } });
 
   // ------------------------------------------------------------ live
   // Ticket pricing: [label, crowd, price, new fans].
@@ -326,12 +379,14 @@ TL.music = (function () {
   }
 
   // ------------------------------------------------------------ menus
+  function stars(t) { var n = U.clamp(Math.round((t - 30) / 14), 1, 5); return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
   function card(x) {
     var aw = (S().awards || []).filter(function (a) { return a.award === 'Grammy Award'; }).length;
     var hits = x.songs.filter(function (s2) { return s2.peak; }).length;
     return '<div class="mu-card"><div class="mu-top"><span class="mu-ico">' + (x.label && TL.logos ? TL.logos.badge(x.label.name) : '🎵') + '</span><div><div class="mu-name">' + U.esc(x.name) + '</div><div class="mu-sub">' + U.esc(title()) + ' · ' + x.genre + ' · ' + (x.label ? U.esc(x.label.name) : 'Independent') + '</div></div></div>' +
       '<div class="mu-stats"><div><b>' + big(x.fans) + '</b><small>fans</small></div><div><b>' + big(x.streams) + '</b><small>streams</small></div><div><b>' + (hits || '—') + '</b><small>Hot 100 hits</small></div><div><b>' + (aw || '—') + '</b><small>Grammys</small></div></div>' +
       '<div class="hb-arch">' + U.esc(archetype(x)) + '</div>' +
+      '<div class="mu-line">Potential ' + stars(x.talent) + (x.skill >= x.talent - 2 ? ' · at my ceiling' : '') + ((x.buzz || 0) >= 10 ? ' · 🔥 Buzz ' + x.buzz : '') + '</div>' +
       '<div class="minibar wide"><span>Musicianship ' + Math.round(x.skill) + '</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
       CRAFT.map(function (c) { var v = ca(x, c[0]); return '<div class="minibar wide"><span>' + craftName(x, c[0]) + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('') +
       '<div class="mu-line">✍️ ' + U.plural(x.vault.length, 'unreleased song') + (x.label && x.label.owed ? ' · owe ' + x.label.name + ' ' + U.plural(x.label.owed, 'album') : '') + '</div></div>';
@@ -354,6 +409,8 @@ TL.music = (function () {
       items.push({ icon: '🎧', label: 'Release a single', sub: x.vault.length ? 'Catchiest unreleased: "' + catchiest(x).title + '" (hook ' + hookOf(catchiest(x)) + ')' : 'Write a song first', disabled: !x.vault.length || count('mu_single') >= 3, onClick: single });
       items.push({ icon: '💿', label: x.vault.length >= 10 ? 'Release an album' : 'Release an EP', sub: x.vault.length >= 5 ? U.plural(x.vault.length, 'song') + ' ready' : 'Needs 5+ songs (' + x.vault.length + ')', disabled: x.vault.length < 5 || count('mu_album') > 0, onClick: album });
       items.push({ icon: '🤝', label: 'Do a feature', disabled: count('mu_feat') > 0, onClick: feature });
+      var ol = online();
+      items.push({ icon: ol[0], label: ol[1], sub: x.vault.length ? 'Free · could get noticed' : 'Write a song first', disabled: !x.vault.length || count('mu_online') > 0, onClick: postOnline });
       items.push({ section: 'Live' });
       GIGS.forEach(function (g) { if (x.fans >= g[3] * 0.3 || g[0] === 'openmic') items.push({ icon: g[1], label: g[2], sub: x.fans < g[3] ? 'Needs ' + big(g[3]) + ' fans' : '', disabled: x.fans < g[3] || count('mu_gig_' + g[0]) > 0 || (g[0] !== 'openmic' && g[0] !== 'local' && count('mu_tour') > 0), onClick: function () { gig(g); } }); });
       items.push({ section: 'Career' });
@@ -410,6 +467,7 @@ TL.music = (function () {
     // (yearActs are already reset when the year turns, so use the last active year.)
     var active = x.lastActive != null && x.lastActive >= s.year - 1;
     x.fans = Math.round(x.fans * (active ? U.randf(0.95, 0.99) : U.randf(0.82, 0.9)));
+    x.buzz = Math.round((x.buzz || 0) * (active ? 0.6 : 0.3));
     // Grammys: a great project this year (or a monster single) can be nominated.
     var proj = x.albums.filter(function (a) { return a.year === s.year - 1 && a.nomEligible && !a.nom; }).sort(function (a, b) { return b.review - a.review; })[0];
     var hit = x.songs.filter(function (q) { return q.year === s.year - 1 && q.peak && q.peak <= 5 && q.q >= 80 && !q.nom; })[0];
@@ -433,6 +491,8 @@ TL.music = (function () {
     // Life on the road and in the industry.
     if (!s.prison && !x.retired) {
       if (x.songs.length && x.fans >= 2000 && U.chance(0.08)) s.pending.push({ id: 'mu_sync', data: {} });
+      var gem = x.songs.filter(function (q) { return q.year >= s.year - 2 && hookOf(q) >= 75; })[0];
+      if (gem && !x.label && x.fans < 80000 && me().age >= 15 && U.chance(0.18)) s.pending.push({ id: 'mu_discovered', data: { title: gem.title } });
       if (x.fans >= 2e4 && x.fans < 2e6 && U.chance(0.15)) s.pending.push({ id: 'mu_opener', data: {} });
       if (x.fans >= 2e5 && U.chance(0.12)) s.pending.push({ id: 'mu_festival', data: {} });
       else if (x.fans >= 5e4 && U.chance(0.07)) s.pending.push({ id: 'mu_beef', data: {} });
