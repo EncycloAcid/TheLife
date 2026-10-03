@@ -450,7 +450,9 @@ TL.ui = (function () {
     if (s.books && s.books.length) rows.push(['📚 Books published', s.books.length]);
     if (s.awards && s.awards.length) rows.push(['🏆 Awards', s.awards.map(function (x) { return x.award + ' (' + x.year + ')'; }).join(', ')]);
     menu('About me', function () {
-      return [{ info: true, html: lifeChart(s.hist) }, { info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
+      // The chart's last point is this year as it stands now, not last birthday's snapshot.
+      var live = (s.hist || []).filter(function (h) { return h[0] < s.me.age; }).concat([[s.me.age, E.netWorth(), s.me.happy]]);
+      return [{ info: true, html: lifeChart(live) }, { info: true, html: '<table class="kvt">' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + U.esc(String(r[1])) + '</td></tr>'; }).join('') + '</table>' }];
     });
   }
   // Go back 1-5 years; also undoes a death.

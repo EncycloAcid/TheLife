@@ -43,7 +43,7 @@ TL.social = (function () {
   function tier(f) { var t = TIERS[0][1]; TIERS.forEach(function (q) { if (f >= q[0]) t = q[1]; }); return t; }
   // The year's real viral trend.
   var TRENDS = { 2007: 'Chocolate Rain covers', 2008: 'Rickrolling', 2009: 'the Single Ladies dance', 2010: 'Double Rainbow reactions', 2011: 'planking', 2012: 'the Gangnam Style dance', 2013: 'the Harlem Shake', 2014: 'the Ice Bucket Challenge', 2015: 'the dress (blue or gold?)', 2016: 'the Mannequin Challenge', 2017: 'fidget spinner tricks', 2018: 'the In My Feelings challenge', 2019: 'the bottle cap challenge', 2020: 'whipped coffee and sourdough', 2021: 'Squid Game challenges', 2022: 'the Wednesday dance', 2023: '"How often do you think about the Roman Empire?"', 2024: 'brat summer and "very demure"', 2025: 'the "6-7" meme' };
-  var FAKE_TRENDS = ['a dance to a sped-up throwback', 'the AI twin challenge', 'a 5-second recipe hack', 'POV skits about first jobs', 'the silent vlog trend', 'a lip-sync to a movie quote', 'the photo-dump challenge'];
+  var FAKE_TRENDS = ['a dance to a sped-up throwback', 'the AI twin challenge', 'a 5-second recipe hack', 'POV skits about first jobs', 'silent vlogs', 'a lip-sync to a movie quote', 'the photo-dump challenge'];
   function trend() { var s = S(), c = st(); if (!c.trend || c.trend.y !== s.year) c.trend = { y: s.year, t: TRENDS[s.year] || (s.year > 2025 ? U.pick(FAKE_TRENDS) : null) }; return c.trend.t; }
 
   // ------------------------------------------------------------ state
@@ -170,7 +170,7 @@ TL.social = (function () {
     var s = S(), c = st(), y = s.year;
     if (c.topics && c.topics.y === y) return c.topics.l;
     var l = [], H = TL.history, P = TL.phone;
-    if (trend()) l.push({ k: 'trend', icon: '🔥', t: trend(), what: 'the ' + (/^the /.test(trend()) ? trend().slice(4) : trend()) + ' trend' });
+    if (trend()) l.push({ k: 'trend', icon: '🔥', t: trend(), what: (function (t) { t = t.replace(/^(the|a|an) /, ''); return 'the ' + t + (/(trends?|challenges?)$/i.test(t) ? '' : ' trend'); })(trend()) });
     if (H && H.moments) H.moments(y).forEach(function (m) { l.push({ k: 'news', icon: m[1], t: m[4], what: (/^The /.test(m[4]) || !/(pandemic|crisis|disaster|landing|boom|tsunami|assassination|Wall|Union|Web|millennium)/i.test(m[4]) ? '' : 'the ') + m[4].replace(/^The /, 'the '), serious: /🕯️|📉|😷|🌊|☢️/.test(m[1]) }); });
     if (H && H.marketNews && H.marketNews(y)) l.push({ k: 'money', icon: '📈', t: H.marketNews(y).replace(/\.$/, ''), what: 'the stock market' });
     if (P && P.HITS && P.HITS[y]) l.push({ k: 'pop', icon: '🍿', t: '"' + P.HITS[y] + '" is the movie of the year', what: '"' + P.HITS[y] + '"' });

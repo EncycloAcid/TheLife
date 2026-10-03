@@ -332,10 +332,10 @@ TL.creator = (function () {
   // ==================================================================
   // price: starting base-dollar price; vol: yearly swing; the meme coin can rug.
   var COINS = [
-    { sym: 'BTC', name: 'Bitcoin', icon: '🟠', price: 65000, vol: 0.45 },
-    { sym: 'ETH', name: 'Ethereum', icon: '🔷', price: 3200, vol: 0.6 },
-    { sym: 'SOL', name: 'Solana', icon: '🟣', price: 150, vol: 0.75 },
-    { sym: 'DOGE', name: 'Dogecoin', icon: '🐕', price: 0.15, vol: 0.9 }
+    { sym: 'BTC', name: 'Bitcoin', icon: '🟠', price: 65000, vol: 0.45, g: 0.04 },
+    { sym: 'ETH', name: 'Ethereum', icon: '🔷', price: 3200, vol: 0.6, g: 0.03 },
+    { sym: 'SOL', name: 'Solana', icon: '🟣', price: 150, vol: 0.75, g: 0.02 },
+    { sym: 'DOGE', name: 'Dogecoin', icon: '🐕', price: 0.15, vol: 0.9, g: 0 }
   ];
   var MEMES = ['PEPE', 'BONK', 'WIF', 'FLOKI', 'SHIB', 'MOON', 'TURBO', 'MOG'];
   function wallet() {
@@ -402,6 +402,11 @@ TL.creator = (function () {
     coins().forEach(function (c) {
       w.last[c.sym] = w.price[c.sym];
       var r = drift * (c.vol / 0.6) + U.gauss(0, c.vol * 0.5);
+      // Booms and busts swing around a slowly rising fair value, so decades of
+      // random walk can't turn Dogecoin into a $400 coin. Meme coins drift back
+      // toward where they launched.
+      var fair = c.meme ? (w.memeAt || w.price[c.sym]) * 5 : c.price * Math.exp(c.g * w.phase);
+      r -= (c.meme ? 0.35 : 0.3) * Math.log(w.price[c.sym] / fair);
       w.price[c.sym] = Math.max(c.meme ? 1e-7 : 0.001, w.price[c.sym] * Math.exp(U.clamp(r, -2.5, 1.8)));
     });
     // Meme coins come and go; some get rugged.
@@ -412,7 +417,7 @@ TL.creator = (function () {
         delete w.hold[w.meme]; delete w.price[w.meme]; w.meme = null;
       }
     }
-    if (!w.meme && U.chance(0.5)) { w.meme = U.pick(MEMES); w.price[w.meme] = U.randf(0.000001, 0.01); }
+    if (!w.meme && U.chance(0.5)) { w.meme = U.pick(MEMES); w.price[w.meme] = w.memeAt = U.randf(0.000001, 0.01); }
     var total = cryptoValue();
     if (total >= E.$(1e6)) E.achieve('whale');
     if (total > 0 && U.chance(0.03)) S().pending.push({ id: 'cr_hack', data: {} });

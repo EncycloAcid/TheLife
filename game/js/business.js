@@ -114,7 +114,13 @@ TL.business = (function () {
   }
   function startupYear(a) {
     var s = S();
-    if (a.stage === 'public') { a.value = Math.round(a.value * Math.exp(U.gauss(0.07, 0.3))); a.valuation = Math.round(a.value / Math.max(0.01, a.share)); return 0; }
+    if (a.stage === 'public') {
+      // A listed company grows about as fast as the market, but very big
+      // companies grow slower: nothing compounds past a few trillion.
+      var big = Math.max(0, Math.log(Math.max(1, a.valuation || a.value) / E.$(5e10))) * 0.12;
+      a.value = Math.round(a.value * Math.exp(U.clamp(U.gauss(0.07, 0.22) - big, -1.2, 0.9)));
+      a.valuation = Math.round(a.value / Math.max(0.01, a.share)); return 0;
+    }
     if (a.stage === 'acquired') return 0;
     // Users grow with product quality; revenue follows users; the team burns cash.
     a.quality = U.clamp(Math.round(a.quality + U.rand(-5, 5) + (me().smarts - 60) / 25 + (s.skills && s.skills.coding ? s.skills.coding / 40 : 0) + (sk('prod') - 20) / 40), 5, 100);
