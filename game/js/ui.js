@@ -444,6 +444,10 @@ TL.ui = (function () {
     var sr = TL.sports && TL.sports.aboutRow(); if (sr) rows.push(sr);
     var ar = TL.acting && TL.acting.aboutRow(); if (ar) rows.push(ar);
     var tal = TL.talents && TL.talents.aboutRow(); if (tal) rows.splice(1, 0, tal); // gifts near the top
+    // What my mood drifts toward, counting what I've done for myself this year so far.
+    var mt = E.moodTarget(Object.assign({}, s.lastActs || {}, s.yearActs || {}));
+    var top = mt.parts.slice().sort(function (a, b) { return Math.abs(b[0]) - Math.abs(a[0]); }).slice(0, 3).map(function (p) { return (p[0] > 0 ? '+' : '') + p[0] + ' ' + p[1]; });
+    rows.splice(2, 0, ['🌤️ Mood baseline', mt.t + (top.length ? ' (' + top.join(', ') + ')' : '')]);
     var mu = TL.music && TL.music.aboutRow(); if (mu) rows.push(mu);
     var pr = TL.pro && TL.pro.aboutRow(); if (pr) rows.push(pr);
     if (TL.ancient && TL.ancient.on()) rows = TL.ancient.aboutRows().concat(rows);

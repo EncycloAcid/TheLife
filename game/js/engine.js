@@ -60,9 +60,21 @@ TL.engine = (function () {
   }
 
   function stat(name, delta) {
-    var m = me();
-    m[name] = U.clamp(Math.round(m[name] + delta), 0, 100);
+    var m = me(), v = m[name] + delta, lo = Math.floor(v);
+    // Round by chance, so small gains (a second trip to the library) still add up on average.
+    m[name] = U.clamp(lo + (Math.random() < v - lo ? 1 : 0), 0, 100);
     return m[name];
+  }
+  // Where happiness settles over time, and why (shown in About me). People adapt:
+  // a good life, good people and good habits set the baseline.
+  function moodTarget(acts) {
+    var s = S(), m = me(), a = m.age, parts = [];
+    var friends = s.people.some(function (p) { return p.alive && /friend/.test(p.role) && p.rel >= 50; });
+    // Habits count: taking care of myself (exercise, meditation, reading, hobbies) lifts my baseline.
+    var la = acts || {}, care = ['med', 'walk', 'gym', 'karate', 'diet', 'lib'].filter(function (k) { return la[k]; }).length + Object.keys(la).filter(function (k) { return /^skill/.test(k); }).length;
+    function add(v, why) { if (v) parts.push([v, why]); return v; }
+    var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.length * 3, 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
+    return { t: U.clamp(Math.round(t), 0, 100), parts: parts };
   }
   function addMoney(n) { if (isFinite(n)) S().money = Math.round(S().money + n); }
   function karma(d) { S().karma = U.clamp(S().karma + d, 0, 100); }
@@ -940,8 +952,7 @@ TL.engine = (function () {
     // happiness drift
     // Happiness settles toward a baseline set by your life (people adapt), so
     // bad years hurt but don't pin you near zero forever.
-    var friends = s.people.some(function (p) { return p.alive && /friend/.test(p.role) && p.rel >= 50; });
-    var target = 55 + (s.money > $(100000) ? 5 : 0) + (partner() ? 7 : 0) + (s.job || s.edu || a < 18 || s.retired ? 3 : -8) - (s.prison ? 25 : 0) - s.conditions.length * 3 + (friends ? 3 : 0) + (s.pets.length ? 3 : 0);
+    var target = moodTarget(s.lastActs).t;
     stat('happy', (target - m.happy) / 4 + U.rand(-4, 4));
     if (s.fame > 60 && U.chance(0.3)) stat('happy', U.rand(-6, 6));
   }
@@ -1180,7 +1191,7 @@ TL.engine = (function () {
     if (s.dead) return;
     snapshot();
     m.age++; s.year++;
-    s.yearActs = {};
+    s.lastActs = s.yearActs; s.yearActs = {};
     s.log.push({ age: m.age, year: s.year, entries: [] });
 
     yearlyPrison();
@@ -1497,7 +1508,7 @@ TL.engine = (function () {
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
-    S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, relWord: relWord, he: he, his: his, him: him,
+    S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, relWord: relWord, moodTarget: moodTarget, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
