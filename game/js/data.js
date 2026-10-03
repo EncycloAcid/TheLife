@@ -421,6 +421,8 @@ TL.data = (function () {
     { id: 'hoops_ring', name: 'Ring Chaser', desc: 'Win a pro basketball championship', icon: '💍' },
     { id: 'hoops_mvp', name: 'Most Valuable', desc: 'Win basketball MVP', icon: '🏀' },
     { id: 'hoops_hof', name: 'Hall of Famer', desc: 'Make the Basketball Hall of Fame', icon: '🏛️' },
+    { id: 'hoops_clutch', name: 'Ice in My Veins', desc: 'Hit a game-winner yourself in a playoff Game 7', icon: '🧊' },
+    { id: 'hoops_gold', name: 'Gold Standard', desc: 'Win Olympic gold in basketball', icon: '🥇' },
     { id: 'astronaut', name: 'To Infinity', desc: 'Go to space', icon: '🚀' },
     { id: 'twins', name: 'Double Trouble', desc: 'Have twins', icon: '👯' },
     { id: 'tradesman', name: 'Skilled Trade', desc: 'Earn a trade certificate', icon: '🔧' }

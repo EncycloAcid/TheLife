@@ -325,6 +325,7 @@ h1 { text-align: center; margin: 0; font-size: 2.125rem; font-weight: 700; lette
 .pcard-name { font-weight: 600; font-size: 1.25rem; }
 .pcard-sub { font-size: .9375rem; color: var(--muted); }
 .minibar { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; font-size: .875rem; color: var(--muted); margin: 6px 0; }
+.minibar.wide { grid-template-columns: 120px 1fr; }
 .kv { line-height: 1.6; }
 /* family tree */
 .tree-sum { font-size: .8125rem; color: var(--muted); text-align: center; margin: 0 0 8px; }
@@ -357,6 +358,7 @@ h1 { text-align: center; margin: 0; font-size: 2.125rem; font-weight: 700; lette
 .hc-ovr { flex: none; text-align: center; line-height: 1.05; }
 .hc-ovr b { display: block; font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; color: var(--orange); font-variant-numeric: tabular-nums; }
 .hc-ovr small { font-size: .6875rem; font-weight: 600; color: var(--muted); letter-spacing: .06em; }
+.hb-arch { font-size: .875rem; font-weight: 600; margin: 2px 0 4px; }
 .kvt { width: 100%; border-collapse: collapse; font-size: 1rem; }
 .kvt td { padding: 10px 0; border-bottom: .5px solid var(--sep); vertical-align: top; }
 .kvt tr:last-child td { border-bottom: 0; }
