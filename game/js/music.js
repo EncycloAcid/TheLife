@@ -151,7 +151,7 @@ TL.music = (function () {
     var q = U.clamp(Math.round(ca(x, 'wri') * 0.55 + sk * 0.1 + U.rand(0, 45) + (me().happy < 25 ? 6 : 0) + dq), 5, 100); // heartbreak makes good songs
     var hk = U.clamp(Math.round(ca(x, 'wri') * 0.3 + ca(x, 'voc') * 0.25 + sk * 0.1 + U.rand(0, 45) + (HOOK[x.genre] || 0) + dh - 3), 5, 100);
     var song = { title: songTitle(), q: q, h: hk };
-    x.vault.push(song); grow(x, 0.6); shift(x, 'wri', 0.25);
+    x.vault.push(song); grow(x, 1.2); shift(x, 'wri', 0.25);
     var tag = ' (hook ' + hk + ', depth ' + q + ')';
     return done(hk >= 85 ? good('I wrote "' + song.title + '" and I can\'t get it out of my head. Might be a hit. ✍️🔥' + tag) : q >= 85 ? good('I wrote "' + song.title + '", the best thing I\'ve ever written. ✍️' + tag) : q >= 55 || hk >= 55 ? 'I wrote a new song, "' + song.title + '". ✍️' + tag : 'I wrote "' + song.title + '". It\'s... a start. ✍️' + tag);
   }
@@ -199,7 +199,7 @@ TL.music = (function () {
     if (bonus >= 6) rec.video = true;
     if (peak) { rec.weeks = U.clamp(Math.round((101 - peak) / 5 + (q - 55) / 3 + U.rand(0, 8)), 1, 70); if (peak === 1) rec.top = U.clamp(Math.round(r.n / 1.5e8 * U.randf(0.6, 1.6)), 1, 16); }
     if (x.firstRel == null) x.firstRel = S().year;
-    x.songs.push(rec);
+    x.songs.push(rec); grow(x, 0.8); // putting music out teaches you
     var c = cert(r.n / 150);
     if (c) { rec.cert = c; if (/Platinum|Diamond/.test(c)) E.achieve('platinum'); }
     x.lastActive = S().year;
@@ -468,6 +468,7 @@ TL.music = (function () {
     var active = x.lastActive != null && x.lastActive >= s.year - 1;
     x.fans = Math.round(x.fans * (active ? U.randf(0.95, 0.99) : U.randf(0.82, 0.9)));
     x.buzz = Math.round((x.buzz || 0) * (active ? 0.6 : 0.3));
+    if (active) grow(x, 1); // a working musician gets better just by doing it
     // Grammys: a great project this year (or a monster single) can be nominated.
     var proj = x.albums.filter(function (a) { return a.year === s.year - 1 && a.nomEligible && !a.nom; }).sort(function (a, b) { return b.review - a.review; })[0];
     var hit = x.songs.filter(function (q) { return q.year === s.year - 1 && q.peak && q.peak <= 5 && q.q >= 80 && !q.nom; })[0];

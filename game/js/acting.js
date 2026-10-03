@@ -148,6 +148,8 @@ TL.acting = (function () {
     var room = x.talent - x.skill;
     x.skill = U.clamp(Math.round((x.skill + g * (room > 0 ? Math.min(1, room / 20) : 0.08)) * 10) / 10, 0, 100);
   }
+  // Early credits matter most: going from nobody to working actor takes a few good parts, not a decade.
+  function rise(x) { return 1 + 2 / (1 + x.rep / 12); }
   function tier() { var r = st().rep, t = TIERS[0][1]; TIERS.forEach(function (q) { if (r >= q[0]) t = q[1]; }); return t; }
   function title() { var t = tier(); if (t === 'Star') return S().acting && S().acting.series ? 'TV Star' : 'Movie Star'; return /Star|Legend|A-List/.test(t) ? (t === 'A-List' ? 'A-List ' + noun() : t) : t + ' ' + noun(); }
   function hasJob() { var j = S().job; return !!(j && j.acting); }
@@ -639,7 +641,7 @@ TL.acting = (function () {
     } else {
       msg = k.icon + ' ' + (k.stage ? 'My show "' + r.title + '" opened' : '"' + r.title + '" premiered') + ' to ' + (review >= 85 ? 'rave reviews' : review >= 60 ? 'good reviews' : review >= 40 ? 'mixed reviews' : 'terrible reviews') + ' (' + rt(review) + ').';
     }
-    x.rep = U.clamp(x.rep + dr + 0.5, 0, 100);
+    x.rep = U.clamp(x.rep + (dr + 0.5 > 0 ? (dr + 0.5) * rise(x) : dr + 0.5), 0, 100);
     if (review >= 85 && cls !== 'bad') cls = 'good';
     E.log(msg, cls);
     if (after0) E.log(after0, 'money');
@@ -678,7 +680,8 @@ TL.acting = (function () {
       var q = U.clamp(Math.round(x.skill * 0.35 + U.rand(5, 55) + (sr.quality || 0) * 0.15), 5, 99);
       sr.quality = q;
       x.earn += Math.round(E.$(sr.pay * (1 + (sr.seasons - 1) * 0.15)) * (x.agent ? 0.9 : 1));
-      x.rep = U.clamp(x.rep + KINDS.series.parts[sr.part][3] * (q - 55) / 50 + 0.3, 0, 100);
+      var sdr = KINDS.series.parts[sr.part][3] * (q - 55) / 50 + 0.3;
+      x.rep = U.clamp(x.rep + (sdr > 0 ? sdr * rise(x) : sdr), 0, 100);
       E.fame(Math.max(0, q / 25 - 1));
       E.log('📺 Season ' + sr.seasons + ' of "' + sr.title + '" aired on ' + sr.network + ' (' + rt(q) + ').', q >= 85 ? 'good' : '');
       results.push({ credit: { year: s.year, title: sr.title, kind: 'series', part: sr.part, review: q }, review: q, lead: /lead/.test(sr.part) });
@@ -689,8 +692,9 @@ TL.acting = (function () {
     }
     // Out of sight, out of mind.
     // Stars fade unless they keep landing hits; out of sight, out of mind.
-    x.rep = Math.max(0, x.rep - 0.3 - x.rep / 32);
-    if (!results.length && !x.retired) x.rep = Math.max(0, x.rep - U.rand(1, 3));
+    // Working actors only fade slowly; a year with nothing on screen hurts.
+    x.rep = Math.max(0, x.rep - (results.length || x.series ? x.rep / 45 : 0.3 + x.rep / 32));
+    if (!results.length && !x.series && !x.retired) x.rep = Math.max(0, x.rep - U.rand(1, 3));
     if (me().age >= 60) x.rep = Math.max(0, x.rep - 1);
     var best = results.filter(function (r) { return r.credit.kind !== 'commercial'; }).sort(function (a, b) { return b.review - a.review; })[0];
     nominate(best, x);
