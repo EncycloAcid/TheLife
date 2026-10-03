@@ -125,11 +125,12 @@ TL.music = (function () {
   // Streams from fans, from quality reaching new listeners, label push and luck.
   function streamsFor(x, q, promo) {
     // Great songs find new listeners; the occasional viral moment changes everything.
-    var reach = x.fans * U.randf(1, 4) + Math.pow(q, 2.4) * U.randf(2, 10) * promo;
+    var reach = x.fans * U.randf(1.5, 4.5) + Math.pow(q, 2.6) * U.randf(2, 10) * promo;
     var viral = U.chance(0.004 + Math.max(0, q - 65) / 500 + (promo > 1.4 ? 0.01 : 0));
     return { n: Math.round(reach * (viral ? U.rand(20, 150) : 1)), viral: viral };
   }
-  function hot100(streams) { return streams >= 8e8 ? 1 : streams >= 3e8 ? U.rand(2, 10) : streams >= 1e8 ? U.rand(11, 40) : streams >= 3e7 ? U.rand(41, 100) : 0; }
+  // Chart bars an established star can reach (they used to need freak viral hits).
+  function hot100(streams) { return streams >= 2e8 ? 1 : streams >= 6e7 ? U.rand(2, 10) : streams >= 1.8e7 ? U.rand(11, 40) : streams >= 5e6 ? U.rand(41, 100) : 0; }
   function cert(units) { return units >= 1e7 ? 'Diamond' : units >= 2e6 ? (Math.floor(units / 1e6)) + '× Platinum' : units >= 1e6 ? 'Platinum' : units >= 5e5 ? 'Gold' : null; }
   function labelPromo(x) { return x.label ? (x.label.kind === 'major' ? 1.8 : 1.3) : 1; }
   function royalties(x, streams) { return Math.round(streams * 0.004 * (x.label ? x.label.rate : 0.85)); }
@@ -149,7 +150,7 @@ TL.music = (function () {
     bump('mu_single');
     x.vault = x.vault.filter(function (v) { return v !== song; });
     var q = U.clamp(song.q + bonus, 1, 100), r = streamsFor(x, q, promo * labelPromo(x));
-    var peak = hot100(r.n), gain = r.n * U.randf(0.004, 0.009) * (q / 70) / (1 + x.fans / 4e6);
+    var peak = hot100(r.n), gain = r.n * U.randf(0.008, 0.016) * (q / 70) / (1 + x.fans / 6e6);
     addFans(x, gain); x.streams += r.n; x.released++;
     var rec = { title: song.title, year: S().year, q: q, streams: r.n, peak: peak, kind: 'single' };
     x.songs.push(rec);
@@ -184,7 +185,7 @@ TL.music = (function () {
     var week = Math.round((x.fans * U.randf(0.005, 0.02) + Math.pow(review, 2) * U.randf(1, 3) * promo) * (lp ? 1 : 0.4));
     var peak = week >= 3e5 ? 1 : week >= 1e5 ? U.rand(2, 5) : week >= 3e4 ? U.rand(6, 20) : week >= 8e3 ? U.rand(21, 100) : week >= 3e3 ? U.rand(101, 200) : 0;
     var total = Math.round(week * U.randf(3, 7)), streams = total * 1500;
-    var gain = week * U.randf(1.5, 4) * (review / 70) / (1 + x.fans / 4e6);
+    var gain = week * U.randf(2.5, 6) * (review / 70) / (1 + x.fans / 6e6);
     addFans(x, gain); x.streams += streams; x.released++;
     var title = U.chance(0.4) ? tracks[0].title : U.pick(W1) + ' ' + U.pick(W2);
     var rec = { title: title, year: s.year, kind: lp ? 'album' : 'EP', review: review, week: week, peak: peak, units: total };
@@ -329,7 +330,7 @@ TL.music = (function () {
     // Fans drift away if I go quiet.
     // (yearActs are already reset when the year turns, so use the last active year.)
     var active = x.lastActive != null && x.lastActive >= s.year - 1;
-    x.fans = Math.round(x.fans * (active ? U.randf(0.92, 0.98) : U.randf(0.8, 0.9)));
+    x.fans = Math.round(x.fans * (active ? U.randf(0.95, 0.99) : U.randf(0.82, 0.9)));
     // Grammys: a great project this year (or a monster single) can be nominated.
     var proj = x.albums.filter(function (a) { return a.year === s.year - 1 && a.nomEligible && !a.nom; }).sort(function (a, b) { return b.review - a.review; })[0];
     var hit = x.songs.filter(function (q) { return q.year === s.year - 1 && q.peak && q.peak <= 5 && q.q >= 80 && !q.nom; })[0];
