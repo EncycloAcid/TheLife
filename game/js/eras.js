@@ -243,8 +243,9 @@ TL.coup = (function () {
   }
   function see(title, icon) { var s = S(), h = s.era || (s.era = { seen: [], served: [] }); if (h.seen.length < 40) h.seen.push({ year: s.year, age: me().age, icon: icon, title: title }); }
   // How history remembers a reign: an epithet earned by what the ruler did (v1.41).
-  function epithet(r) {
-    var d = r.done || {}, s = S(), won = (st().map && st().map.won) || 0, laws = (r.laws || []).length;
+  function epithet(r, s, a) {
+    s = s || S(); a = a || st();
+    var d = r.done || {}, won = (a.map && a.map.won) || 0, laws = (r.laws || []).length;
     if (won >= 5) return 'the Conqueror';
     if ((d.purge || 0) >= 3 || s.karma <= 15) return 'the Cruel';
     if (r.years >= 25) return r.pop >= 55 ? 'the Great' : 'the Old';
@@ -258,6 +259,16 @@ TL.coup = (function () {
     if (r.years <= 1) return 'the Brief';
     if (s.karma >= 60) return 'the Just';
     return 'the Steady';
+  }
+  // An ancestor's royal title for the family tree, from their finished life (js/extras.js).
+  function titleOf(prev) {
+    var a = prev.anc, m = prev.me, f = m.gender === 'F';
+    if (a && a.ruled) {
+      var w = prev.job && prev.job.career === 'r_emperor' || /Roman/.test(prev.country) ? (f ? 'Empress' : 'Emperor') : (f ? 'Queen' : 'King');
+      return w + ' ' + m.first + ' ' + epithet(a.ruled, prev, a);
+    }
+    if (prev.royal && prev.royal.monarch) return (f ? 'Queen ' : 'King ') + m.first;
+    return null;
   }
   // One recap line for a reign: years, conquests, laws and the epithet.
   function legacy(realm) {
@@ -315,7 +326,7 @@ TL.coup = (function () {
     if (TL.dynasty) TL.dynasty.sibling(rule.heirName); // the family keeps the throne; it may still come to me
     return false;
   }
-  return { menu: menu, yearly: yearly, crown: crown, reignYear: reignYear, reignItems: reignItems, inherits: inherits, lostThrone: lostThrone, endRule: endRule, danger: danger, epithet: epithet, legacy: legacy };
+  return { menu: menu, yearly: yearly, crown: crown, reignYear: reignYear, reignItems: reignItems, inherits: inherits, lostThrone: lostThrone, endRule: endRule, danger: danger, epithet: epithet, legacy: legacy, titleOf: titleOf };
 })();
 
 /* v1.37: born to rule. In every early era a life can start as the ruler's

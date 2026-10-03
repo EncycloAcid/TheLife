@@ -19,7 +19,8 @@ TL.extras = (function () {
   // Earlier generations, recorded when the family line continues.
   function recordAncestor(prev, st) {
     var d = prev.me;
-    st.lineage = (prev.lineage || []).concat([{ first: d.first, last: d.last, gender: d.gender, gen: prev.gen, born: prev.year - d.age, died: prev.year, age: d.age, cause: prev.cause }]);
+    var title = TL.coup && TL.coup.titleOf ? TL.coup.titleOf(prev) : null; // crowned ancestors are remembered by their title
+    st.lineage = (prev.lineage || []).concat([{ first: d.first, last: d.last, gender: d.gender, gen: prev.gen, born: prev.year - d.age, died: prev.year, age: d.age, cause: prev.cause, title: title }]);
   }
   function node(icon, name, sub, cls) {
     return '<div class="tn ' + (cls || '') + '"><span class="tn-ico">' + icon + '</span><span class="tn-txt"><b>' + U.esc(name) + '</b><small>' + U.esc(sub) + '</small></span></div>';
@@ -38,16 +39,19 @@ TL.extras = (function () {
     function known(a) { return all.some(function (p) { return p.first === a.first && p.last === a.last && p.died === a.died; }); }
     var html = '';
     var anc = (s.lineage || []).filter(function (a) { return !known(a); });
-    html += tier('Ancestors', anc.map(function (a) { return node('🪦', a.first + ' ' + a.last, 'Gen ' + a.gen + ' · ' + a.born + '–' + a.died + ' · ' + a.cause, 'dead'); }));
-    html += tier('Grandparents', of(['grandparent']).map(personNode));
-    html += tier('Parents', of(['mother', 'father', 'stepmother', 'stepfather']).map(personNode));
+    html += tier('Ancestors', anc.map(function (a) { return a.title ? node('👑', a.title, a.first + ' ' + a.last + ' · Gen ' + a.gen + ' · ' + a.born + '–' + a.died, 'dead') : node('🪦', a.first + ' ' + a.last, 'Gen ' + a.gen + ' · ' + a.born + '–' + a.died + ' · ' + a.cause, 'dead'); }));
+    // Relatives still in my life who once wore the crown keep their title too.
+    function titled(p) { var t = (s.lineage || []).filter(function (a) { return a.title && a.first === p.first && a.last === p.last && a.died === p.died; })[0]; return t ? node('👑', t.title, TL.actions.roleLabel(p) + ' · †' + (p.died || ''), 'dead') : personNode(p); }
+    html += tier('Grandparents', of(['grandparent']).map(titled));
+    html += tier('Parents', of(['mother', 'father', 'stepmother', 'stepfather']).map(titled));
     var mine = [node(TL.actions.personIcon({ alive: !s.dead, age: m.age, gender: m.gender }), m.first + ' ' + m.last, 'Me · ' + m.age + (s.gen > 1 ? ' · Gen ' + s.gen : ''), 'me')];
     html += tier('Me', mine.concat(of(['spouse', 'fiance', 'partner']).filter(function (p) { return p.alive; }).map(personNode)));
     html += tier('Siblings', of(['sibling']).map(personNode));
     html += tier('Children', of(['child']).map(personNode));
     html += tier('Grandchildren', of(['grandchild']).map(personNode));
     var living = all.filter(function (p) { return p.alive && ['mother', 'father', 'grandparent', 'sibling', 'child', 'grandchild', 'spouse'].indexOf(p.role) >= 0; }).length;
-    return '<div class="tree-sum">' + U.plural(s.gen, 'generation') + ' · ' + U.plural(living, 'living relative') + '</div><div class="tree">' + html + '</div>';
+    var rulers = (s.lineage || []).filter(function (a) { return a.title; }).length;
+    return '<div class="tree-sum">' + U.plural(s.gen, 'generation') + ' · ' + U.plural(living, 'living relative') + (rulers ? ' · 👑 ' + U.plural(rulers, 'ruler') + ' in the family line' : '') + '</div><div class="tree">' + html + '</div>';
   }
   function treeMenu() {
     E.achieve('roots');
