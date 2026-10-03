@@ -38,6 +38,29 @@ TL.music = (function () {
   var W2 = ['Hearts', 'Dreams', 'City', 'Lights', 'Love', 'Fever', 'Nights', 'Skies', 'Tears', 'Gold', 'Rain', 'Ghosts', 'Roses', 'Waves', 'Fire', 'Radio'];
   function songTitle() { return U.chance(0.35) ? U.pick(W1) : U.pick(W1) + ' ' + U.pick(W2); }
 
+  // ------------------------------------------------------- artist profile
+  // Four crafts kept as offsets from overall musicianship: my genre sets the
+  // starting shape and what I work on shifts it (the offsets average zero).
+  var CRAFT = [['wri', 'Songwriting'], ['voc', 'Vocals'], ['pro', 'Production'], ['sta', 'Performance']];
+  var CSHAPE = { 'Pop': { wri: 1, voc: 5, pro: -1, sta: -5 }, 'Hip Hop': { wri: 5, voc: 2, pro: 1, sta: -8 }, 'R&B': { wri: -1, voc: 7, pro: 0, sta: -6 }, 'Rock': { wri: 2, voc: -2, pro: -4, sta: 4 }, 'Country': { wri: 5, voc: 2, pro: -5, sta: -2 }, 'EDM': { wri: -4, voc: -2, pro: 8, sta: -2 }, 'Indie': { wri: 7, voc: 0, pro: -1, sta: -6 }, 'Latin': { wri: -2, voc: 4, pro: -2, sta: 0 }, 'Jazz': { wri: 1, voc: 4, pro: -6, sta: 1 } };
+  // Some genres live on hooks more than others.
+  var HOOK = { 'Pop': 3, 'EDM': 2, 'Hip Hop': 2, 'Latin': 1, 'Country': 0, 'R&B': 0, 'Rock': -1, 'Indie': -2, 'Jazz': -6 };
+  function craft(x) {
+    if (!x.craft) { var t = CSHAPE[x.genre] || CSHAPE.Pop; x.craft = {}; CRAFT.forEach(function (c) { x.craft[c[0]] = t[c[0]] + U.rand(-4, 4); }); cnorm(x); }
+    return x.craft;
+  }
+  function cnorm(x) { var o = x.craft, m = (o.wri + o.voc + o.pro + o.sta) / 4; CRAFT.forEach(function (c) { o[c[0]] = U.clamp(Math.round((o[c[0]] - m) * 10) / 10, -12, 12); }); }
+  function shift(x, k, n) { craft(x)[k] += n; cnorm(x); }
+  function ca(x, k) { return U.clamp(Math.round(x.skill + craft(x)[k]), 1, 100); }
+  function craftName(x, k) { return k === 'voc' ? ({ 'Hip Hop': 'Flow', 'EDM': 'Sound design', 'Jazz': 'Chops' }[x.genre] || 'Vocals') : CRAFT.filter(function (c) { return c[0] === k; })[0][1]; }
+  function archetype(x) {
+    var o = craft(x), ks = ['wri', 'voc', 'pro', 'sta'].sort(function (a, b) { return o[b] - o[a]; });
+    if (o[ks[0]] - o[ks[3]] < 6) return 'All-around artist';
+    return { 'voc+wri': 'Hitmaker', 'pro+wri': 'Studio auteur', 'sta+wri': 'Storyteller', 'pro+voc': 'Studio perfectionist', 'sta+voc': 'Born performer', 'pro+sta': 'Spectacle artist' }[[ks[0], ks[1]].sort().join('+')];
+  }
+  function hookOf(song) { return song.h != null ? song.h : song.q; }
+  function catchiest(x) { return x.vault.slice().sort(function (a, b) { return hookOf(b) - hookOf(a); })[0]; }
+
   function st() {
     var s = S(), j = s.job;
     if (j && j.career === 'musician' && !j.music) migrate(j, s.music);
@@ -100,25 +123,37 @@ TL.music = (function () {
   }
 
   // ------------------------------------------------------------ craft
-  var LESSONS = [['voice', '🎤', 'Voice lessons', 400, 10, [2, 4]], ['prod', '🎚️', 'Music production course', 1500, 14, [2, 5]], ['berklee', '🎓', 'Berklee summer program', 6000, 16, [4, 7]]];
+  var LESSONS = [['voice', '🎤', 'Voice lessons', 400, 10, [2, 4], 'voc'], ['prod', '🎚️', 'Music production course', 1500, 14, [2, 5], 'pro'], ['stage', '🕺', 'Performance coach', 2500, 16, [2, 4], 'sta'], ['berklee', '🎓', 'Berklee summer program', 6000, 16, [4, 7], 'wri']];
   function lesson(l) {
     var x = st(), cost = E.$(l[3]);
     if (count('mu_' + l[0])) return done(nope('I already did that this year.'));
     if (S().money < cost) return done(nope('That costs ' + E.fmt(cost) + '.'));
     bump('mu_' + l[0]); E.addMoney(-cost);
     grow(x, U.rand(l[5][0], l[5][1]) / (1 + count('mu_trained'))); bump('mu_trained');
+    shift(x, l[6], 2);
     S().flags.music = (S().flags.music || 0) + 1;
-    return done(l[2] + ': I\'m getting better. 🎶 (musicianship ' + Math.round(x.skill) + ')');
+    return done(l[2] + ': I\'m getting better. 🎶 (' + craftName(x, l[6]).toLowerCase() + ' ' + ca(x, l[6]) + ', musicianship ' + Math.round(x.skill) + ')');
   }
   function write() {
     var x = st();
     if (count('mu_write') >= 4) return done(nope('I\'m out of ideas this year. Writer\'s block is real.'));
+    ui().choose('✍️ Write a song', 'What am I going for? Catchy songs stream; deep songs win over critics.', [
+      { label: '🎣 Chase a catchy hook', fn: function () { writeSong(-6, 5); } },
+      { label: '💔 Write something personal', fn: function () { writeSong(me().happy < 40 ? 11 : 8, -6); } },
+      { label: '🤝 Co-write with a hit songwriter (' + E.fmt(E.$(3000)) + ')', fn: function () { if (S().money < E.$(3000)) return done(nope('A co-write session costs ' + E.fmt(E.$(3000)) + '.')); E.addMoney(-E.$(3000)); writeSong(4, 4); } }
+    ]);
+  }
+  function writeSong(dq, dh) {
+    var x = st();
+    if (count('mu_write') >= 4) return done(nope('I\'m out of ideas this year. Writer\'s block is real.'));
     bump('mu_write');
     var sk = (S().skills && (S().skills.singing || 0)) || 0;
-    var q = U.clamp(Math.round(x.skill * 0.55 + sk * 0.1 + U.rand(0, 45) + (me().happy < 25 ? 6 : 0)), 5, 100); // heartbreak makes good songs
-    var song = { title: songTitle(), q: q };
-    x.vault.push(song); grow(x, 0.6);
-    return done(q >= 85 ? good('I wrote "' + song.title + '" and I think it might be a hit. ✍️🔥') : q >= 55 ? 'I wrote a new song, "' + song.title + '". ✍️' : 'I wrote "' + song.title + '". It\'s... a start. ✍️');
+    var q = U.clamp(Math.round(ca(x, 'wri') * 0.55 + sk * 0.1 + U.rand(0, 45) + (me().happy < 25 ? 6 : 0) + dq), 5, 100); // heartbreak makes good songs
+    var hk = U.clamp(Math.round(ca(x, 'wri') * 0.3 + ca(x, 'voc') * 0.25 + sk * 0.1 + U.rand(0, 45) + (HOOK[x.genre] || 0) + dh - 3), 5, 100);
+    var song = { title: songTitle(), q: q, h: hk };
+    x.vault.push(song); grow(x, 0.6); shift(x, 'wri', 0.25);
+    var tag = ' (hook ' + hk + ', depth ' + q + ')';
+    return done(hk >= 85 ? good('I wrote "' + song.title + '" and I can\'t get it out of my head. Might be a hit. ✍️🔥' + tag) : q >= 85 ? good('I wrote "' + song.title + '", the best thing I\'ve ever written. ✍️' + tag) : q >= 55 || hk >= 55 ? 'I wrote a new song, "' + song.title + '". ✍️' + tag : 'I wrote "' + song.title + '". It\'s... a start. ✍️' + tag);
   }
 
   // ------------------------------------------------------------ releases
@@ -138,8 +173,8 @@ TL.music = (function () {
     var x = st();
     if (!x.vault.length) return done(nope('I need to write a song first.'));
     if (count('mu_single') >= 3) return done(nope('Three singles a year is plenty. Let the last one breathe.'));
-    var best = x.vault.slice().sort(function (a, b) { return b.q - a.q; })[0];
-    ui().choose('🎧 Release "' + best.title + '"', 'How do I put it out?', [
+    var best = catchiest(x);
+    ui().choose('🎧 Release "' + best.title + '" (hook ' + hookOf(best) + ')', 'How do I put it out?', [
       { label: 'Just drop it on streaming', fn: function () { releaseSingle(best, 0, 1); } },
       { label: 'Shoot a music video (' + E.fmt(E.$(5000)) + ')', fn: function () { if (S().money < E.$(5000)) return done(nope('A music video costs ' + E.fmt(E.$(5000)) + '.')); E.addMoney(-E.$(5000)); releaseSingle(best, 6, 1.25); } },
       { label: 'Tease it on TikTok first', fn: function () { releaseSingle(best, 0, U.chance(0.3) ? 1.9 : 1.05); } }
@@ -149,10 +184,13 @@ TL.music = (function () {
     var x = st();
     bump('mu_single');
     x.vault = x.vault.filter(function (v) { return v !== song; });
-    var q = U.clamp(song.q + bonus, 1, 100), r = streamsFor(x, q, promo * labelPromo(x));
+    var q = U.clamp(hookOf(song) + bonus, 1, 100), r = streamsFor(x, q, promo * labelPromo(x));
     var peak = hot100(r.n), gain = r.n * U.randf(0.008, 0.016) * (q / 70) / (1 + x.fans / 6e6);
     addFans(x, gain); x.streams += r.n; x.released++;
-    var rec = { title: song.title, year: S().year, q: q, streams: r.n, peak: peak, kind: 'single' };
+    var rec = { title: song.title, year: S().year, q: song.q, h: q, streams: r.n, peak: peak, kind: 'single' };
+    if (bonus >= 6) rec.video = true;
+    if (peak) { rec.weeks = U.clamp(Math.round((101 - peak) / 5 + (q - 55) / 3 + U.rand(0, 8)), 1, 70); if (peak === 1) rec.top = U.clamp(Math.round(r.n / 1.5e8 * U.randf(0.6, 1.6)), 1, 16); }
+    if (x.firstRel == null) x.firstRel = S().year;
     x.songs.push(rec);
     var c = cert(r.n / 150);
     if (c) { rec.cert = c; if (/Platinum|Diamond/.test(c)) E.achieve('platinum'); }
@@ -160,7 +198,7 @@ TL.music = (function () {
     pay(royalties(x, r.n));
     E.fame(Math.min(8, Math.log10(1 + gain) - 1));
     if (peak === 1) E.achieve('number_one');
-    var msg = (r.viral ? '🔥 "' + song.title + '" blew up on TikTok! ' : '🎧 I released "' + song.title + '". ') + 'It got ' + big(r.n) + ' streams' + (peak ? ' and peaked at #' + peak + ' on the Billboard Hot 100' : '') + (c ? '. Certified ' + c + '!' : '.') + ' +' + big(gain) + ' fans.';
+    var msg = (r.viral ? '🔥 "' + song.title + '" blew up on TikTok! ' : '🎧 I released "' + song.title + '". ') + 'It got ' + big(r.n) + ' streams' + (peak ? ' and peaked at #' + peak + ' on the Billboard Hot 100' + (rec.top ? ' (' + U.plural(rec.top, 'week') + ' at #1)' : ', ' + U.plural(rec.weeks, 'week') + ' on the chart') : '') + (c ? '. Certified ' + c + '!' : '.') + ' +' + big(gain) + ' fans.';
     return done(peak && peak <= 10 || r.viral ? good(msg) : msg);
   }
   function album() {
@@ -180,9 +218,12 @@ TL.music = (function () {
     var tracks = x.vault.slice().sort(function (a, b) { return b.q - a.q; }).slice(0, lp ? 14 : 7);
     x.vault = x.vault.filter(function (v) { return tracks.indexOf(v) < 0; });
     var avg = tracks.reduce(function (a, t) { return a + t.q; }, 0) / tracks.length;
-    var review = U.clamp(Math.round(avg * 0.75 + prod + U.rand(0, 30) - 3), 15, 99);
+    var hooks = tracks.reduce(function (a, t) { return a + hookOf(t); }, 0) / tracks.length;
+    var review = U.clamp(Math.round(avg * 0.75 + prod + (ca(x, 'pro') - x.skill) / 2 + U.rand(0, 30) - 3), 15, 99);
     var promo = labelPromo(x) + hype;
-    var week = Math.round((x.fans * U.randf(0.005, 0.02) + Math.pow(review, 2) * U.randf(1, 3) * promo) * (lp ? 1 : 0.4));
+    var week = Math.round((x.fans * U.randf(0.005, 0.02) + Math.pow(review, 2) * U.randf(1, 3) * promo) * (lp ? 1 : 0.4) * (0.8 + hooks / 250));
+    if (x.firstRel == null) x.firstRel = s.year;
+    shift(x, 'pro', 0.5);
     var peak = week >= 3e5 ? 1 : week >= 1e5 ? U.rand(2, 5) : week >= 3e4 ? U.rand(6, 20) : week >= 8e3 ? U.rand(21, 100) : week >= 3e3 ? U.rand(101, 200) : 0;
     var total = Math.round(week * U.randf(3, 7)), streams = total * 1500;
     var gain = week * U.randf(2.5, 6) * (review / 70) / (1 + x.fans / 6e6);
@@ -206,23 +247,35 @@ TL.music = (function () {
   }
 
   // ------------------------------------------------------------ live
+  // Ticket pricing: [label, crowd, price, new fans].
+  var PRICES = [['🎟️ Cheap tickets: pack every room', 1.25, 0.65, 1.35], ['🎫 Standard prices', 1, 1, 1], ['💎 Premium tickets and VIP packages', 0.8, 1.7, 0.7]];
   function gig(g) {
-    var x = st(), s = S();
+    var x = st();
     if (count('mu_gig_' + g[0])) return done(nope('I already did that this year.'));
     if (x.fans < g[3]) return done(nope('I need about ' + big(g[3]) + ' fans to book that.'));
-    if (g[0] !== 'openmic' && g[0] !== 'local' && count('mu_tour')) return done(nope('I can only fit one tour into a year.'));
-    bump('mu_gig_' + g[0]); if (g[0] !== 'openmic' && g[0] !== 'local') bump('mu_tour');
+    var tour = g[0] !== 'openmic' && g[0] !== 'local';
+    if (tour && count('mu_tour')) return done(nope('I can only fit one tour into a year.'));
+    if (!tour) return playGig(g, PRICES[1]);
+    ui().choose(g[1] + ' ' + U.cap(g[6]), 'How do I price the tickets?', PRICES.map(function (p) { return { label: p[0], fn: function () { playGig(g, p); } }; }));
+  }
+  function playGig(g, price) {
+    var x = st(), s = S(), tour = g[0] !== 'openmic' && g[0] !== 'local';
+    if (count('mu_gig_' + g[0]) || (tour && count('mu_tour'))) return done(nope('I already did that this year.'));
+    bump('mu_gig_' + g[0]); if (tour) bump('mu_tour');
     x.lastActive = s.year;
-    var crowd = g[0] === 'openmic' ? U.rand(10, 60) : Math.round(x.fans * U.randf(0.02, 0.08));
-    var gross = Math.round(crowd * g[4] * U.randf(25, 60)), take = Math.round(gross * 0.4);
-    var r = U.rand(1, 100) + (x.skill - 50) / 3;
+    var crowd = g[0] === 'openmic' ? U.rand(10, 60) : Math.round(x.fans * U.randf(0.02, 0.08) * price[1]);
+    var gross = Math.round(crowd * g[4] * U.randf(25, 60) * price[2]), take = Math.round(gross * 0.4);
+    // Fans buy shirts when the show is good.
+    var merch = tour ? Math.round(crowd * U.randf(3, 10) * (0.7 + ca(x, 'sta') / 100) * 0.5) : 0;
+    var r = U.rand(1, 100) + (ca(x, 'sta') - 50) / 3;
     E.stat('health', -g[5]); E.stat('happy', 6);
+    shift(x, 'sta', 0.6);
     if (r <= 8 && g[0] !== 'openmic') { E.stat('health', -8); pay(Math.round(take / 2)); return done(bad('I lost my voice halfway through the ' + g[6] + ' and had to cancel the rest. 😷')); }
-    addFans(x, crowd * U.randf(0.03, r >= 80 ? 0.25 : 0.1) + (g[0] === 'openmic' ? U.rand(5, 30) : 0));
+    addFans(x, (crowd * U.randf(0.03, r >= 80 ? 0.25 : 0.1) + (g[0] === 'openmic' ? U.rand(5, 30) : 0)) * price[3]);
     grow(x, 0.8);
-    if (take) pay(take);
+    if (take + merch) pay(take + merch);
     if (g[0] === 'openmic') return done(r >= 85 ? good('I killed it at the open mic. Someone filmed it and it\'s making the rounds. 🎙️') : 'I played a few songs at an open mic. 🎙️');
-    return done((r >= 80 ? good : function (t) { return t; })('My ' + g[6] + ' drew ' + big(crowd) + ' people' + (r >= 80 ? ' and sold out everywhere' : '') + '. I took home ' + E.fmt(E.$(take)) + '. 🎸'));
+    return done((r >= 80 ? good : function (t) { return t; })('My ' + g[6] + ' drew ' + big(crowd) + ' people' + (r >= 80 ? ' and sold out everywhere' : '') + '. I took home ' + E.fmt(E.$(take)) + (merch ? ' plus ' + E.fmt(E.$(merch)) + ' in merch' : '') + '. 🎸'));
   }
   function feature() {
     var x = st();
@@ -278,7 +331,9 @@ TL.music = (function () {
     var hits = x.songs.filter(function (s2) { return s2.peak; }).length;
     return '<div class="mu-card"><div class="mu-top"><span class="mu-ico">' + (x.label && TL.logos ? TL.logos.badge(x.label.name) : '🎵') + '</span><div><div class="mu-name">' + U.esc(x.name) + '</div><div class="mu-sub">' + U.esc(title()) + ' · ' + x.genre + ' · ' + (x.label ? U.esc(x.label.name) : 'Independent') + '</div></div></div>' +
       '<div class="mu-stats"><div><b>' + big(x.fans) + '</b><small>fans</small></div><div><b>' + big(x.streams) + '</b><small>streams</small></div><div><b>' + (hits || '—') + '</b><small>Hot 100 hits</small></div><div><b>' + (aw || '—') + '</b><small>Grammys</small></div></div>' +
-      '<div class="minibar"><span>Musicianship</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
+      '<div class="hb-arch">' + U.esc(archetype(x)) + '</div>' +
+      '<div class="minibar wide"><span>Musicianship ' + Math.round(x.skill) + '</span><span class="track"><span class="fill ' + (x.skill >= 66 ? 'hi' : x.skill >= 33 ? 'mid' : 'lo') + '" style="width:' + Math.round(x.skill) + '%"></span></span></div>' +
+      CRAFT.map(function (c) { var v = ca(x, c[0]); return '<div class="minibar wide"><span>' + craftName(x, c[0]) + ' ' + v + '</span><span class="track"><span class="fill ' + (v >= 66 ? 'hi' : v >= 33 ? 'mid' : 'lo') + '" style="width:' + v + '%"></span></span></div>'; }).join('') +
       '<div class="mu-line">✍️ ' + U.plural(x.vault.length, 'unreleased song') + (x.label && x.label.owed ? ' · owe ' + x.label.name + ' ' + U.plural(x.label.owed, 'album') : '') + '</div></div>';
   }
   function menu() {
@@ -291,20 +346,22 @@ TL.music = (function () {
       if (x.retired) {
         items.push({ icon: '🎤', label: 'Come out of retirement', onClick: function () { x.retired = null; done('The comeback tour starts now. 🎤'); } });
         items.push({ icon: '💿', label: 'Discography', onClick: discography });
+        items.push({ icon: '🏆', label: 'Career highlights', onClick: highlights });
         return items;
       }
       items.push({ section: 'Studio' });
       items.push({ icon: '✍️', label: 'Write a song', sub: (4 - count('mu_write')) + ' left this year', disabled: count('mu_write') >= 4, onClick: write });
-      items.push({ icon: '🎧', label: 'Release a single', sub: x.vault.length ? 'Best unreleased: "' + x.vault.slice().sort(function (a, b) { return b.q - a.q; })[0].title + '"' : 'Write a song first', disabled: !x.vault.length || count('mu_single') >= 3, onClick: single });
+      items.push({ icon: '🎧', label: 'Release a single', sub: x.vault.length ? 'Catchiest unreleased: "' + catchiest(x).title + '" (hook ' + hookOf(catchiest(x)) + ')' : 'Write a song first', disabled: !x.vault.length || count('mu_single') >= 3, onClick: single });
       items.push({ icon: '💿', label: x.vault.length >= 10 ? 'Release an album' : 'Release an EP', sub: x.vault.length >= 5 ? U.plural(x.vault.length, 'song') + ' ready' : 'Needs 5+ songs (' + x.vault.length + ')', disabled: x.vault.length < 5 || count('mu_album') > 0, onClick: album });
       items.push({ icon: '🤝', label: 'Do a feature', disabled: count('mu_feat') > 0, onClick: feature });
       items.push({ section: 'Live' });
       GIGS.forEach(function (g) { if (x.fans >= g[3] * 0.3 || g[0] === 'openmic') items.push({ icon: g[1], label: g[2], sub: x.fans < g[3] ? 'Needs ' + big(g[3]) + ' fans' : '', disabled: x.fans < g[3] || count('mu_gig_' + g[0]) > 0 || (g[0] !== 'openmic' && g[0] !== 'local' && count('mu_tour') > 0), onClick: function () { gig(g); } }); });
       items.push({ section: 'Career' });
-      LESSONS.forEach(function (l) { if (me().age >= l[4]) items.push({ icon: l[1], label: l[2], right: E.fmt(E.$(l[3])), disabled: count('mu_' + l[0]) > 0, onClick: function () { lesson(l); } }); });
+      LESSONS.forEach(function (l) { if (me().age >= l[4]) items.push({ icon: l[1], label: l[2], sub: craftName(x, l[6]) + ' ' + ca(x, l[6]), right: E.fmt(E.$(l[3])), disabled: count('mu_' + l[0]) > 0, onClick: function () { lesson(l); } }); });
       if (me().age >= 16) items.push({ icon: '📝', label: x.label ? 'Shop for a bigger deal' : 'Shop my demo to labels', disabled: count('mu_shop') > 0, onClick: shopLabels });
       if (x.label) items.push({ icon: '🔓', label: 'Leave ' + x.label.name, sub: x.label.owed ? 'Owe ' + U.plural(x.label.owed, 'album') : 'Contract complete', onClick: goIndie });
       items.push({ icon: '💿', label: 'Discography', sub: U.plural(x.albums.length, 'project') + ' · ' + U.plural(x.songs.length, 'single'), onClick: discography });
+      items.push({ icon: '🏆', label: 'Career highlights', sub: 'Hits, awards and milestones', onClick: highlights });
       if (x.released) items.push({ icon: '🌅', label: 'Retire from music', danger: true, onClick: retire });
       return items;
     });
@@ -313,9 +370,31 @@ TL.music = (function () {
     var x = st();
     ui().menu('Discography', function () {
       var all = x.albums.map(function (a) { return { icon: '💿', label: '"' + a.title + '" (' + a.year + ')', sub: U.cap(a.kind) + ' · ' + a.review + ' Metacritic' + (a.peak ? ' · #' + a.peak + ' Billboard 200' : '') + (a.cert ? ' · ' + a.cert : ''), right: a.grammy ? '🏆' : '', y: a.year }; })
-        .concat(x.songs.map(function (s2) { return { icon: '🎧', label: '"' + s2.title + '" (' + s2.year + ')', sub: 'Single · ' + big(s2.streams) + ' streams' + (s2.peak ? ' · #' + s2.peak + ' Hot 100' : '') + (s2.cert ? ' · ' + s2.cert : ''), right: '', y: s2.year }; }));
+        .concat(x.songs.map(function (s2) { return { icon: '🎧', label: '"' + s2.title + '" (' + s2.year + ')', sub: 'Single · ' + big(s2.streams) + ' streams' + (s2.peak ? ' · #' + s2.peak + ' Hot 100' + (s2.top ? ' (' + s2.top + ' wk at #1)' : s2.weeks ? ' · ' + s2.weeks + ' wks' : '') : '') + (s2.cert ? ' · ' + s2.cert : ''), right: '', y: s2.year }; }));
       if (!all.length) return [{ info: true, html: '<p class="muted">Nothing released yet.</p>' }];
       return all.sort(function (a, b) { return b.y - a.y; });
+    });
+  }
+
+  function highlights() {
+    ui().menu('Career highlights', function () {
+      var x = st(), rows = [], aws = (S().awards || []).filter(function (a) { return /Grammy|MTV/.test(a.award); });
+      var ones = x.songs.filter(function (q) { return q.peak === 1; }), tens = x.songs.filter(function (q) { return q.peak && q.peak <= 10; });
+      var lp1 = x.albums.filter(function (a) { return a.peak === 1; });
+      var certs = x.songs.concat(x.albums).filter(function (q) { return q.cert; });
+      var best = x.songs.slice().sort(function (a, b) { return b.streams - a.streams; })[0];
+      aws.forEach(function (a) { rows.push({ icon: '🏆', label: a.award + ' (' + a.year + ')', sub: a.cat }); });
+      if (ones.length) rows.push({ icon: '🥇', label: U.plural(ones.length, 'No. 1 hit'), sub: ones.map(function (q) { return '"' + q.title + '"' + (q.top ? ' (' + q.top + ' wk)' : ''); }).join(', ') });
+      if (tens.length) rows.push({ icon: '🔟', label: U.plural(tens.length, 'Top 10 hit') });
+      if (lp1.length) rows.push({ icon: '💿', label: U.plural(lp1.length, 'No. 1 album'), sub: lp1.map(function (a) { return '"' + a.title + '"'; }).join(', ') });
+      ['Diamond', 'Platinum', 'Gold'].forEach(function (c) { var n = certs.filter(function (q) { return c === 'Platinum' ? /Platinum/.test(q.cert) : q.cert === c; }).length; if (n) rows.push({ icon: c === 'Diamond' ? '💎' : '💿', label: U.plural(n, c + ' record') }); });
+      if (best) rows.push({ icon: '🎧', label: 'Biggest song: "' + best.title + '"', sub: big(best.streams) + ' streams (' + best.year + ')' });
+      if (x.headlined) rows.push({ icon: '🎪', label: 'Headlined ' + U.plural(x.headlined.length, 'festival'), sub: x.headlined.join(', ') });
+      if (x.opened) rows.push({ icon: '🚌', label: 'Opened for ' + x.opened.join(', ') });
+      if (x.syncs) rows.push({ icon: '📺', label: U.plural(x.syncs.length, 'song placement'), sub: x.syncs.join(', ') });
+      rows.push({ icon: '🎵', label: big(x.streams) + ' career streams', sub: big(x.fans) + ' fans · ' + U.plural(x.released, 'release') });
+      if (x.rrhof) rows.push({ icon: '🎸', label: 'Rock and Roll Hall of Fame', sub: 'Inducted in ' + x.rrhof });
+      return rows;
     });
   }
 
@@ -343,8 +422,18 @@ TL.music = (function () {
         E.queue('award', { award: 'Grammy Award', cat: cat2, win: 0.2 + ((proj ? proj.review : 85) - 82) / 45 - x.wins * 0.04 });
       }
     }
+    // A big music video can win at the VMAs.
+    var vid = x.songs.filter(function (q) { return q.year === s.year - 1 && q.video && q.peak && q.peak <= 10 && !q.vma; })[0];
+    if (vid && !s.prison && U.chance(0.4)) { vid.vma = true; E.queue('award', { award: 'MTV Video Music Award', cat: 'Video of the Year, for "' + vid.title + '"', win: 0.3 + (hookOf(vid) - 70) / 100 }); }
+    // Legends get into the Rock and Roll Hall of Fame 25 years after their first release.
+    var first = x.firstRel != null ? x.firstRel : x.started, plat = x.songs.concat(x.albums).filter(function (q) { return /Platinum|Diamond/.test(q.cert || ''); }).length;
+    if (!x.rrhof && x.released && first != null && s.year - first >= 25 && (x.wins >= 2 || x.songs.filter(function (q) { return q.peak === 1; }).length >= 3 || x.fans >= 2e7 || plat >= 6)) {
+      x.rrhof = s.year; E.log('🎸 I was inducted into the Rock and Roll Hall of Fame!', 'good'); E.fame(10); E.achieve('rock_hof');
+    }
     // Life on the road and in the industry.
     if (!s.prison && !x.retired) {
+      if (x.songs.length && x.fans >= 2000 && U.chance(0.08)) s.pending.push({ id: 'mu_sync', data: {} });
+      if (x.fans >= 2e4 && x.fans < 2e6 && U.chance(0.15)) s.pending.push({ id: 'mu_opener', data: {} });
       if (x.fans >= 2e5 && U.chance(0.12)) s.pending.push({ id: 'mu_festival', data: {} });
       else if (x.fans >= 5e4 && U.chance(0.07)) s.pending.push({ id: 'mu_beef', data: {} });
       else if (x.vault.length >= 3 && x.fans >= 1e5 && U.chance(0.05)) s.pending.push({ id: 'mu_leak', data: {} });
@@ -373,7 +462,7 @@ TL.music = (function () {
     var x = st(), fest = U.pick(['Coachella', 'Lollapalooza', 'Glastonbury', 'Bonnaroo', 'Austin City Limits', 'Rolling Loud', 'Tomorrowland']);
     var slot = x.fans >= 1e7 ? 'headline' : x.fans >= 2e6 ? 'a prime evening slot at' : 'an afternoon slot at';
     return { icon: '🎪', title: fest, text: fest + ' offered me ' + (slot === 'headline' ? 'a headline slot' : slot + ' the festival') + '.', choices: [
-      { label: 'Play it', run: function () { var g = x.fans * U.randf(0.03, 0.12) * GENRES[x.genre].fest; addFans(x, g); pay(Math.round(x.fans * 0.02 + 20000)); E.fame(3); E.stat('happy', 12); return good('I played ' + fest + '. The crowd sang every word. +' + big(g) + ' fans. 🎪'); } },
+      { label: 'Play it', run: function () { if (slot === 'headline') (x.headlined = x.headlined || []).push(S().year); var g = x.fans * U.randf(0.03, 0.12) * GENRES[x.genre].fest * (0.8 + ca(x, 'sta') / 250); addFans(x, g); pay(Math.round(x.fans * 0.02 + 20000)); E.fame(3); E.stat('happy', 12); return good('I played ' + fest + '. The crowd sang every word. +' + big(g) + ' fans. 🎪'); } },
       { label: 'Turn it down', run: function () { return 'I passed on ' + fest + ' this year.'; } }
     ] };
   } });
@@ -389,6 +478,29 @@ TL.music = (function () {
     return { icon: '💧', title: 'Leak', text: 'Some of my unreleased songs leaked online.', choices: [
       { label: 'Release them officially', run: function () { var lost = x.vault.splice(0, 2); lost.forEach(function (sg) { x.songs.push({ title: sg.title, year: S().year, q: sg.q, streams: Math.round(x.fans * 2), peak: 0, kind: 'single' }); }); addFans(x, x.fans * 0.03); return 'I put the leaked songs out officially. Fans loved getting them early.'; } },
       { label: 'Scrap them and write new ones', run: function () { x.vault.splice(0, 2); E.stat('happy', -6); return bad('I scrapped the leaked songs. Back to the studio.'); } }
+    ] };
+  } });
+  def('mu_sync', { cond: function () { var x = st(); return !!(x && x.songs.length && !x.retired); }, build: function () {
+    var x = st(), song = U.pick(x.songs), where = U.pick(['a Netflix series', 'an Apple commercial', 'a movie trailer', 'the next FIFA video game', 'a Super Bowl ad', 'a hit TV drama']);
+    var fee = Math.min(2000000, Math.round(U.rand(15, 60) * 1000 * (1 + x.fans / 1e6)));
+    return { icon: '📺', title: 'Sync offer', text: where.charAt(0).toUpperCase() + where.slice(1) + ' wants to license "' + song.title + '" for ' + E.fmt(E.$(fee)) + '.', choices: [
+      { label: 'License it', run: function () { var g = x.fans * U.randf(0.03, 0.12) + U.rand(500, 5000); pay(fee); addFans(x, g); song.streams += Math.round(g * 40); x.streams += Math.round(g * 40); (x.syncs = x.syncs || []).push('"' + song.title + '" in ' + where); return good('"' + song.title + '" played in ' + where + '. Shazam lit up. +' + big(g) + ' fans. 📺'); } },
+      { label: 'Say no, it\'s not for sale', run: function () { E.karma(1); return 'I turned it down. Some songs aren\'t for sale.'; } }
+    ] };
+  } });
+  def('mu_opener', { cond: function () { var x = st(); return !!(x && !x.retired); }, build: function () {
+    var x = st(), star = U.pick(x.genre === 'Hip Hop' ? ['the biggest rapper in the world', 'a hip hop legend'] : x.genre === 'Country' ? ['a country superstar', 'a Nashville legend'] : x.genre === 'EDM' ? ['a world-famous DJ', 'a festival-headlining DJ'] : x.genre === 'Rock' ? ['a stadium rock band', 'a legendary rock band'] : ['a pop superstar', 'a global superstar']);
+    return { icon: '🚌', title: 'Opening slot', text: U.cap(star) + ' asked me to open their arena tour this year. The pay is small, but every night is a room full of new ears.', choices: [
+      { label: 'Join the tour', run: function () {
+        if (count('mu_tour')) return 'I was already booked on my own tour, so I had to pass.';
+        bump('mu_tour'); x.lastActive = S().year;
+        var crowd = U.rand(3e5, 1.2e6), r = U.rand(1, 100) + (ca(x, 'sta') - 50) / 3;
+        var g = crowd * U.randf(0.004, r >= 80 ? 0.03 : 0.015) / (1 + x.fans / 5e6);
+        addFans(x, g); shift(x, 'sta', 0.8); grow(x, 0.8); pay(U.rand(20, 120) * 1000); E.stat('health', -6); E.stat('happy', 8);
+        (x.opened = x.opened || []).push(star + ' (' + S().year + ')');
+        return good('I opened for ' + star + ' in front of ' + big(crowd) + ' people' + (r >= 80 ? ' and stole a few shows' : '') + '. +' + big(g) + ' fans. 🚌');
+      } },
+      { label: 'Focus on my own music', run: function () { return 'I passed on the tour to focus on my own music.'; } }
     ] };
   } });
   def('mu_label_done', { build: function () {

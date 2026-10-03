@@ -374,6 +374,7 @@ TL.data = (function () {
     { id: 'number_one', name: 'Number One', desc: 'Top the Billboard charts', icon: '🥇' },
     { id: 'platinum', name: 'Gone Platinum', desc: 'Have a release certified Platinum', icon: '💿' },
     { id: 'signed', name: 'Signed', desc: 'Sign with a major record label', icon: '📝' },
+    { id: 'rock_hof', name: 'Rock and Roll Hall of Famer', desc: 'Get inducted into the Rock and Roll Hall of Fame', icon: '🎸' },
     { id: 'champion', name: 'Champion', desc: 'Win a pro championship or a Grand Slam', icon: '🏆' },
     { id: 'league_mvp', name: 'Most Valuable', desc: 'Win a league MVP (or finish No. 1 in tennis)', icon: '🥇' },
     { id: 'grand_slam', name: 'Grand Slam', desc: 'Win a tennis Grand Slam', icon: '🎾' },
