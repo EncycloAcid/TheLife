@@ -401,7 +401,7 @@ TL.pro = (function () {
         } });
       })(t);
     }
-    if (!ch.length) { var mi = placeFor({ sport: x.sport, ovr: 0 }); ch.push({ label: 'Take a ' + mi.t.league.toLowerCase() + ' deal', run: function () { sign(mi.t, 1, salaryFor(x.ovr, mi.t), 'minors'); return 'No big-league team wanted me. I signed with ' + mi.t.team + ' to keep my dream alive.'; } }); }
+    if (!ch.length) { var mi = placeFor({ sport: x.sport, ovr: 0 }); ch.push({ label: 'Take ' + (/^[AEIOU]/.test(mi.t.league) ? 'an ' : 'a ') + (/^[A-Z]{2,}/.test(mi.t.league) ? mi.t.league : mi.t.league.toLowerCase()) + ' deal', run: function () { sign(mi.t, 1, salaryFor(x.ovr, mi.t), 'minors'); return 'No big-league team wanted me. I signed with ' + mi.t.team + ' to keep my dream alive.'; } }); }
     ch.push({ label: 'Retire', run: function () { return retire(); } });
     return { icon: '✍️', title: 'Free agency', text: 'My contract with ' + x.team + ' is up. I\'m ' + a + ', rated ' + x.ovr + ' overall. ' + (nOff ? 'Here are my offers:' : 'The phone isn\'t ringing.'), choices: ch };
   } });

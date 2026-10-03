@@ -186,7 +186,10 @@ TL.mind = (function () {
       if (acts >= 2 || !p.alive || !U.chance(0.16 + (LOVE.indexOf(p.role) >= 0 ? 0.1 : 0))) return;
       var list = moves(p, !evDone && U.chance(0.5));
       if (!list.length) return;
-      var f = pickW(list)[1];
+      var f = pickW(list)[1], k0 = String(f).length + ':' + String(f).slice(30, 60);
+      // Nobody does the same kind of thing every year (a move's source text identifies its kind).
+      if (p.mv && p.mv[0] === k0 && S().year - p.mv[1] < 3) return;
+      p.mv = [k0, S().year];
       if (f.isEvent) { evDone = true; f(); acts++; return; }
       var res = f(); if (res) { E.log(res[0], res[1]); acts++; }
     });

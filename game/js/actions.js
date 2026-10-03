@@ -83,7 +83,7 @@ TL.actions = (function () {
       if (S().pets.length) {
         items.push({ section: 'Pets' });
         S().pets.forEach(function (pet) {
-          items.push({ icon: petIcon(pet.species), label: pet.name, sub: pet.breed + ' ' + pet.species + ' · ' + pet.age + ' yrs', bar: pet.rel, onClick: function () { petMenu(pet); } });
+          items.push({ icon: petIcon(pet.species), label: pet.name, sub: pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species) + ' · ' + pet.age + ' yrs', bar: pet.rel, onClick: function () { petMenu(pet); } });
         });
       }
       // Meeting people comes before school, work and old contacts.
@@ -540,7 +540,7 @@ TL.actions = (function () {
           if (!afford(cost)) return done(noMoney(cost));
           E.addMoney(-cost);
           var p = addPet(sp.species);
-          done(good('I adopted a ' + p.breed + ' ' + sp.species.toLowerCase() + ' named ' + p.name + '!'));
+          done(good('I adopted ' + (/^[AEIOU]/.test(p.breed) ? 'an ' : 'a ') + p.breed + (new RegExp(sp.species + '$', 'i').test(p.breed) ? '' : ' ' + sp.species.toLowerCase()) + ' named ' + p.name + '!'));
         } };
       });
     });

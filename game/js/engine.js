@@ -154,6 +154,8 @@ TL.engine = (function () {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
     if (S() && country().ancient) nm.last = D.surname(nm.last, gender, country().ancient);
+    // Roman women take the family name (Livia of the Livii); never "Livia Livia".
+    for (var t0 = 0; t0 < 6 && !o.first && nm.first === nm.last; t0++) nm.first = randomName(gender, null, o.country).first;
     // No two people in one life share a full name (two "James Wilson" classmates was confusing).
     var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {

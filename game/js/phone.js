@@ -81,7 +81,7 @@ TL.phone = (function () {
     }
     if (pro && pro.seasons && pro.seasons.length) {
       var p = pro.seasons[pro.seasons.length - 1];
-      if (p.year >= ly && p.team) out.push(post('🏟️', (me().first + ' ' + me().last) + ' had ' + (p.award ? 'a big season with the ' + p.team + ' (' + p.award + ')' : 'a ' + (p.ovr >= 80 ? 'strong' : p.ovr >= 70 ? 'solid' : 'quiet') + ' season with the ' + p.team) + '. ' + (p.injured ? 'Shame about the injury.' : U.pick(['Fans are buying the jersey.', 'Contract year coming up…', 'Trade rumors are heating up.'])), user(), likes(S().fame / 2)));
+      if (p.year >= ly && p.team) out.push(post('🏟️', (me().first + ' ' + me().last) + ' had ' + (p.award ? 'a big season with the ' + p.team.replace(/^the /, '') + ' (' + p.award + ')' : 'a ' + (p.ovr >= 80 ? 'strong' : p.ovr >= 70 ? 'solid' : 'quiet') + ' season with the ' + p.team.replace(/^the /, '')) + '. ' + (p.injured ? 'Shame about the injury.' : U.pick(['Fans are buying the jersey.', 'Contract year coming up…', 'Trade rumors are heating up.'])), user(), likes(S().fame / 2)));
     }
     if (!out.length) out.push(post('🏟️', U.pick(['My fantasy team is a disaster this year.', 'Refs decided that game. I will not be taking questions.', 'Season tickets: worth it. My wallet disagrees.']), user()));
     return out;
