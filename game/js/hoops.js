@@ -44,7 +44,7 @@ TL.hoops = (function () {
     var sp = S().sports, ms = sp && sp.sport === 'Basketball Team' ? (sp.skill - 40) / 8 : 0; // middle school hoops count
     var ovr = U.clamp(Math.round(23 + m.athl * 0.32 + (cm - (g === 'F' ? 178 : 196)) * 0.5 + ms + U.rand(-6, 6)), 20, 70);
     S().hoops = { stage: stage, cm: cm, pos: posFor(cm, g), num: U.pick([0, 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 15, 21, 23, 24, 30, 32, 33, 34, 35]), ovr: ovr,
-      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(5, 8)) + (m.athl - 75) / 7 + (U.chance(0.06) ? U.rand(8, 20) : 0)), ovr + 2, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
+      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(7, 8)) + (m.athl - 70) / 6 + (U.chance(0.06) ? U.rand(8, 20) : 0)), ovr + 4, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
     return S().hoops;
   }
   function stars(o) { return o >= 66 ? 5 : o >= 60 ? 4 : o >= 53 ? 3 : o >= 45 ? 2 : 1; }
@@ -74,6 +74,8 @@ TL.hoops = (function () {
     var s = S(), e = s.edu;
     develop(x, s.flags.hoopsTrain ? 1 : 0);
     s.flags.hoopsTrain = 0;
+    // Growing stronger and quicker as a teenager lifts my ceiling too.
+    if (me().athl >= 70 && x.pot < 99 && U.chance((me().athl - 55) / 60)) x.pot++;
     var mins = x.ovr >= (x.stage === 'college' ? 72 : 55) ? 32 : x.ovr >= (x.stage === 'college' ? 64 : 45) ? 22 : 12;
     var l = statLine({ ovr: x.ovr + (x.stage === 'hs' ? 22 : 8), pos: x.pos }, mins);
     var w = U.clamp(Math.round(U.rand(8, 22) + (x.ovr - (x.stage === 'hs' ? 45 : 68)) * 0.6), 2, x.stage === 'hs' ? 28 : 34), gp = x.stage === 'hs' ? 30 : 35;
@@ -132,7 +134,7 @@ TL.hoops = (function () {
     // Awards
     if (proLeague && rookie && x.ovr >= 74 && l.ppg >= 14 && U.chance(0.55)) { x.roy = true; E.log('🏅 I won Rookie of the Year!', 'good'); E.fame(8); }
     if (proLeague && (l.ppg >= 22 || x.ovr >= 86) && played >= gp * 0.6 && U.chance(0.75)) { x.allstar++; E.log('⭐ I was named an All-Star' + (x.allstar > 1 ? ' for the ' + U.ordinal(x.allstar) + ' time' : '') + '!', 'good'); E.fame(5); }
-    if (proLeague && x.ovr >= 93 && pct >= 0.65 && played >= gp * 0.8 && U.chance(0.35)) { x.mvp++; E.log('🏆 I won league MVP!', 'good'); E.fame(15); E.achieve('hoops_mvp'); }
+    if (proLeague && x.ovr >= 91 && pct >= 0.6 && played >= gp * 0.8 && U.chance(0.15 + (x.ovr - 91) * 0.05)) { x.mvp++; E.log('🏆 I won league MVP!', 'good'); E.fame(15); E.achieve('hoops_mvp'); }
     if (result === 'Missed the playoffs') { E.stat('happy', -3); }
     else if (result === 'Won the championship') {
       if (proLeague) { x.rings++; E.achieve('hoops_ring'); }
@@ -146,7 +148,7 @@ TL.hoops = (function () {
     x.contract.years--;
     j.title = role(x.ovr)[0];
     if (me().age >= 40 || x.ovr < 56 || (me().age >= 35 && x.ovr < 68)) { S().pending.push({ id: 'hoops_retire', data: {} }); }
-    else if (x.league === 'G League' && x.ovr >= 72 && U.chance(0.35)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the G League! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
+    else if (x.league === 'G League' && x.ovr >= 74 && U.chance(0.3)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the G League! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
     else if (x.contract.years <= 0) S().pending.push({ id: 'hoops_fa', data: {} });
     else if (!x.shoe && S().fame >= 45 && U.chance(0.5)) S().pending.push({ id: 'hoops_shoe', data: {} });
     return earned;
@@ -225,7 +227,8 @@ TL.hoops = (function () {
   def('hoops_fa', { cond: function () { var x = h(); return !!(x && x.stage === 'pro'); }, build: function () {
     var x = h(), o = x.ovr, ch = [], lg = x.league;
     // Teams only want players good enough for the league.
-    var interest = o >= 76 ? U.rand(2, 3) : o >= 71 ? U.rand(1, 2) : o >= 67 && U.chance(0.4) ? 1 : 0;
+    var gl = lg === 'G League' ? 3 : 0; // G Leaguers have to prove a bit more
+    var interest = o >= 76 + gl ? U.rand(2, 3) : o >= 71 + gl ? U.rand(1, 2) : o >= 67 + gl && U.chance(0.4) ? 1 : 0;
     var pool = U.shuffle(teams().filter(function (t) { return t !== x.team; })).slice(0, interest);
     if (o >= 66 && (lg === 'NBA' || lg === 'WNBA')) ch.push({ label: '✍️ Re-sign with the ' + x.team + ' (' + E.fmt(E.$(salaryFor(o))) + '/yr)', run: function () { var t = x.team; sign(t, lg, U.rand(2, 4), salaryFor(o)); E.stat('happy', 5); return 'I re-signed with the ' + t + '.'; } });
     pool.forEach(function (t) {
@@ -270,7 +273,7 @@ TL.hoops = (function () {
     if (x.rings) acc.push('💍 ' + x.rings + 'x champion'); if (x.mvp) acc.push('🏆 ' + x.mvp + 'x MVP'); if (x.fmvp) acc.push('🏅 ' + x.fmvp + 'x Finals MVP'); if (x.allstar) acc.push('⭐ ' + x.allstar + 'x All-Star'); if (x.roy) acc.push('🌱 Rookie of the Year'); if (x.hof) acc.push('🏛️ Hall of Fame');
     var where = x.stage === 'pro' ? x.team + ' · ' + x.league : x.stage === 'college' ? x.team + ' · NCAA' : x.stage === 'hs' ? (S().edu ? S().edu.school : 'High school') + ' varsity' : x.stage === 'retired' ? 'Retired' : 'Free agent';
     return '<div class="hoops-card">' + (x.team && (x.stage === 'pro' || x.stage === 'college') && TL.logos ? '<div class="hc-logo">' + TL.logos.badge(x.team, { shape: 'team' }) + '</div>' : '') + '<div class="hc-num">#' + x.num + '</div><div class="hc-main"><b>' + U.esc(m.first + ' ' + m.last) + '</b><small>' + U.esc(where) + '</small><small>' + POS[x.pos] + ' · ' + cm2ft(x.cm) + (x.draft ? ' · ' + (x.draft.pick ? 'Pick #' + x.draft.pick + ' (' + x.draft.year + ')' : 'Undrafted') : '') + '</small></div><div class="hc-ovr"><b>' + x.ovr + '</b><small>OVR</small></div></div>' +
-      '<div class="minibar"><span>Potential</span><span class="track"><span class="fill ' + (x.pot >= 85 ? 'hi' : x.pot >= 70 ? 'mid' : 'lo') + '" style="width:' + x.pot + '%"></span></span></div>' +
+      '<div class="minibar"><span>Potential ' + x.pot + '</span><span class="track"><span class="fill ' + (x.pot >= 85 ? 'hi' : x.pot >= 70 ? 'mid' : 'lo') + '" style="width:' + x.pot + '%"></span></span></div>' +
       (x.contract && x.stage === 'pro' ? '<p class="small muted">Contract: ' + E.fmt(S().job.salary) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left' + (x.shoe ? ' · 👟 ' + x.shoe.brand : '') + '</p>' : '') +
       (pro.length ? '<p class="small">Career: <b>' + avg('ppg') + '</b> PTS · <b>' + avg('rpg') + '</b> REB · <b>' + avg('apg') + '</b> AST</p>' : '') +
       (acc.length ? '<p class="small">' + acc.join(' · ') + '</p>' : '');
@@ -279,12 +282,15 @@ TL.hoops = (function () {
     if (!onceAYear('hoops_' + kind)) return done(nope('I already worked on that this year.'));
     var x = h(), s = S();
     s.flags.hoopsTrain = 1;
-    var gain = me().age < 30 ? U.rand(1, 2) : U.rand(0, 1), capped = x.ovr >= x.pot;
-    // At my ceiling, hard work slowly raises the ceiling itself (it used to do nothing at all).
-    if (capped && me().age < 31 && x.pot < 99 && s.flags.hoopsCeil !== s.year && U.chance(0.6)) { s.flags.hoopsCeil = s.year; x.pot++; capped = false; gain = 1; }
+    var gain = me().age < 30 ? U.rand(1, 2) : U.rand(0, 1), raised = false;
+    // Near my ceiling, hard work raises the ceiling itself, once a year until
+    // 31 (more reliably while I'm young).
+    var ceil = s.flags.hoopsCeil && s.flags.hoopsCeil.y === s.year ? s.flags.hoopsCeil.n : 0;
+    if (x.ovr >= x.pot - 2 && me().age < 31 && x.pot < 99 && ceil < 1 && U.chance(me().age < 26 ? 0.6 : 0.35)) { s.flags.hoopsCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
+    var capped = x.ovr >= x.pot;
     x.ovr = U.clamp(x.ovr + (capped ? 0 : Math.min(gain, Math.max(0, x.pot - x.ovr))), 20, 99);
     me().athl = U.clamp(me().athl + 1, 0, 100); E.stat('health', 1);
-    done({ shoot: 'I put up 500 jumpers a day. 🎯', handle: 'I worked on my ball handling until my hands ached.', defense: 'I studied film and drilled defensive footwork. 🛡️', strength: 'I hit the weight room hard. 💪' }[kind] + ' (OVR ' + x.ovr + (x.ovr >= x.pot ? ', near my ceiling' : '') + ')');
+    done({ shoot: 'I put up 500 jumpers a day. 🎯', handle: 'I worked on my ball handling until my hands ached.', defense: 'I studied film and drilled defensive footwork. 🛡️', strength: 'I hit the weight room hard. 💪' }[kind] + ' (OVR ' + x.ovr + ', potential ' + x.pot + (raised ? ', raised by my hard work' : x.ovr >= x.pot ? ', at my ceiling' : '') + ')');
   }
   function menu() {
     ui().menu('Basketball 🏀', function () {
