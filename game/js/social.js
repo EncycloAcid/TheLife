@@ -269,6 +269,7 @@ TL.social = (function () {
   // ------------------------------------------------------------ menus
   function menu() {
     if (TL.history && !TL.history.exists('social')) return done(nope(TL.history.notYet('social')));
+    if (S().prison) return done(nope('No phones in prison. My followers will have to wait.'));
     sync();
     ui().menu('Social media', function () {
       var s = S(), c = st(), ids = accounts(), items = [], f = total();

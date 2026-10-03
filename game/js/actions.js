@@ -11,9 +11,14 @@ TL.actions = (function () {
   function nope(t) { return { text: t, cls: '', quiet: true }; }
 
   // Log + show an action result, then save and refresh.
+  // Self-care shows what it did: "(+4 smarts, +2 health)".
+  var gainFrom = null, STATN = { happy: 'happiness', health: 'health', smarts: 'smarts', looks: 'looks', athl: 'athleticism' };
+  function snap() { var m = me(); return { happy: m.happy, health: m.health, smarts: m.smarts, looks: m.looks, athl: m.athl }; }
+  function gains(b) { var m = me(), out = []; Object.keys(STATN).forEach(function (k) { var d = Math.round(m[k] - b[k]); if (d) out.push((d > 0 ? '+' : '') + d + ' ' + STATN[k]); }); return out.length ? ' (' + out.join(', ') + ')' : ''; }
   function done(res, title) {
     if (res == null) { ui().refresh(); return; }
     if (typeof res === 'string') res = { text: res, cls: '' };
+    if (gainFrom) { res = { text: res.text + gains(gainFrom), cls: res.cls, quiet: res.quiet }; gainFrom = null; }
     if (!res.quiet) E.log(res.text, res.cls);
     E.checkAchievements();
     E.save();
@@ -32,6 +37,8 @@ TL.actions = (function () {
   }
   function used(key) { return S().yearActs[key] || 0; }
   function diminish(key) { return 1 / (1 + use(key)); }
+  // Everyday self-care tires out more gently: the 2nd session still gives 2/3, the 3rd half.
+  function ease(key) { return 1 / (1 + use(key) * 0.5); }
   function afford(cost) { return S().money >= cost; }
   function noMoney(cost) { return { text: 'I can\'t afford that. It costs ' + E.fmt(cost) + ' and I have ' + E.fmt(S().money) + '.', cls: 'bad', quiet: true }; }
   function adult() { return me().age >= 18; }
@@ -1145,15 +1152,17 @@ TL.actions = (function () {
       var m = me(), a = m.age, items = [];
       if (a < 3) return [{ info: true, html: '<p>I\'m just a baby. 👶 Maybe cry for attention?</p>' }, { icon: '😭', label: 'Cry', onClick: function () { E.people(['mother', 'father']).forEach(function (p) { E.rel(p, -1); }); done('I cried until someone picked me up.'); } }, { icon: '🧸', label: 'Play with toys', onClick: function () { E.stat('happy', 3 * diminish('toys')); done('I played with my toys.'); } }];
       items.push({ section: 'Mind & Body' });
-      items.push({ icon: '🏋️', label: 'Gym', disabled: a < 12, sub: a < 12 ? 'Age 12+' : '', onClick: function () { var f = diminish('gym'); m.athl = U.clamp(m.athl + Math.round(U.rand(2, 5) * f), 0, 100); E.stat('health', 3 * f); E.stat('looks', 1 * f); if (U.chance(0.04)) { E.addCondition('Broken Arm'); return done(bad('I dropped a dumbbell and broke my arm!')); } done('I worked out at the gym. 💪'); } });
-      items.push({ icon: '📚', label: 'Library', onClick: function () { var f = diminish('lib'); E.stat('smarts', U.rand(1, 4) * f); done('I read ' + U.pick(['a mystery novel', 'a history book', 'a science book', 'a biography', 'a book of poetry', 'a self-help book', 'a comic book']) + ' at the library.'); } });
-      items.push({ icon: '🧘', label: 'Meditate', disabled: a < 8, onClick: function () { var f = diminish('med'); E.stat('happy', U.rand(3, 8) * f); E.stat('health', f); done('I meditated and feel at peace. 🧘'); } });
-      items.push({ icon: '🚶', label: 'Go for a walk', onClick: function () { var f = diminish('walk'); E.stat('health', 2 * f); E.stat('happy', 3 * f); if (U.chance(0.05)) { var amt = E.$(U.rand(5, 50)); E.addMoney(amt); return done(good('I went for a walk and found ' + E.fmt(amt) + ' on the ground!')); } done('I went for a walk around ' + U.pick(['the park', 'the neighborhood', 'the lake', 'downtown']) + '.'); } });
-      if (a >= 6) items.push({ icon: '🥋', label: 'Martial arts', right: E.fmt(E.$(150)), onClick: function () { if (!afford(E.$(150))) return done(noMoney(E.$(150))); E.addMoney(-E.$(150)); var f = diminish('karate'); m.athl = U.clamp(m.athl + Math.round(4 * f), 0, 100); E.stat('health', 2 * f); done('I trained ' + U.pick(['karate', 'jiu-jitsu', 'taekwondo', 'boxing', 'kung fu']) + '. 🥋'); } });
-      if (a >= 12) items.push({ icon: '🥗', label: 'Go on a diet', onClick: function () { var f = diminish('diet'); E.stat('health', 3 * f); E.stat('looks', 2 * f); E.stat('happy', -1); done('I started ' + U.pick(['a keto diet', 'a vegan diet', 'intermittent fasting', 'a Mediterranean diet', 'the "cabbage soup" diet']) + '.'); } });
-      if (a >= 5) items.push({ icon: '🎹', label: 'Learn an instrument', onClick: function () { var f = diminish('instr'); E.stat('smarts', 2 * f); S().flags.music = (S().flags.music || 0) + f; done('I practiced the ' + U.pick(['piano', 'guitar', 'violin', 'drums', 'saxophone', 'ukulele']) + '. 🎶'); } });
+      items.push({ icon: '🏋️', label: 'Gym', disabled: a < 12, sub: a < 12 ? 'Age 12+' : '', onClick: function () { var f = ease('gym'); m.athl = U.clamp(m.athl + Math.round(U.rand(3, 6) * f), 0, 100); E.stat('health', 4 * f); E.stat('looks', 2 * f); if (U.chance(0.04)) { E.addCondition('Broken Arm'); return done(bad('I dropped a dumbbell and broke my arm!')); } done('I worked out at the gym. 💪'); } });
+      items.push({ icon: '📚', label: 'Library', onClick: function () { var f = ease('lib'); E.stat('smarts', U.rand(2, 5) * f); done('I read ' + U.pick(['a mystery novel', 'a history book', 'a science book', 'a biography', 'a book of poetry', 'a self-help book', 'a comic book']) + ' at the library.'); } });
+      items.push({ icon: '🧘', label: 'Meditate', disabled: a < 8, onClick: function () { var f = ease('med'); E.stat('happy', U.rand(5, 10) * f); E.stat('health', 1.5 * f); done('I meditated and feel at peace. 🧘'); } });
+      items.push({ icon: '🚶', label: 'Go for a walk', onClick: function () { var f = ease('walk'); E.stat('health', 3 * f); E.stat('happy', 4 * f); if (U.chance(0.05)) { var amt = E.$(U.rand(5, 50)); E.addMoney(amt); return done(good('I went for a walk and found ' + E.fmt(amt) + ' on the ground!')); } done('I went for a walk around ' + U.pick(['the park', 'the neighborhood', 'the lake', 'downtown']) + '.'); } });
+      if (a >= 6) items.push({ icon: '🥋', label: 'Martial arts', right: E.fmt(E.$(150)), onClick: function () { if (!afford(E.$(150))) return done(noMoney(E.$(150))); E.addMoney(-E.$(150)); var f = ease('karate'); m.athl = U.clamp(m.athl + Math.round(5 * f), 0, 100); E.stat('health', 3 * f); done('I trained ' + U.pick(['karate', 'jiu-jitsu', 'taekwondo', 'boxing', 'kung fu']) + '. 🥋'); } });
+      if (a >= 12) items.push({ icon: '🥗', label: 'Go on a diet', onClick: function () { var f = ease('diet'); E.stat('health', 4 * f); E.stat('looks', 3 * f); E.stat('happy', -1); done('I started ' + U.pick(['a keto diet', 'a vegan diet', 'intermittent fasting', 'a Mediterranean diet', 'the "cabbage soup" diet']) + '.'); } });
+      if (a >= 5) items.push({ icon: '🎹', label: 'Learn an instrument', onClick: function () { var f = ease('instr'); E.stat('smarts', 3 * f); S().flags.music = (S().flags.music || 0) + f; done('I practiced the ' + U.pick(['piano', 'guitar', 'violin', 'drums', 'saxophone', 'ukulele']) + '. 🎶'); } });
       if (a >= 5) items.push({ icon: '🎨', label: 'Acting lessons', right: E.fmt(E.$(100)), onClick: function () { if (!afford(E.$(100))) return done(noMoney(E.$(100))); E.addMoney(-E.$(100)); var f = diminish('actl'); S().flags.acting = (S().flags.acting || 0) + f; if (S().acting) S().acting.skill = Math.min(100, S().acting.skill + 1.5 * f); E.stat('looks', f); done('I took an acting class. 🎭'); } });
 
+      // Mind & Body results say how much each stat moved.
+      items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); var r = f0.apply(this, arguments); gainFrom = null; return r; }; } });
       if (a >= 5) items.push({ icon: '🎯', label: 'Hobbies & skills', sub: 'Coding, writing, singing, painting…', onClick: TL.features.skillsMenu });
       if (S().royal && a >= 6) items.push({ icon: '👑', label: 'Royal duties', sub: TL.features.royalTitle() + ' · popularity ' + S().royal.popularity + '%', onClick: TL.features.royalMenu });
 

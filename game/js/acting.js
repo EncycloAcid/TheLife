@@ -595,7 +595,7 @@ TL.acting = (function () {
     if (r.costar) credit.costar = r.costar;
     if (r.streaming) credit.streaming = 1;
     if (r.kind !== 'commercial') shiftCraft(x, GENRE_CRAFT[r.genre], 0.4);
-    if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than a ' + typeName(tc).toLowerCase() + '. Critics are calling it a revelation.', 'good');
+    if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than ' + E.an(typeName(tc).toLowerCase()) + '. Critics are calling it a revelation.', 'good');
     if (r.director && again >= 2 && review >= 85 && x.muse !== r.director) { x.muse = r.director; E.log('🎬 ' + r.director + ' calls me their muse. Expect more of their scripts.', 'good'); }
     var lead = /Lead/.test(r.part) || r.part === 'Voice role', msg, cls = '', after = null, after0 = null;
     // Every credit builds my name; good reviews and leading parts build it faster, flops can cost me.
