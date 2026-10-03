@@ -1200,6 +1200,21 @@ TL.engine = (function () {
     if (TL.history) TL.history.yearly();
     if (ancient() && TL.ancient && !s.dead) TL.ancient.yearly();
     if (!s.dead) TL.events.roll();
+    // Reputation fades: old good deeds (and old sins) matter a little less each
+    // year, so karma reflects how I've been living lately, not one act at 12.
+    s.karma = Math.round((s.karma + (50 - s.karma) * 0.02) * 10) / 10;
+    // When my reputation crosses into a new tier, I hear about it.
+    var tier = function (k) { return k >= 85 ? 2 : k >= 65 ? 1 : k >= 40 ? 0 : k >= 20 ? -1 : -2; };
+    var kt = s.flags.kTier;
+    if (kt == null) kt = s.flags.kTier = tier(s.karma);
+    else if (tier(s.karma - 3) > kt) kt = tier(s.karma - 3); // a 3-point margin so it doesn't flicker
+    else if (tier(s.karma + 3) < kt) kt = tier(s.karma + 3);
+    if (kt !== s.flags.kTier) {
+      var up = kt > s.flags.kTier;
+      if (m.age >= 12 && !ancient()) log(up ? (kt === 2 ? '😇 People talk about me as one of the kindest people they know.' : kt === 1 ? '🙂 People have started to see me as a genuinely good person.' : '🙂 People are starting to trust me again.')
+             : (kt === -2 ? '😈 My name has become a byword for cruelty.' : kt === -1 ? '😒 People have started to see me as shady.' : kt === 1 ? '😐 People don\'t think of me as a saint anymore.' : '😐 People aren\'t sure what to make of me anymore.'), up ? 'good' : 'bad');
+      s.flags.kTier = kt;
+    }
     // Yearly snapshot for the life chart.
     s.hist = s.hist || [];
     s.hist.push([m.age, netWorth(), m.happy]);

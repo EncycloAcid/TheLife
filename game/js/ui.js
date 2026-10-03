@@ -497,7 +497,8 @@ TL.ui = (function () {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el._restart = (el._restart || 0) + 1; el.classList.remove('show'); }, Math.min(5000, 1800 + text.length * 35));
   }
-  function karmaWord(k) { return k >= 85 ? 'Saintly' : k >= 65 ? 'Good' : k >= 40 ? 'Neutral' : k >= 20 ? 'Shady' : 'Wicked'; }
+  // Same tiers (and the same buffer) as the reputation messages in the life log.
+  function karmaWord(k) { var t = S().flags && S().flags.kTier != null ? S().flags.kTier : k >= 85 ? 2 : k >= 65 ? 1 : k >= 40 ? 0 : k >= 20 ? -1 : -2; return ['Wicked', 'Shady', 'Neutral', 'Good', 'Saintly'][t + 2]; }
 
   function ageUp() {
     var s = S();
