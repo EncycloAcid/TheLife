@@ -395,8 +395,9 @@ TL.actions = (function () {
     if (used('baby')) return done(nope('We should wait until next year to try again.'));
     use('baby');
     var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
-    if (mom.age > 47 || mom.age < 14) return done(bad('We weren\'t able to conceive.'));
-    var chance = mom.age < 35 ? 0.55 : mom.age < 40 ? 0.35 : 0.12;
+    var dad = mom === m ? p : m;
+    if (mom.age > 47 || mom.age < 14 || dad.age > 70) return done(bad('We weren\'t able to conceive.'));
+    var chance = (mom.age < 35 ? 0.55 : mom.age < 40 ? 0.35 : 0.12) * (dad.age > 55 ? 0.5 : 1);
     E.rel(p, 5);
     if (U.chance(chance)) {
       if (p.role === 'spouse') { S().flags.pregnant = { with: p.id }; return done(good((m.gender === 'F' ? 'I\'m' : p.first + ' is') + ' pregnant! 🤰 The baby is due next year.')); }
@@ -420,6 +421,7 @@ TL.actions = (function () {
     }
     if (mom) opts.push({ label: '🧪 IVF (' + E.fmt(ivf) + ')', fn: function () {
       if (used('ivf')) return done(nope('The clinic says we need to wait until next year for another round.'));
+      if (mom.age > 50) return done(nope('The clinic won\'t do IVF past 50. A surrogate or adoption could still work.'));
       if (!afford(ivf)) return done(noMoney(ivf));
       use('ivf'); E.addMoney(-ivf);
       var ch = mom.age < 35 ? 0.5 : mom.age < 40 ? 0.35 : mom.age < 45 ? 0.15 : 0.05;
@@ -427,6 +429,7 @@ TL.actions = (function () {
       E.stat('happy', -6); done(bad('This round of IVF didn\'t work.'));
     } });
     opts.push({ label: '🤱 Surrogate (' + E.fmt(surro) + ')', fn: function () {
+      if (m.age > 60) return done(nope('Surrogacy agencies won\'t work with intended parents over 60.'));
       if (!afford(surro)) return done(noMoney(surro));
       E.addMoney(-surro);
       if (U.chance(0.85)) { S().flags.pregnant = { with: p.id, surrogate: true }; E.rel(p, 10); return done(good('Our surrogate is pregnant! The baby is due next year. 🍼')); }
@@ -524,7 +527,7 @@ TL.actions = (function () {
                 if (U.chance(0.08)) { E.addCondition(U.pick(['Chlamydia', 'Herpes'])); return done(bad('I had a fun night with ' + c.first + '... and caught an STD.')); }
                 var pt = E.partner();
                 if (pt) { E.karma(-5); if (U.chance(0.3)) { E.rel(pt, -40); return done(bad(pt.first + ' found out I cheated!')); } }
-                if (me().gender !== c.gender && U.chance(0.04)) { S().people.push(c); c.role = 'ex'; E.queue('pregnancy', { pid: c.id }); }
+                if (me().gender !== c.gender && (me().gender === 'F' ? me() : c).age <= 47 && (me().gender === 'M' ? me() : c).age <= 70 && U.chance(0.04)) { S().people.push(c); c.role = 'ex'; E.queue('pregnancy', { pid: c.id }); }
                 done('I had a fun night with ' + c.first + '. 😏');
               } },
               { label: 'Unmatch', fn: function () { done('I unmatched.'); } }
