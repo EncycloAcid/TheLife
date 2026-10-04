@@ -440,6 +440,7 @@ TL.acting = (function () {
       if (me().age >= 18) items.push({ icon: '🥂', label: 'Go to an industry party', disabled: count('ac_party') > 0, onClick: party });
       if (x.contract) items.push({ info: true, html: '<p class="small muted">📜 Under contract with ' + U.esc(x.contract.studio) + ' through ' + x.contract.until + ': they pick a picture for me every year.</p>' });
       if (x.rep >= 25 && me().age >= 16) items.push({ icon: S().year < 1948 ? '📻' : '🛋️', label: S().year < 1948 ? 'Do a radio interview' : 'Go on ' + (talkShow() || 'a talk show'), sub: 'Charm the audience (or go viral for the wrong reasons)', disabled: count('ac_talk') > 0, onClick: talk });
+      x.slate.filter(datable).forEach(function (r) { items.push({ icon: '📅', label: 'Release date: "' + r.title + '"', sub: r.window ? WINDOWS[r.window][1] : 'Studio\'s call unless I push for a date', onClick: function () { pickWindow(r); } }); });
       if (x.slate.length) items.push({ icon: '🎤', label: 'Do a press tour', sub: 'Better buzz for this year\'s releases', disabled: count('ac_press') > 0, onClick: pressTour });
       if (x.series && x.series.seasons) items.push({ icon: '💰', label: 'Ask for a raise', sub: 'Now ' + E.fmt(E.$(x.series.pay)) + '/season · could backfire', disabled: count('ac_raise') > 0, onClick: askRaise });
       if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
@@ -582,6 +583,23 @@ TL.acting = (function () {
 
   // ------------------------------------------------------------ the year
   // Everything I shot this year comes out; returns this year's acting pay.
+  // When a film opens matters: summer is huge but crowded, awards season is
+  // for prestige, a quiet spring can turn a good small film into a sleeper hit.
+  var WINDOWS = {
+    summer: ['☀️', 'Summer tentpole', 'Biggest audience, but up against the summer\'s giants'],
+    awards: ['🍂', 'Awards season', 'A late-year prestige slot: better shot at nominations'],
+    holiday: ['🎄', 'Holiday weekend', 'Families and long legs over the holidays'],
+    spring: ['🌸', 'Quiet spring', 'Little competition; great reviews can make a sleeper hit']
+  };
+  function datable(r) { var k = KINDS[r.kind]; return k && k.film && k.gross && !r.streaming && r.kind !== 'student' && /Lead/.test(r.part) && S().year >= 1930; }
+  function pickWindow(r) {
+    var opts = ['summer', 'awards', 'holiday', 'spring'].filter(function (w) { return w !== 'holiday' || r.kind !== 'indie'; });
+    ui().choose('📅 Release date', 'When should "' + r.title + '" open? I\'m the lead, so the studio will listen.', opts.map(function (w) {
+      var W = WINDOWS[w]; return { label: W[0] + ' ' + W[1] + ': ' + W[2].charAt(0).toLowerCase() + W[2].slice(1), fn: function () { r.window = w; done('"' + r.title + '" is dated ' + { summer: 'as a summer tentpole', awards: 'for awards season', holiday: 'for a holiday weekend', spring: 'for a quiet spring' }[w] + '. ' + W[0]); } };
+    }));
+  }
+  // The real biggest movie of the year (js/phone.js) is the summer competition.
+  function giant() { var y = S().year; return TL.phone && TL.phone.HITS && TL.phone.HITS[y] || null; }
   function release(r, x) {
     var k = KINDS[r.kind], s = S();
     if (r.defer) { r.defer = false; pay(r.pay); } // never settled the deal: the standard fee
@@ -614,6 +632,14 @@ TL.acting = (function () {
       if (prev) base = Math.max(base * 0.6, (prev.base || prev.gross) * U.randf(0.75, 1.3) * (0.55 + review / 110)) * (r.legacy ? 1.3 : Math.pow(0.9, Math.max(0, sg.films.length - 2)));
       // The pandemic emptied theaters in 2020; 2021 was half a recovery.
       var covid = s.year === 2020 ? 0.2 : s.year === 2021 ? 0.65 : 1; base *= covid;
+      var winNote = '';
+      if (r.window === 'summer') {
+        var g0 = giant();
+        if (review < 55 || r.kind === 'indie') { base *= 0.7; winNote = ' It got buried ' + (g0 ? 'under "' + g0 + '"' : 'by the summer\'s giants') + '.'; }
+        else { base *= 1.45; winNote = g0 ? ' It held its own against "' + g0 + '" all summer.' : ' Summer crowds showed up.'; }
+      } else if (r.window === 'awards') { base *= r.kind === 'indie' ? 1.1 : 0.9; credit.awards = 1; }
+      else if (r.window === 'holiday') { base *= /comedy|musical|romance/.test(r.genre || '') ? 1.25 : 1.1; winNote = ' Holiday crowds gave it long legs.'; }
+      else if (r.window === 'spring') { if (review >= 75) { base *= 1.45; winNote = ' Word of mouth turned it into the sleeper hit of the spring.'; } else base *= 0.9; }
       // Dollars in the money of the day: a 1985 smash didn't make a billion.
       var pl = Math.min(1, TL.history ? TL.history.priceLevel(s.year) : 1), gross = Math.max(1, Math.round(base * pl)), ratio = base / bud;
       var verdict = ratio < 1.2 ? 'bomb' : ratio < 2.2 ? 'flop' : ratio < 3 ? 'even' : ratio < 5 ? 'hit' : 'smash';
@@ -634,7 +660,7 @@ TL.acting = (function () {
       if (r.costar) msg = msg.replace('" (' + r.genre + ')', '" (' + r.genre + ', with ' + r.costar + ')');
       if (s.year < 1928) msg = msg.replace('" (' + r.genre, '" (a silent ' + r.genre);
       if (covid < 1) msg += s.year === 2020 ? ' Theaters were mostly closed by the pandemic.' : ' Audiences were only starting to come back to theaters.';
-      msg += critic(review, s.year);
+      msg += (covid < 1 ? '' : winNote) + critic(review, s.year);
       if (r.kind !== 'student') after = function () { if (sg) sagaFilm(x, sg, r, credit); else maybeSequel(x, r, credit); };
     } else if (r.kind === 'commercial') {
       msg = (s.year < 1949 ? '📻 My radio ad for ' : '📺 My commercial for ') + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
@@ -652,11 +678,11 @@ TL.acting = (function () {
     return { credit: credit, review: review, lead: lead };
   }
   function nominate(best, x) {
-    if (!best || best.review < 85 || x.nomYear === S().year) return;
+    if (!best || best.review < (best.credit && best.credit.awards ? 80 : 85) || x.nomYear === S().year) return;
     var c = best.credit, k = KINDS[c.kind], f = me().gender === 'F', lead = /Lead/.test(c.part);
     if (!(k.film && c.kind !== 'student') && !k.series && !k.stage) return;
     if (c.kind === 'commercial' || c.part === 'Guest star' && U.chance(0.7)) return;
-    var p = (best.review - 82) / 40 + x.rep / 500 + (lead ? 0.04 : 0);
+    var p = (best.review - 82) / 40 + x.rep / 500 + (lead ? 0.04 : 0) + (c.awards ? 0.12 : 0);
     if (!U.chance(U.clamp(p, 0, 0.75))) return;
     var aw = k.film ? 'Academy Award' : k.series ? 'Emmy Award' : 'Tony Award';
     if (k.film && U.chance(0.35)) aw = 'Golden Globe';
