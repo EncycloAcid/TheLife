@@ -13,6 +13,12 @@ TL.engine = (function () {
   // "AD 79" for Roman and Viking lives, "1979" otherwise.
   // A condition's name as people of the time would say it (js/ancient.js).
   function illName(n) { return TL.S && country().ancient && TL.ancient ? TL.ancient.illName(n) : n; }
+  // "a common cold", "the flu", "PTSD": an illness as it reads after "diagnosed with".
+  var ILL_ART = { 'Common Cold': 'a', 'Flu': 'the', 'Ear Infection': 'an', 'Migraine': 'a', 'Broken Arm': 'a', 'Broken Leg': 'a', 'Concussion': 'a', 'Gambling Addiction': 'a', 'Nicotine Addiction': 'a' };
+  function illWith(n) {
+    var t = illName(n), low = /^[A-Z0-9]{2,}$/.test(t) ? t : t.toLowerCase();
+    return t === n && ILL_ART[n] ? ILL_ART[n] + ' ' + low : low;
+  }
   function yearLabel(y) { var e = TL.S && country().ancient && TL.ancient && TL.ancient.era(); return e && e.ad ? 'AD ' + y : String(y); }
   // Convert a base-dollar amount into the local currency, rounded to look natural.
   function $(usd) {
@@ -937,7 +943,7 @@ TL.engine = (function () {
       var heal = ill.selfHeal != null ? ill.selfHeal : (ill.incurable || ill.addiction ? 0 : 0.2);
       // Cancer that has spread doesn't just go away on its own.
       if (n === 'Cancer' && TL.health && (TL.health.st().stage || {}).Cancer >= 2) heal = 0;
-      if (heal && U.chance(heal)) { removeCondition(n); log(n === 'Cancer' ? '🎗️ Against the odds, my cancer went into remission.' : 'I recovered from ' + illName(n).toLowerCase() + '.', n === 'Cancer' ? 'good' : ''); }
+      if (heal && U.chance(heal)) { removeCondition(n); log(n === 'Cancer' ? '🎗️ Against the odds, my cancer went into remission.' : 'I recovered from ' + illWith(n) + '.', n === 'Cancer' ? 'good' : ''); }
     });
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
@@ -946,7 +952,7 @@ TL.engine = (function () {
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
-        log('🤒 ' + (ancient() ? 'I fell ill with ' : 'I was diagnosed with ') + illName(ill.name).toLowerCase() + '.', 'bad');
+        log('🤒 ' + (ancient() ? 'I fell ill with ' : 'I was diagnosed with ') + illWith(ill.name) + '.', 'bad');
       }
     });
     // happiness drift
@@ -964,7 +970,7 @@ TL.engine = (function () {
       var c = s.conditions.map(function (n) { return D.illness(n); }).filter(function (i) { return i && i.dmg >= 6 && (!i.selfHeal || i.selfHeal < 0.5 || a < 5 || a >= 75); })
         .sort(function (x, y) { return (y.incurable || y.selfHeal === 0 ? 4 : 0) + y.dmg - ((x.incurable || x.selfHeal === 0 ? 4 : 0) + x.dmg); })[0];
       var hid = !c && TL.health && TL.health.deathCause();
-      return die(c ? 'complications from ' + illName(c.name).toLowerCase() : hid || (a >= 70 && !ancient() ? U.pick(['heart failure', 'natural causes', 'old age', 'a stroke']) : 'poor health'));
+      return die(c ? 'complications from ' + illWith(c.name).replace(/^(an?|the) /, '') : hid || (a >= 70 && !ancient() ? U.pick(['heart failure', 'natural causes', 'old age', 'a stroke']) : 'poor health'));
     }
     var hazard;
     // Earlier eras: far more children died young.
@@ -1031,7 +1037,7 @@ TL.engine = (function () {
       var ph = p.health == null ? 70 : p.health;
       hazard = ph <= 0 ? 1 : hazard * (ph < 10 ? 6 : ph < 25 ? 3 : ph < 45 ? 1.6 : 1); // nobody lives on at zero health
       if (ph < 70 && p.age < 75) p.health = Math.min(100, ph + U.rand(0, 5));
-      if (U.chance(Math.min(0.8, hazard))) {
+      if (ph <= 0 || U.chance(Math.min(0.8, hazard))) {
         // Causes that fit the person's age and the era.
         var yr = s.year, old = yr < 1950, nd = ancient() && TL.ancient.txt('npcDeaths');
         var cause = nd ? U.pick(p.age > 60 ? nd.old : p.age < 18 ? nd.young : nd.adult) : p.age > 70 ? U.pick(['natural causes', 'a heart attack', 'cancer', 'a stroke', 'pneumonia'].concat(old ? ['tuberculosis'] : []))
@@ -1504,7 +1510,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, npcDies: npcDies,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, npcDies: npcDies,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

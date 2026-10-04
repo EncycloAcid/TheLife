@@ -484,7 +484,7 @@ TL.pro = (function () {
     if (x.captain && x.stage !== 'retired') acc.push('🎖️ Captain');
     if (x.best && x.sport === 'Tennis') acc.push('Career-high No. ' + x.best);
     if (x.hof) acc.push('🏛️ Hall of Fame');
-    var where = x.stage === 'retired' ? 'Retired' : (x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league + (x.stage === 'pro' && x.team ? ' · ' + U.cap(outlook(tq(x.team))) : ''));
+    var where = x.stage === 'retired' ? 'Retired' : U.cap(x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league + (x.stage === 'pro' && x.team ? ' · ' + U.cap(outlook(tq(x.team))) : ''));
     var n2 = nAwards(x); if (n2) acc.push('🏅 ' + U.plural(n2, 'other honor'));
     return '<div class="pr-card"><div class="pr-top"><span class="pr-ico">' + (x.team && x.stage !== 'retired' && TL.logos ? TL.logos.badge(x.team, { shape: 'team' }) : C.icon) + '</span><div><div class="pr-name">' + U.esc(x.stage === 'retired' ? 'Retired ' + x.pos : title()) + '</div><div class="pr-sub">' + U.esc(where) + '</div></div></div>' +
       '<div class="hb-arch">' + archetype(x) + '</div>' + bar('Overall ' + x.ovr, x.ovr) + AK.map(function (k) { return bar(aname(x, k) + ' ' + attr(x, k), attr(x, k)); }).join('') + (x.stage !== 'retired' ? bar('Potential ' + x.pot, x.pot) : '') +
@@ -566,6 +566,7 @@ TL.pro = (function () {
       if (x.mvp) rows.push({ icon: '🥇', label: x.sport === 'Tennis' ? U.plural(x.mvp, 'year') + ' at World No. 1' : x.mvp + '× ' + mvpName(x) });
       if (x.allstar) rows.push({ icon: '⭐', label: x.allstar + '× ' + starName(x) });
       if (x.roy) rows.push({ icon: '🌱', label: 'Rookie of the Year' });
+      if (x.captain) rows.push({ icon: '🎖️', label: 'Team captain', sub: 'Voted by teammates in ' + x.captain });
       Object.keys(aw).forEach(function (k) { rows.push({ icon: /gold|winner/.test(k) ? '🥇' : /silver/.test(k) ? '🥈' : /bronze/.test(k) ? '🥉' : '🏅', label: (aw[k].length > 1 ? aw[k].length + '× ' : '') + k, sub: aw[k].join(', ') }); });
       (x.intl || []).forEach(function (i) { if (i.res !== 'won') rows.push({ icon: '🌍', label: i.year + ' ' + (x.sport === 'Soccer' ? 'World Cup' : 'Olympics'), sub: { final: 'Runner-up', semis: 'Semifinalist', out: 'Group stage' }[i.res] }); });
       if (x.clutch) rows.push({ icon: '⏱️', label: 'Came through in ' + U.plural(x.clutch, 'big moment') });

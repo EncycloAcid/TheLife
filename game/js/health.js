@@ -117,7 +117,7 @@ TL.health = (function () {
     E.addCondition(name);
     var stg = name === 'Cancer' && !E.ancient() ? ' (stage ' + m.stage.Cancer + ')' : '';
     if (name === 'Cancer' && m.stage.Cancer === 1) E.achieve('caught_early');
-    E.log('🩺 ' + how + ' I was diagnosed with ' + E.illName(name).toLowerCase() + stg + '.', 'bad');
+    E.log('🩺 ' + how + ' I was diagnosed with ' + E.illWith(name) + stg + '.', 'bad');
   }
   // Runs once a year from engine.yearlyHealth, before conditions do damage.
   function year() {

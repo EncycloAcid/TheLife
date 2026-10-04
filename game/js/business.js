@@ -45,7 +45,7 @@ TL.business = (function () {
     var t = T(a);
     a.biz = 1; a.rep = a.rep || 50; a.quality = a.quality || 50; a.tier = a.tier || 'standard'; a.locations = a.locations || 1;
     a.history = a.history || [];
-    if (t.startup) { a.share = a.share || 1; a.round = a.round || 0; a.users = a.users || 0; a.burn = a.burn || 0; a.stage = a.stage || 'building'; }
+    if (t.startup) { a.share = a.share || 1; a.round = a.round || 0; a.users = a.users || 0; a.burn = a.burn || 0; a.stage = a.stage || 'building'; if (!(a.valuation > 0)) a.valuation = E.$(U.rand(2, 5) * 1e6); }
     else a.staff = a.staff != null ? a.staff : t.staff;
     return a;
   }
@@ -215,7 +215,7 @@ TL.business = (function () {
     ] };
   } });
   def('biz_round', { build: function (d) {
-    var a = biz(d); if (!a || a.round >= ROUNDS.length) return null;
+    var a = biz(d); if (!a || a.round >= ROUNDS.length || !(a.valuation > 0)) return null;
     var name = ROUNDS[a.round], raise = Math.round(a.valuation * U.randf(0.15, 0.3) / 1000) * 1000, dil = U.randf(0.12, 0.22);
     var vc = U.pick(['Sequoia', 'Andreessen Horowitz', 'Accel', 'Benchmark', 'Y Combinator', 'Tiger Global', 'SoftBank']);
     return { icon: '💸', title: name + ' round', text: vc + ' wants to lead a ' + E.fmt(raise) + ' ' + name + ' round for ' + Math.round(dil * 100) + '% of ' + a.name + ' (valued at ' + E.fmt(a.valuation) + ').', choices: [
