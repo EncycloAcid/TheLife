@@ -398,7 +398,7 @@ TL.actions = (function () {
     use('baby');
     var mom = m.gender === 'F' ? m : (p.gender === 'F' ? p : null);
     var dad = mom === m ? p : m;
-    if (mom.age > 47 || mom.age < 14 || dad.age > 70) return done(bad('We weren\'t able to conceive.'));
+    if (mom.age > 47 || mom.age < 14 || dad.age > 65) return done(bad('We weren\'t able to conceive.'));
     var chance = (mom.age < 35 ? 0.55 : mom.age < 40 ? 0.35 : 0.12) * (dad.age > 55 ? 0.5 : 1);
     E.rel(p, 5);
     if (U.chance(chance)) {
@@ -424,6 +424,7 @@ TL.actions = (function () {
     if (mom) opts.push({ label: '🧪 IVF (' + E.fmt(ivf) + ')', fn: function () {
       if (used('ivf')) return done(nope('The clinic says we need to wait until next year for another round.'));
       if (mom.age > 50) return done(nope('The clinic won\'t do IVF past 50. A surrogate or adoption could still work.'));
+      if (m.age > 65) return done(nope('The clinic won\'t do IVF for intended parents over 65.'));
       if (!afford(ivf)) return done(noMoney(ivf));
       use('ivf'); E.addMoney(-ivf);
       var ch = mom.age < 35 ? 0.5 : mom.age < 40 ? 0.35 : mom.age < 45 ? 0.15 : 0.05;
@@ -529,7 +530,7 @@ TL.actions = (function () {
                 if (U.chance(0.08)) { E.addCondition(U.pick(['Chlamydia', 'Herpes'])); return done(bad('I had a fun night with ' + c.first + '... and caught an STD.')); }
                 var pt = E.partner();
                 if (pt) { E.karma(-5); if (U.chance(0.3)) { E.rel(pt, -40); return done(bad(pt.first + ' found out I cheated!')); } }
-                if (me().gender !== c.gender && (me().gender === 'F' ? me() : c).age <= 47 && (me().gender === 'M' ? me() : c).age <= 70 && U.chance(0.04)) { S().people.push(c); c.role = 'ex'; E.queue('pregnancy', { pid: c.id }); }
+                if (me().gender !== c.gender && (me().gender === 'F' ? me() : c).age <= 47 && (me().gender === 'M' ? me() : c).age <= 65 && U.chance(0.04)) { S().people.push(c); c.role = 'ex'; E.queue('pregnancy', { pid: c.id }); }
                 done('I had a fun night with ' + c.first + '. 😏');
               } },
               { label: 'Unmatch', fn: function () { done('I unmatched.'); } }
