@@ -134,6 +134,8 @@ TL.pro = (function () {
   // How much my profile suits my position (it nudges my stat lines).
   function posFit(x) { var t = PSHAPE[x.pos] || [0, 0, 0, 0], o = prof(x); return AK.reduce(function (sum, k, i) { return sum + o[k] * t[i]; }, 0) / 300; }
   // Team strength carries over: contenders stay good, rebuilds take time.
+  // " (League)" after a team name, unless the name already says it ("Slam (development squad)").
+  function tag(team, league) { return /\(/.test(team) ? '' : ' (' + league + ')'; }
   function tq(t) { var x = h(), m = x.tq || (x.tq = {}); if (m[t] == null) m[t] = U.rand(32, 68); return m[t]; }
   function outlook(q) { return q >= 60 ? 'contender' : q >= 49 ? 'playoff team' : q >= 39 ? 'middle of the pack' : 'rebuilding'; }
   function award(x, name, rec) { var a = x.aw || (x.aw = {}); (a[name] = a[name] || []).push(S().year); if (rec) rec.award = (rec.award ? rec.award + ', ' : '') + name; }
@@ -151,14 +153,15 @@ TL.pro = (function () {
     var old = S().pro && S().pro.sport === sport ? S().pro : null; // a comeback keeps the record
     S().pro = { sport: sport, pos: old ? old.pos : pos, ovr: U.clamp(Math.round(ovr), 30, 85), stage: null, team: null, league: null, contract: null, seasons: old ? old.seasons : [], titles: old ? old.titles : 0, mvp: old ? old.mvp : 0, allstar: old ? old.allstar : 0, roy: old ? old.roy : false, slams: old ? old.slams : 0, best: old ? old.best : 0, entry: entry, endorse: old ? old.endorse : null, hof: old ? old.hof : null };
     var x = S().pro;
-    x.pot = U.clamp(Math.round(x.ovr + Math.abs(U.gauss(12, 10)) + (m.athl - 75) / 6 + (U.chance(0.08) ? U.rand(8, 20) : 0)), x.ovr + 2, 99);
+    // Athletic freaks and born athletes have real star ceilings; everyone else can still grind toward one.
+    x.pot = U.clamp(Math.round(x.ovr + Math.abs(U.gauss(14, 9)) + (m.athl - 60) / 4 + (TL.talents && TL.talents.has('athlete') ? 8 : 0) + (U.chance(0.08) ? U.rand(8, 16) : 0)), x.ovr + 4, 99);
     return x;
   }
   function sign(t, years, salary, stage) {
     var s = S(), x = h();
     x.stage = stage; x.team = t.team; x.league = t.league; x.contract = { years: years, salary: salary, min: t.min, max: t.max };
     if (s.job && !s.job.pro) E.quitJob(true);
-    s.job = { career: 'athlete', pro: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: t.team + (x.sport === 'Tennis' ? '' : ' (' + t.league + ')'), salary: E.$(salary), title: title() };
+    s.job = { career: 'athlete', pro: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: t.team + (x.sport === 'Tennis' ? '' : tag(t.team, t.league)), salary: E.$(salary), title: title() };
   }
   // Big league if good enough, otherwise the minors.
   function placeFor(x, ctry) {
@@ -197,7 +200,7 @@ TL.pro = (function () {
     var p = placeFor(x);
     sign(p.t, 1, salaryFor(x.ovr, p.t), p.stage);
     E.stat('happy', 15); E.fame(3);
-    return done(good('I made it! I signed with ' + x.team + (p.stage === 'minors' ? ' (' + x.league + ')' : '') + ' as ' + E.an(x.pos.toLowerCase()) + '. ' + SP[sport].icon));
+    return done(good('I made it! I signed with ' + x.team + (p.stage === 'minors' ? tag(x.team, x.league) : '') + ' as ' + E.an(x.pos.toLowerCase()) + '. ' + SP[sport].icon));
   }
   function tryoutMenu() {
     var x = h();
@@ -241,8 +244,12 @@ TL.pro = (function () {
     if (!x || (x.stage !== 'pro' && x.stage !== 'minors')) return 0;
     var C = SP[x.sport], a = me().age;
     develop(x, s.flags.proTrain || 0); s.flags.proTrain = 0;
+    // How I chose to play this season (set from the menu): all out, stay healthy, or lead.
+    var ap = s.flags.proApproach && s.flags.proApproach.y >= s.year - 1 ? s.flags.proApproach.k : null; // chosen last year, before the year ticked over delete s.flags.proApproach;
+    var boost = ap === 'allout' ? 3 : 0;
+    if (ap === 'lead' && x.team) { var q0 = tq(x.team); x.tq[x.team] = U.clamp(q0 + 6, 25, 80); }
     var played = 1, injured = null;
-    if (U.chance(C.inj + Math.max(0, a - 30) * 0.02 - (me().health - 70) / 500 - (s.flags.proRehab ? 0.06 : 0))) {
+    if (U.chance(C.inj + Math.max(0, a - 30) * 0.02 - (me().health - 70) / 500 - (s.flags.proRehab ? 0.06 : 0) + (ap === 'allout' ? 0.08 : ap === 'healthy' ? -0.1 : 0))) {
       injured = U.weighted(INJ.map(function (i, k) { return { w: [30, 22, 14, 10, 10, 8, 4][k] * (x.sport === 'Football' && k === 4 ? 2 : 1), i: i }; })).i;
       played = 1 - injured[1] * U.randf(0.5, 1);
       x.ovr = U.clamp(x.ovr - injured[2], 20, 99); E.stat('health', -injured[2] * 3 - 4); E.stat('happy', -6);
@@ -255,8 +262,8 @@ TL.pro = (function () {
     var msg;
     if (x.sport === 'Tennis') tennis(x, rec, played);
     else {
-      var r = role(bigLg ? x.ovr : Math.min(99, x.ovr + 14)), sh = r[1] * played;
-      var k = U.clamp((x.ovr - (bigLg ? 55 : 40)) / 42 + posFit(x) / 10 + U.randf(-0.06, 0.06), 0.02, 1);
+      var r = role(bigLg ? x.ovr + boost : Math.min(99, x.ovr + 14 + boost)), sh = r[1] * played * (ap === 'healthy' ? 0.92 : 1);
+      var k = U.clamp((x.ovr + boost - (bigLg ? 55 : 40)) / 42 + posFit(x) / 10 + U.randf(-0.06, 0.06), 0.02, 1);
       rec.line = sh < 0.05 ? 'Did not play' : C.line(k, sh, x.pos);
       var gp = C.games, pct = U.clamp(0.49 + (tq(x.team) - 50) / 100 + U.randf(-0.12, 0.12) + (x.ovr - 75) / 100 * r[1] * played * 0.8, 0.12, 0.88), w = Math.round(gp * pct);
       rec.rec = w + '-' + (gp - w);
@@ -283,6 +290,7 @@ TL.pro = (function () {
       var wc = x.sport === 'Soccer' && s.year % 4 === (female() ? 3 : 2), oly = x.sport === 'Hockey' && s.year % 4 === 2 && s.year >= (female() ? 1998 : 1998);
       if (bigLg && (wc || oly) && x.ovr >= 80 && a <= 35 && U.chance(0.8)) s.pending.push({ id: 'pro_intl', data: { year: s.year } });
     }
+    if (ap === 'lead' && bigLg && !x.captain && x.ovr >= 74 && U.chance(0.35 + (x.ovr - 74) / 40)) { x.captain = s.year; E.log('🎖️ My teammates voted me team captain.', 'good'); E.fame(2); }
     x.seasons.push(rec);
     var earned = E.$(x.contract ? x.contract.salary : 0);
     if (x.endorse) { earned += E.$(x.endorse.pay); }
@@ -293,7 +301,7 @@ TL.pro = (function () {
     if (s.fame >= 80) E.achieve('famous');
     yearAfter(x);
     Object.keys(x.tq || {}).forEach(function (t) { var q = x.tq[t]; x.tq[t] = U.clamp(Math.round(q + (50 - q) * 0.12 + U.rand(-6, 6)), 25, 75); });
-    if (j) { j.salary = earned; j.title = title(); j.perf = U.clamp(x.ovr, 0, 100); j.company = x.team + (x.sport === 'Tennis' ? '' : ' (' + x.league + ')'); }
+    if (j) { j.salary = earned; j.title = title(); j.perf = U.clamp(x.ovr, 0, 100); j.company = x.team + (x.sport === 'Tennis' ? '' : tag(x.team, x.league)); }
     return earned;
   }
   function moreAwards(x, rec, r, played, prev) {
@@ -473,13 +481,14 @@ TL.pro = (function () {
     if (x.mvp) acc.push('🥇 ' + (x.sport === 'Tennis' ? U.plural(x.mvp, 'year') + ' at No. 1' : x.mvp + '× ' + mvpName(x)));
     if (x.allstar) acc.push('⭐ ' + x.allstar + '× ' + starName(x));
     if (x.roy) acc.push('🌱 Rookie of the Year');
+    if (x.captain && x.stage !== 'retired') acc.push('🎖️ Captain');
     if (x.best && x.sport === 'Tennis') acc.push('Career-high No. ' + x.best);
     if (x.hof) acc.push('🏛️ Hall of Fame');
     var where = x.stage === 'retired' ? 'Retired' : (x.team || '') + (x.sport === 'Tennis' ? '' : ' · ' + x.league + (x.stage === 'pro' && x.team ? ' · ' + U.cap(outlook(tq(x.team))) : ''));
     var n2 = nAwards(x); if (n2) acc.push('🏅 ' + U.plural(n2, 'other honor'));
     return '<div class="pr-card"><div class="pr-top"><span class="pr-ico">' + (x.team && x.stage !== 'retired' && TL.logos ? TL.logos.badge(x.team, { shape: 'team' }) : C.icon) + '</span><div><div class="pr-name">' + U.esc(x.stage === 'retired' ? 'Retired ' + x.pos : title()) + '</div><div class="pr-sub">' + U.esc(where) + '</div></div></div>' +
       '<div class="hb-arch">' + archetype(x) + '</div>' + bar('Overall ' + x.ovr, x.ovr) + AK.map(function (k) { return bar(aname(x, k) + ' ' + attr(x, k), attr(x, k)); }).join('') + (x.stage !== 'retired' ? bar('Potential ' + x.pot, x.pot) : '') +
-      (x.contract && x.sport !== 'Tennis' ? '<div class="pr-line">✍️ ' + E.fmt(E.$(x.contract.salary)) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left</div>' : '') +
+      (x.contract && x.sport !== 'Tennis' ? '<div class="pr-line">✍️ ' + E.fmt(E.$(x.contract.salary)) + '/yr · ' + (x.contract.years > 0 ? U.plural(x.contract.years, 'year') + ' left' : 'final year') + '</div>' : '') +
       (x.endorse ? '<div class="pr-line">' + (TL.logos ? TL.logos.badge(x.endorse.brand, { size: 'xs' }) + ' ' : '👟 ') + U.esc(x.endorse.brand) + ' · ' + E.fmt(E.$(x.endorse.pay)) + '/yr</div>' : '') +
       (acc.length ? '<div class="pr-line">' + acc.join(' · ') + '</div>' : '') + '</div>';
   }
@@ -496,10 +505,19 @@ TL.pro = (function () {
     if (ak) { prof(x)[ak] += 2; pnorm(x); }
     // At my ceiling, hard work slowly raises the ceiling itself (it used to do nothing at all).
     var ceil = s.flags.proCeil && s.flags.proCeil.y === s.year ? s.flags.proCeil.n : 0;
-    if (g && x.ovr >= x.pot - 1 && me().age < SP[x.sport].old - 2 && x.pot < 99 && ceil < 2 && U.chance(0.55)) { s.flags.proCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
+    if (g && x.ovr >= x.pot - 3 && me().age < SP[x.sport].old - 2 && x.pot < 99 && ceil < 3 && U.chance(0.6)) { s.flags.proCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
     if (g && x.ovr < x.pot && me().age < SP[x.sport].old) { s.flags.proTrain = Math.min(2, (s.flags.proTrain || 0) + (U.chance(0.5) ? 1 : 0)); }
     // Work done now shows in next season's rating; say where I stand.
     return done(t[2] + ' ' + SP[x.sport].icon + (t[0] === 'rehab' ? ' I feel fresh. Less chance of getting hurt this season.' : ' I\'m sharpening my game. (' + (ak ? aname(x, ak).toLowerCase() + ' ' + attr(x, ak) + ', ' : '') + 'overall ' + x.ovr + ', potential ' + x.pot + (raised ? ', raised by my hard work' : x.ovr >= x.pot ? ', at my ceiling' : '') + ')'));
+  }
+  // One choice a season with a real trade-off.
+  function approach() {
+    var s = S(), set = function (k, msg) { s.flags.proApproach = { y: s.year, k: k }; return done(msg); };
+    ui().choose('🧭 Season approach', 'How do I play this season?', [
+      { label: '🔥 Go all out (play above my rating, more injuries)', fn: function () { set('allout', 'I\'m leaving everything on the field this season. 🔥'); } },
+      { label: '🧘 Stay healthy (fewer injuries, a few less minutes)', fn: function () { set('healthy', 'I\'m managing my body this season. Long career first. 🧘'); } },
+      { label: '🎖️ Lead the locker room (better team, maybe captain)', fn: function () { E.karma(1); set('lead', 'I\'m stepping up as a leader this season. 🎖️'); } }
+    ]);
   }
   function menu() {
     var x = h();
@@ -510,6 +528,8 @@ TL.pro = (function () {
       if (x.stage === 'pro' || x.stage === 'minors') {
         items.push({ section: 'Train' });
         TRAIN.forEach(function (t) { var ak = { str: 'pwr', speed: 'spd', skill: 'tec', film: 'iq' }[t[0]]; items.push({ icon: t[1], label: t[2], sub: ak ? aname(x, ak) + ' ' + attr(x, ak) : 'Fewer injuries this season', disabled: count('pro_' + t[0]) > 0, onClick: function () { train(t); } }); });
+        var apNow = S().flags.proApproach && S().flags.proApproach.y === S().year ? S().flags.proApproach.k : null;
+        items.push({ icon: '🧭', label: 'Season approach', sub: apNow ? { allout: 'Going all out this season', healthy: 'Staying healthy this season', lead: 'Leading the locker room this season' }[apNow] : 'Pick how I play this season', onClick: approach });
         items.push({ section: 'Off the field' });
         items.push({ icon: '🎤', label: 'Press conference', disabled: count('pro_press') > 0, onClick: function () {
           bump('pro_press');
@@ -520,7 +540,7 @@ TL.pro = (function () {
           bump('pro_trade');
           if (!U.chance(x.ovr >= 80 ? 0.6 : 0.3)) return done(nope('The front office said no. They\'re not trading me.'));
           var t = bigLeague(x.sport); if (t.team === x.team) return done(nope('No deal came together.'));
-          x.team = t.team; x.league = t.league; S().job.company = t.team + ' (' + t.league + ')';
+          x.team = t.team; x.league = t.league; S().job.company = t.team + tag(t.team, t.league);
           return done(good('I got my wish: I\'ve been traded to ' + t.team + ', a ' + outlook(tq(t.team)) + (outlook(tq(t.team)) === 'middle of the pack' ? ' team' : '') + '. 🔁'));
         } });
         if (S().fame >= 30) items.push({ icon: '💝', label: 'Start a charity foundation', right: E.fmt(E.$(100000)), disabled: !!x.charity, onClick: function () {
