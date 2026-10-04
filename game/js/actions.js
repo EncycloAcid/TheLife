@@ -1188,7 +1188,7 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
       items.push({ icon: '🐾', label: 'Pets', onClick: petStore });
       if (a >= 16 && !S().flags.license) items.push({ icon: '🪪', label: 'Driving test', onClick: drivingTest });
-      if (a >= 21) items.push({ icon: '👶', label: 'Adoption', onClick: adopt });
+      if (a >= 21) items.push({ icon: '👶', label: 'Adoption', sub: a > 55 ? 'Agencies won\'t place a child with me at my age' : undefined, disabled: a > 55, onClick: adopt });
 
       // Results say how much each stat moved (choices that open a dialog report when they finish).
       items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons|Therapist|Nightclub|Spa day|Go fishing|Gardening|Go skydiving|Run a marathon)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); return f0.apply(this, arguments); }; } });

@@ -975,7 +975,7 @@ TL.engine = (function () {
       var c = s.conditions.map(function (n) { return D.illness(n); }).filter(function (i) { return i && i.dmg >= 6 && (!i.selfHeal || i.selfHeal < 0.5 || a < 5 || a >= 75); })
         .sort(function (x, y) { return (y.incurable || y.selfHeal === 0 ? 4 : 0) + y.dmg - ((x.incurable || x.selfHeal === 0 ? 4 : 0) + x.dmg); })[0];
       var hid = !c && TL.health && TL.health.deathCause();
-      return die(c ? 'complications from ' + illWith(c.name).replace(/^(an?|the) /, '') : hid || (a >= 70 && !ancient() ? U.pick(['heart failure', 'natural causes', 'old age', 'a stroke']) : 'poor health'));
+      return die(c ? 'complications from ' + illWith(c.name).replace(/^an? /, '') : hid || (a >= 70 && !ancient() ? U.pick(['heart failure', 'natural causes', 'old age', 'a stroke']) : 'poor health'));
     }
     var hazard;
     // Earlier eras: far more children died young.
