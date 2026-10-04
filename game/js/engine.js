@@ -1029,7 +1029,7 @@ TL.engine = (function () {
       var hazard = p.age < 45 ? 0.0015 : 0.06 * Math.exp((p.age - 80 + (79 - country().life) - (TL.history ? TL.history.lifeGap(s.year) * 0.55 : 0)) / 11.5);
       // Poor health raises the odds a lot; people who are only a bit run down recover slowly.
       var ph = p.health == null ? 70 : p.health;
-      hazard *= ph < 10 ? 6 : ph < 25 ? 3 : ph < 45 ? 1.6 : 1;
+      hazard = ph <= 0 ? 1 : hazard * (ph < 10 ? 6 : ph < 25 ? 3 : ph < 45 ? 1.6 : 1); // nobody lives on at zero health
       if (ph < 70 && p.age < 75) p.health = Math.min(100, ph + U.rand(0, 5));
       if (U.chance(Math.min(0.8, hazard))) {
         // Causes that fit the person's age and the era.

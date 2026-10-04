@@ -63,17 +63,23 @@ TL.features = (function () {
     });
   }
   function practice(sk) {
-    var s = S(), f = diminish('skill' + sk.id);
-    if (f < 0.2) return done(TL.actions.nope('I\'ve practiced ' + sk.name.toLowerCase() + ' enough this year.'));
-    var gain = Math.max(1, Math.round(U.rand(2, 6) * f * (me().smarts / 150 + 0.7) * (skill(sk.id) > 80 ? 0.5 : 1) * (TL.talents ? TL.talents.skillMult(sk.id) : 1)));
+    var s = S(), n = used('skill' + sk.id);
+    if (n >= 6) return done(TL.actions.nope('I\'ve practiced ' + sk.name.toLowerCase() + ' enough this year.'));
+    use('skill' + sk.id);
+    var f = 1 / (1 + n * 0.5); // repeat sessions still count: 1, 2/3, 1/2, 2/5...
+    var gain = Math.max(1, Math.round(U.rand(3, 7) * f * (me().smarts / 150 + 0.7) * (skill(sk.id) > 80 ? 0.5 : 1) * (TL.talents ? TL.talents.skillMult(sk.id) : 1)));
     s.skills[sk.id] = Math.min(100, skill(sk.id) + gain);
     E.stat('happy', 1);
+    // Hobbies feed the rest of life too.
+    if (/chess|coding|writing/.test(sk.id) && U.chance(0.5)) E.stat('smarts', 1);
+    if (/painting|singing|comedy/.test(sk.id)) E.stat('happy', 2 * f);
+    if (sk.id === 'cooking') E.stat('health', 1);
     if (sk.id === 'fitness') { me().athl = U.clamp(me().athl + 1, 0, 100); E.stat('health', 1); }
     if (sk.id === 'singing') s.flags.music = (s.flags.music || 0) + f;
     if (sk.id === 'comedy') s.flags.acting = (s.flags.acting || 0) + f / 2;
     var high = SKILLS.filter(function (x) { return skill(x.id) >= 80; }).length;
     if (high >= 3) E.achieve('polymath');
-    done('I practiced ' + sk.name.toLowerCase() + '. ' + sk.icon + ' (' + s.skills[sk.id] + '/100)');
+    done('I practiced ' + sk.name.toLowerCase() + '. ' + sk.icon + ' (+' + gain + ', now ' + s.skills[sk.id] + '/100)');
   }
   var GENRES = ['Mystery', 'Romance', 'Sci-Fi', 'Fantasy', 'Thriller', 'Memoir', 'Self-Help', 'Horror', 'Children\'s', 'Poetry'];
   function writeBook() {
