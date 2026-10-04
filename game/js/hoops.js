@@ -74,7 +74,7 @@ TL.hoops = (function () {
     var sp = S().sports, ms = sp && sp.sport === 'Basketball Team' ? (sp.skill - 40) / 8 : 0; // middle school hoops count
     var ovr = U.clamp(Math.round(23 + m.athl * 0.32 + (cm - (g === 'F' ? 178 : 196)) * 0.5 + ms + U.rand(-6, 6)), 20, 70);
     S().hoops = { stage: stage, cm: cm, pos: posFor(cm, g), num: U.pick([0, 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 15, 21, 23, 24, 30, 32, 33, 34, 35]), ovr: ovr,
-      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(7, 8)) + (m.athl - 70) / 6 + (U.chance(0.06) ? U.rand(8, 20) : 0) + (TL.talents ? TL.talents.ceiling('hoops') : 0)), ovr + 4, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
+      pot: U.clamp(Math.round(ovr + Math.abs(U.gauss(9, 7)) + (m.athl - 65) / 6 + (U.chance(0.06) ? U.rand(8, 16) : 0) + (TL.talents ? TL.talents.ceiling('hoops') : 0)), ovr + 4, 99), seasons: [], rings: 0, mvp: 0, allstar: 0, fmvp: 0, roy: false, stars: 0, fame0: 0 };
     prof(S().hoops);
     return S().hoops;
   }
@@ -132,6 +132,22 @@ TL.hoops = (function () {
     var fg = U.clamp(0.41 + (a('ath') - 70) / 450 + (a('sho') - 70) / 600 + (big ? 0.06 : 0) + U.randf(-0.02, 0.02), 0.36, 0.68);
     var tp = U.clamp(0.3 + (a('sho') - 70) / 260 + U.randf(-0.025, 0.025), 0.22, 0.47);
     return { ppg: +ppg.toFixed(1), rpg: +rpg.toFixed(1), apg: +apg.toFixed(1), spg: +spg.toFixed(1), bpg: +bpg.toFixed(1), fg: Math.round(fg * 1000) / 10, tp: Math.round(tp * 1000) / 10 };
+  }
+  // A game plan bends the stat line: shots, passes or stops.
+  function planLine(l, k) {
+    var f = { score: { ppg: 1.12, apg: 0.85, fg: -1.5 }, team: { ppg: 0.93, apg: 1.3, fg: 0.8 }, def: { ppg: 0.92, spg: 1.4, bpg: 1.4 } }[k];
+    if (!f) return l;
+    ['ppg', 'rpg', 'apg', 'spg', 'bpg'].forEach(function (s) { if (f[s]) l[s] = +(l[s] * f[s]).toFixed(1); });
+    if (f.fg) l.fg = Math.round((l.fg + f.fg) * 10) / 10;
+    return l;
+  }
+  function gamePlan() {
+    var s = S(), set = function (k, msg) { s.flags.hoopsPlan = { y: s.year, k: k }; return done(msg); };
+    ui().choose('📋 Game plan', 'What kind of season do I want to have?', [
+      { label: '🎯 Score-first (more points, more shots, a bit less winning)', fn: function () { set('score', 'I\'m hunting buckets this season. Give me the ball. 🎯'); } },
+      { label: '🤝 Team-first (more assists, my team wins more)', fn: function () { set('team', 'I\'m making everyone around me better this season. 🤝'); } },
+      { label: '🔒 Lockdown defense (steals, blocks, a shot at DPOY)', fn: function () { set('def', 'I\'m guarding the other team\'s best player every night. 🔒'); } }
+    ]);
   }
   function role(o) { return o >= 90 ? ['Franchise Superstar', 36] : o >= 84 ? ['All-Star Starter', 34] : o >= 77 ? ['Starter', 30] : o >= 70 ? ['Rotation Player', 22] : o >= 63 ? ['Bench Player', 14] : ['Deep Bench', 6]; }
   function fmtLine(l) { return l.ppg + ' PTS · ' + l.rpg + ' REB · ' + l.apg + ' AST'; }
@@ -225,12 +241,16 @@ TL.hoops = (function () {
       x.ovr = U.clamp(x.ovr - injured[2], 20, 99); E.stat('health', -injured[2] * 3 - 3); E.stat('happy', -6);
     }
     var played = injured ? Math.max(0, gp - Math.round(injured[1] * gp / 82)) : gp - U.rand(0, Math.round(gp * 0.08));
-    var l = statLine(x, mins), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', home = lg === 'NBA' || lg === 'WNBA';
+    // My game plan this season (chosen from the menu last year): score-first, team-first or lockdown D.
+    var gpl = s.flags.hoopsPlan && s.flags.hoopsPlan.y >= s.year - 1 ? s.flags.hoopsPlan.k : null; delete s.flags.hoopsPlan;
+    var l = planLine(statLine(x, mins), gpl), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', home = lg === 'NBA' || lg === 'WNBA';
     // Franchises move and rename (Seattle became Oklahoma City); keep up.
     if (home && TL.nba) { var nowName = TL.nba.current(me().gender, x.team, s.year); if (nowName !== x.team) { E.log('🚚 The ' + x.team + ' are now the ' + nowName + '.'); x.team = nowName; j.company = 'the ' + nowName + ' (' + lg + ')'; } }
     // From my first season in the league, the whole league is simulated
     // (js/league.js): my team's record and playoff run come from it.
+    x.lgBoost = gpl === 'team' ? 2 : gpl === 'def' ? 1 : gpl === 'score' ? -1 : 0;
     var sim = home && TL.league ? TL.league.mine(me().gender, s.year, { clutch: mins >= 22 }) : null;
+    x.lgBoost = 0;
     var mates = home && TL.nba ? TL.nba.starsOn(me().gender, x.team, s.year) : [];
     var wins, rec, pct, result, round = -1, odds = 0;
     if (sim) {
@@ -239,7 +259,7 @@ TL.hoops = (function () {
       result = round < 0 ? 'Missed the playoffs' : RESULTS[round];
     } else {
       // My team's own strength matters as much as I do.
-      var strength = 41 + (tq(x.team) - 50) * 0.6 + U.rand(-9, 9) + (x.ovr - 75) * (mins / 36) + (played / gp - 1) * 10;
+      var strength = 41 + (tq(x.team) - 50) * 0.6 + U.rand(-9, 9) + (x.ovr + (gpl === 'team' ? 2 : gpl === 'def' ? 1 : gpl === 'score' ? -1 : 0) - 75) * (mins / 36) + (played / gp - 1) * 10;
       wins = U.clamp(Math.round(strength * gp / 82), Math.round(gp * 0.15), Math.round(gp * 0.85));
       if (wins / gp < 0.5) result = 'Missed the playoffs';
       else {
@@ -270,7 +290,7 @@ TL.hoops = (function () {
       if (played >= gp * 0.65) {
         var score = x.ovr + (l.ppg - 22 * sc) * 0.25 + U.randf(-1.5, 1.5), tm = score >= 91 ? 0 : score >= 88 ? 1 : score >= 85.5 ? 2 : -1;
         if (tm >= 0) { var nm = (lg === 'EuroLeague' ? 'All-EuroLeague' : 'All-' + lg) + ' ' + ['First', 'Second', 'Third'][tm] + ' Team'; award(x, nm, line); E.log('🏅 I made the ' + nm + '.', 'good'); E.fame(3 - tm); }
-        if (mins >= 30 && attr(x, 'def') >= 90 && U.chance(0.15 + (attr(x, 'def') - 90) / 30)) { award(x, 'Defensive Player of the Year', line); E.log('🔒 I won Defensive Player of the Year!', 'good'); E.fame(4); }
+        if (mins >= 30 && attr(x, 'def') >= (gpl === 'def' ? 85 : 90) && U.chance(0.15 + (gpl === 'def' ? 0.15 : 0) + (attr(x, 'def') - 90) / 30)) { award(x, 'Defensive Player of the Year', line); E.log('🔒 I won Defensive Player of the Year!', 'good'); E.fame(4); }
         if (mins === 22 && l.ppg >= 13 * sc && U.chance(0.15)) { award(x, 'Sixth Man of the Year', line); E.log('🪑 I won Sixth Man of the Year!', 'good'); E.fame(3); }
         if (!awards(x, /^Most Improved/) && x.ovr - before >= 5 && x.ovr >= 72 && me().age <= 27 && U.chance(0.45)) { award(x, 'Most Improved Player', line); E.log('📈 I won Most Improved Player!', 'good'); E.fame(3); }
         if (l.ppg >= 29 * sc && U.chance(0.3)) { award(x, 'Scoring title', line); E.log('🔥 I led the league in scoring at ' + l.ppg + ' points a game!', 'good'); E.fame(4); }
@@ -590,7 +610,7 @@ TL.hoops = (function () {
     // Near my ceiling, hard work raises the ceiling itself, once a year until
     // 31 (more reliably while I'm young).
     var ceil = s.flags.hoopsCeil && s.flags.hoopsCeil.y === s.year ? s.flags.hoopsCeil.n : 0;
-    if (x.ovr >= x.pot - 2 && me().age < 31 && x.pot < 99 && ceil < 1 && U.chance(me().age < 26 ? 0.6 : 0.35)) { s.flags.hoopsCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
+    if (x.ovr >= x.pot - 3 && me().age < 31 && x.pot < 99 && ceil < 1 && U.chance(me().age < 26 ? 0.6 : 0.35)) { s.flags.hoopsCeil = { y: s.year, n: ceil + 1 }; x.pot++; raised = true; }
     var capped = x.ovr >= x.pot;
     x.ovr = U.clamp(x.ovr + (capped ? 0 : Math.min(gain, Math.max(0, x.pot - x.ovr))), 20, 99);
     // What I work on shapes the kind of player I become.
@@ -614,6 +634,8 @@ TL.hoops = (function () {
         });
       }
       if (x && x.stage === 'pro') {
+        var gpNow = S().flags.hoopsPlan && S().flags.hoopsPlan.y === S().year ? S().flags.hoopsPlan.k : null;
+        items.push({ icon: '📋', label: 'Game plan', sub: gpNow ? { score: 'Score-first this season', team: 'Team-first this season', def: 'Lockdown defense this season' }[gpNow] : 'Pick how I play this season', onClick: gamePlan });
         items.push({ section: 'Off the court' });
         items.push({ icon: '🎤', label: 'Press conference', onClick: function () {
           if (!onceAYear('hoops_press')) return done(nope('One press conference a year is plenty.'));

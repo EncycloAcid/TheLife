@@ -38,7 +38,7 @@ TL.league = (function () {
   function meIn(g) {
     var x = S().hoops, L = st(g);
     if (!L || !x || x.stage !== 'pro' || x.league !== lgName(g) || S().me.gender !== g) return null;
-    var f = fidOf(L, x.team); return f ? { t: f, o: x.ovr, n: myName(), me: true, a: S().me.age } : null;
+    var f = fidOf(L, x.team); return f ? { t: f, o: x.ovr + (x.lgBoost || 0), n: myName(), me: true, a: S().me.age } : null;
   }
 
   // ------------------------------------------------------------ seeding

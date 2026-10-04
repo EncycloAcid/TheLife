@@ -1221,18 +1221,18 @@ TL.actions = (function () {
         var ill = D.illness(n) || { cure: 0.5, cost: 200 };
         var cost = E.$(ill.cost);
         items.push({ section: n });
-        items.push({ icon: '🏥', label: ill.incurable ? 'Manage ' + n.toLowerCase() : 'Treat ' + n.toLowerCase(), sub: ill.incurable ? 'Incurable — treatment helps' : 'Hospital doctor', right: E.fmt(cost), onClick: function () {
+        items.push({ icon: '🏥', label: ill.incurable ? 'Manage ' + E.illLow(n) : 'Treat ' + E.illLow(n), sub: ill.incurable ? 'Incurable — treatment helps' : 'Hospital doctor', right: E.fmt(cost), onClick: function () {
           if (!afford(cost) && me().age >= 18) return done(noMoney(cost));
           if (me().age >= 18) E.addMoney(-cost);
           if (used('treat' + n) >= 2) return done(nope('The doctors say there\'s nothing more they can do this year.'));
           use('treat' + n);
-          if (ill.incurable) { E.stat('health', U.rand(3, 8)); return done('The treatment helped me manage my ' + n.toLowerCase() + '.'); }
-          if (U.chance(ill.cure)) { E.removeCondition(n); E.stat('health', U.rand(4, 12)); if (n === 'Cancer') E.achieve('survivor'); return done(good('The treatment worked! I\'m cured of ' + n.toLowerCase() + '.')); }
+          if (ill.incurable) { E.stat('health', U.rand(3, 8)); return done('The treatment helped me manage my ' + E.illLow(n) + '.'); }
+          if (U.chance(ill.cure)) { E.removeCondition(n); E.stat('health', U.rand(4, 12)); if (n === 'Cancer') E.achieve('survivor'); return done(good('The treatment worked! I\'m cured of ' + E.illLow(n) + '.')); }
           done(bad('The treatment didn\'t work.'));
         } });
         if (!ill.incurable) items.push({ icon: '🌿', label: 'Try a herbalist', right: E.fmt(E.$(40)), onClick: function () {
           E.addMoney(-E.$(40));
-          if (U.chance(ill.cure * 0.3)) { E.removeCondition(n); return done(good('Somehow, the herbs worked! My ' + n.toLowerCase() + ' is gone.')); }
+          if (U.chance(ill.cure * 0.3)) { E.removeCondition(n); return done(good('Somehow, the herbs worked! My ' + E.illLow(n) + ' is gone.')); }
           if (U.chance(0.2)) { E.stat('health', -5); return done(bad('The herbal tea made me violently ill.')); }
           done('The herbs did nothing.');
         } });
@@ -1247,7 +1247,7 @@ TL.actions = (function () {
     var f = diminish('therapy');
     E.stat('happy', U.rand(4, 10) * f);
     var mental = S().conditions.filter(function (n) { var i = D.illness(n); return i && i.therapy; });
-    if (mental.length && U.chance(0.3 * f)) { E.removeCondition(mental[0]); return done(good('Therapy helped me overcome my ' + mental[0].toLowerCase() + '.')); }
+    if (mental.length && U.chance(0.3 * f)) { E.removeCondition(mental[0]); return done(good('Therapy helped me overcome my ' + E.illLow(mental[0]) + '.')); }
     done('I talked through my feelings with a therapist.');
   }
   function surgeryMenu() {

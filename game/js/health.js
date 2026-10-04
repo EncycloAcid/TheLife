@@ -162,7 +162,7 @@ TL.health = (function () {
   }
   function deathCause() {
     var m = st(), n = Object.keys(m.hidden)[0];
-    return n ? (E.ancient() ? 'a hidden illness' : 'undiagnosed ' + n.toLowerCase()) : null;
+    return n ? (E.ancient() ? 'a hidden illness' : 'undiagnosed ' + E.illLow(n)) : null;
   }
 
   // ------------------------------------------------------------ events
@@ -282,14 +282,14 @@ TL.health = (function () {
     }
     if (ill.incurable) { out.push(medItem(n, ill)); return out; }
     var cr = Math.min(0.98, ill.cure * eraCure(n));
-    out.push({ icon: '🏥', label: 'Treat ' + n.toLowerCase(), sub: Math.round(cr * 100) + '% success rate' + (eraCure(n) < 1 ? ' · medicine of the day' : ''), right: priced(ill.cost), onClick: attempt('treat' + n, ill.cost, function () {
+    out.push({ icon: '🏥', label: 'Treat ' + E.illLow(n), sub: Math.round(cr * 100) + '% success rate' + (eraCure(n) < 1 ? ' · medicine of the day' : ''), right: priced(ill.cost), onClick: attempt('treat' + n, ill.cost, function () {
       if (U.chance(cr)) return cure(n, 'The treatment worked! I\'m over my ' + n.toLowerCase() + '.');
       done(bad('The treatment didn\'t work this time.'));
     }) });
     if (!ill.therapy && !ill.rehab) out.push({ icon: '🌿', label: 'Try a herbalist', right: E.fmt(E.$(40)), onClick: function () {
       if (count('herb' + n)) return done(nope('I already tried the herbs this year.'));
       bump('herb' + n); E.addMoney(-E.$(40));
-      if (U.chance(ill.cure * 0.3)) { E.removeCondition(n); return done(good('Somehow, the herbs worked! My ' + n.toLowerCase() + ' is gone.')); }
+      if (U.chance(ill.cure * 0.3)) { E.removeCondition(n); return done(good('Somehow, the herbs worked! My ' + E.illLow(n) + ' is gone.')); }
       if (U.chance(0.2)) { E.stat('health', -5); return done(bad('The herbal tea made me violently ill.')); }
       done('The herbs did nothing.');
     } });

@@ -15,8 +15,10 @@ TL.engine = (function () {
   function illName(n) { return TL.S && country().ancient && TL.ancient ? TL.ancient.illName(n) : n; }
   // "a common cold", "the flu", "PTSD": an illness as it reads after "diagnosed with".
   var ILL_ART = { 'Common Cold': 'a', 'Flu': 'the', 'Ear Infection': 'an', 'Migraine': 'a', 'Broken Arm': 'a', 'Broken Leg': 'a', 'Concussion': 'a', 'Gambling Addiction': 'a', 'Nicotine Addiction': 'a' };
+  // Lowercase for mid-sentence use, but keep acronyms (PTSD).
+  function illLow(t) { return /^[A-Z0-9]{2,}$/.test(t) ? t : t.toLowerCase(); }
   function illWith(n) {
-    var t = illName(n), low = /^[A-Z0-9]{2,}$/.test(t) ? t : t.toLowerCase();
+    var t = illName(n), low = illLow(t);
     return t === n && ILL_ART[n] ? ILL_ART[n] + ' ' + low : low;
   }
   function yearLabel(y) { var e = TL.S && country().ancient && TL.ancient && TL.ancient.era(); return e && e.ad ? 'AD ' + y : String(y); }
@@ -1517,7 +1519,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, npcDies: npcDies,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
