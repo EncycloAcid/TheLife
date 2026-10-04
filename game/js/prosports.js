@@ -365,6 +365,8 @@ TL.pro = (function () {
       } else if (x.contract.years <= 0) s.pending.push({ id: 'pro_fa', data: {} });
       // Rosters are ruthless: a player who falls off gets released mid-contract.
       else if (x.stage === 'pro' && x.ovr < 60 && U.chance(0.45)) { E.log('✂️ ' + x.team + ' released me.', 'bad'); E.stat('happy', -10); x.contract.years = 0; s.pending.push({ id: 'pro_fa', data: {} }); }
+      // Outplaying my deal: the team tries to lock me up before free agency.
+      else if (x.stage === 'pro' && x.ovr >= 70 && x.contract.min != null && salaryFor(x.ovr, x.contract) >= x.contract.salary * 1.35 && x.extYear !== s.year && U.chance(0.6)) { x.extYear = s.year; s.pending.push({ id: 'pro_ext', data: {} }); }
       else if (x.stage === 'pro' && U.chance(0.05)) { var nt = bigLeague(x.sport); if (nt.team !== x.team) { E.log('🔁 I was traded to ' + nt.team + '.'); x.team = nt.team; } }
     }
     var fading = x.ovr < (x.stage === 'minors' ? 50 : 56) || (x.stage === 'minors' && a >= 28 && x.ovr < 60) || (a >= C.old - 2 && x.ovr < 70) || a >= C.old + 3 || (a >= C.old && x.ovr < 75) || (x.concussions || 0) >= 4;
@@ -402,9 +404,9 @@ TL.pro = (function () {
       var t = x.sport === 'Soccer' && !female() && x.ovr >= 80 && U.chance(0.5) ? bigLeague('Soccer', U.pick(['United Kingdom', 'Spain', 'Italy', 'Germany', 'France'])) : bigLeague(x.sport);
       if (seen[t.team]) continue; seen[t.team] = 1;
       (function (t) {
-        var q = x.sport === 'Tennis' ? 50 : tq(t.team), yrs = U.clamp(Math.round(U.rand(1, 5) - Math.max(0, a - 30) / 2), 1, 5), sal = Math.round(salaryFor(x.ovr + U.rand(-2, 3), t) * (q >= 60 ? U.randf(0.8, 1) : q < 39 ? U.randf(1.05, 1.25) : 1) / 1000) * 1000;
+        var q = x.sport === 'Tennis' ? 50 : tq(t.team), yrs = U.clamp(Math.round(U.rand(1, 5) - Math.max(0, a - 30) / 2), 1, 5), sal = Math.round(salaryFor(x.ovr + U.rand(-2, 3), t) * (x.betSelf ? 1.12 : 1) * (q >= 60 ? U.randf(0.8, 1) : q < 39 ? U.randf(1.05, 1.25) : 1) / 1000) * 1000;
         ch.push({ label: (t.team === x.team ? 'Re-sign with ' : '') + t.team + (t.league !== x.league ? ' (' + t.league + ')' : '') + (x.sport === 'Tennis' ? '' : ', ' + outlook(q)) + ': ' + E.fmt(E.$(sal)) + '/yr · ' + U.plural(yrs, 'year'), run: function () {
-          var moved = t.team !== x.team; sign(t, yrs, sal, 'pro'); E.stat('happy', 8);
+          var moved = t.team !== x.team; sign(t, yrs, sal, 'pro'); E.stat('happy', 8); x.betSelf = false;
           return good((moved ? 'I signed with ' : 'I re-signed with ') + t.team + ' for ' + U.plural(yrs, 'year') + ' at ' + E.fmt(E.$(sal)) + ' a year. ✍️');
         } });
       })(t);
@@ -412,6 +414,31 @@ TL.pro = (function () {
     if (!ch.length) { var mi = placeFor({ sport: x.sport, ovr: 0 }); ch.push({ label: 'Take ' + (/^[AEIOU]/.test(mi.t.league) ? 'an ' : 'a ') + (/^[A-Z]{2,}/.test(mi.t.league) ? mi.t.league : mi.t.league.toLowerCase()) + ' deal', run: function () { sign(mi.t, 1, salaryFor(x.ovr, mi.t), 'minors'); return 'No big-league team wanted me. I signed with ' + mi.t.team + ' to keep my dream alive.'; } }); }
     ch.push({ label: 'Retire', run: function () { return retire(); } });
     return { icon: '✍️', title: 'Free agency', text: 'My contract with ' + x.team + ' is up. I\'m ' + a + ', rated ' + x.ovr + ' overall. ' + (nOff ? 'Here are my offers:' : 'The phone isn\'t ringing.'), choices: ch };
+  } });
+  // A breakout player on a cheap deal: take the security, bet on myself, or hold out.
+  def('pro_ext', { cond: function () { var x = h(); return !!(x && x.stage === 'pro' && x.contract && x.contract.years >= 1); }, build: function () {
+    var x = h(), a = me().age, c = x.contract, market = salaryFor(x.ovr, c);
+    if (market < c.salary * 1.25) return null;
+    var offer = Math.round(market * U.randf(0.82, 0.92) / 1000) * 1000, yrs = U.clamp(c.years + U.rand(2, 4) - Math.max(0, a - 30), c.years + 1, 5);
+    var ch = [
+      { label: 'Sign it: ' + E.fmt(E.$(offer)) + '/yr for ' + U.plural(yrs, 'year'), run: function () {
+        c.salary = offer; c.years = yrs; x.betSelf = false; E.stat('happy', 8); if (S().job) S().job.salary = E.$(offer);
+        return good('I signed a ' + U.plural(yrs, 'year') + ' extension with ' + x.team + ' at ' + E.fmt(E.$(offer)) + ' a year. Set for life. ✍️');
+      } },
+      { label: 'Bet on myself (play it out, test free agency)', run: function () {
+        x.betSelf = true; E.fame(1);
+        return 'I turned down the extension. If I stay healthy, free agency will pay me more. If I don\'t... 🎲';
+      } }
+    ];
+    if (x.ovr >= 80) ch.push({ label: 'Hold out for a bigger deal', run: function () {
+      if (U.chance(U.clamp(0.3 + (x.ovr - 80) / 25, 0.3, 0.8))) {
+        var big = Math.round(market * U.randf(1, 1.1) / 1000) * 1000; c.salary = big; c.years = yrs; x.betSelf = false; E.stat('happy', 10); E.fame(2); if (S().job) S().job.salary = E.$(big);
+        return good(x.team + ' caved. I signed for ' + E.fmt(E.$(big)) + ' a year for ' + U.plural(yrs, 'year') + '. 💰');
+      }
+      E.stat('happy', -8); E.fame(-2); E.karma(-1); if (x.team) { var q0 = tq(x.team); x.tq[x.team] = U.clamp(q0 - 3, 25, 80); }
+      return bad('The holdout got ugly. Fans booed, the team didn\'t budge, and I reported to camp on my old deal.');
+    } });
+    return { icon: '✍️', title: 'Contract extension', text: x.team + ' wants to lock me up before I hit free agency. I\'m rated ' + x.ovr + ' overall, and my deal pays ' + E.fmt(E.$(c.salary)) + ' a year with ' + U.plural(c.years, 'year') + ' left.', choices: ch };
   } });
   var CLUTCH = {
     Football: ['Fourth and goal from the 6, four seconds left, down by four.', [['spd', 'Take it to the edge myself'], ['pwr', 'Run it straight up the middle'], ['iq', 'Read the defense and audible']]],
