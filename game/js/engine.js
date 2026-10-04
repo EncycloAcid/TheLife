@@ -491,6 +491,7 @@ TL.engine = (function () {
     if (job.acting) return TL.acting ? TL.acting.title() : job.title || 'Actor';
     if (job.music) return TL.music ? TL.music.title() : job.title || 'Musician';
     if (job.pro) return TL.pro ? TL.pro.title() : job.title || 'Athlete';
+    if (job.coach) return job.title || 'Coach';
     if (job.hoops) return (job.title || 'Basketball Player') + (TL.hoops && S().hoops ? ' (' + ({ PG: 'PG', SG: 'SG', SF: 'SF', PF: 'PF', C: 'C' }[S().hoops.pos]) + ')' : '');
     if (job.partTime) return D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].name + ' (part-time)';
     return D.career(job.career).levels[job.level][0];

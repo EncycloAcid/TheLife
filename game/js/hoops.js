@@ -230,6 +230,7 @@ TL.hoops = (function () {
   }
   function season() {
     var s = S(), x = h(), j = s.job;
+    if (j && j.coach) return coachSeason();
     if (!x || x.stage !== 'pro') return 0;
     var before = x.ovr, F = me().gender === 'F', sc = F ? 0.8 : 1;
     develop(x, s.flags.hoopsTrain ? 1 : 0); s.flags.hoopsTrain = 0;
@@ -557,6 +558,66 @@ TL.hoops = (function () {
       { label: 'Rest my body this summer', run: function () { E.stat('health', 3); return 'I turned down the Olympics to rest my body for next season.'; } }
     ] };
   } });
+  // ------------------------------------------------------------ coaching
+  // After playing: an assistant's chair, then (if I'm good) a head job.
+  // Coaching skill comes from my basketball IQ and grows every season.
+  function cskill(x) { return Math.round(x.coach.skill); }
+  function coachPay(head, skill) { return Math.round((head ? (me().gender === 'F' ? 450000 : 3000000) * (1 + skill / 60) : (me().gender === 'F' ? 120000 : 600000)) * eraPay()); }
+  function becomeCoach() {
+    var x = h(), s = S();
+    if (me().age > 68) return done(nope('I\'m a little old to start coaching.'));
+    var iq = attr(x, 'pla'), fame = s.fame || 0, ch = U.clamp(0.35 + (iq - 60) / 80 + fame / 300 + (x.rings ? 0.1 : 0), 0.15, 0.95);
+    if (!onceAYear('hoops_coachtry')) return done(nope('I already made my calls this year.'));
+    if (!U.chance(ch)) return done('I called around, but nobody had a bench spot open. Next year. 📞');
+    var team = U.pick(teams());
+    x.coach = x.coach || { skill: U.clamp(20 + iq / 3 + (x.seasons.length) / 2, 20, 60), years: 0, head: 0, wins: 0, losses: 0, titles: 0, coy: 0 };
+    x.coach.team = team; x.coach.role = 'assistant'; x.coach.hire = s.year;
+    if (s.job) E.quitJob(true);
+    s.job = { career: 'coach', hoops: true, coach: true, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, company: 'the ' + team.replace(/^the /, '') + ' (' + league() + ')', salary: E.$(coachPay(false, x.coach.skill)), title: 'Assistant Coach' };
+    E.log('📋 I joined the ' + team.replace(/^the /, '') + ' as an assistant coach.', 'good');
+    return done(good('The ' + team.replace(/^the /, '') + ' hired me as an assistant coach. 📋'));
+  }
+  function coachSeason() {
+    var s = S(), x = h(), c = x && x.coach, j = s.job;
+    if (!c || !j) return 0;
+    c.years++; c.skill = U.clamp(c.skill + U.rand(1, 3) + (me().smarts - 60) / 40, 0, 99);
+    if (c.role === 'assistant') {
+      E.log('📋 Another season on the ' + c.team.replace(/^the /, '') + '\'s bench. Coaching skill ' + cskill(x) + '.');
+      if (c.years >= 2 && U.chance(U.clamp(0.15 + (c.skill - 45) / 60 + (s.fame || 0) / 400, 0.05, 0.75))) s.pending.push({ id: 'hoops_coach_offer', data: {} });
+      return j.salary;
+    }
+    // Head coach: the roster's quality plus my coaching.
+    var gp = games(), q = tq(c.team), strength = (q - 50) * 1.05 + (c.skill - 55) / 2.5 + U.rand(-7, 7);
+    var wins = U.clamp(Math.round(gp / 2 + strength * gp / 82), Math.round(gp * 0.12), Math.round(gp * 0.88)), losses = gp - wins;
+    c.head++; c.wins += wins; c.losses += losses;
+    var rec = wins + '-' + losses, expect = Math.round(gp / 2 + (q - 50) * 1.05 * gp / 82), msg = '📋 Coaching the ' + c.team.replace(/^the /, '') + ': ' + rec + '.', cls = '';
+    if (wins / gp >= 0.5) {
+      var round = 0, odds = U.clamp(0.3 + (wins / gp - 0.5) + (c.skill - 60) / 150, 0.1, 0.72);
+      while (round < 4 && U.chance(odds)) round++;
+      msg += ' Playoffs: ' + RESULTS[round].charAt(0).toLowerCase() + RESULTS[round].slice(1) + '.';
+      if (round === 4) { c.titles++; E.fame(6); E.stat('happy', 20); msg += ' 🏆'; cls = 'good'; (s.awards = s.awards || []).push({ award: league() + ' championship', cat: 'as head coach of the ' + c.team.replace(/^the /, ''), year: s.year }); }
+    } else msg += ' We missed the playoffs.';
+    if (wins - expect >= 12 && U.chance(0.35)) { c.coy++; award(x, 'Coach of the Year', { year: s.year }); msg += ' I was named Coach of the Year!'; cls = 'good'; E.fame(3); }
+    E.log(msg, cls);
+    drift(x);
+    // Owners are impatient.
+    c.bad = wins / gp < 0.37 ? (c.bad || 0) + 1 : 0;
+    if (c.bad >= 2 && U.chance(0.6)) { E.log('✂️ The ' + c.team.replace(/^the /, '') + ' fired me as head coach.', 'bad'); E.stat('happy', -10); c.role = 'assistant'; c.bad = 0; x.coach.fired = (x.coach.fired || 0) + 1; j.title = 'Assistant Coach'; j.salary = E.$(coachPay(false, c.skill)); c.team = U.pick(teams()); j.company = 'the ' + c.team.replace(/^the /, '') + ' (' + league() + ')'; E.log('📋 I landed back on a bench as an assistant with the ' + c.team.replace(/^the /, '') + '.'); }
+    return j.salary;
+  }
+  def('hoops_coach_offer', { build: function () {
+    var x = h(), c = x && x.coach; if (!c || c.role !== 'assistant') return null;
+    var pool = U.shuffle(teams().slice()), bad = pool.filter(function (t) { return tq(t) < 45; })[0] || pool[0], ok = pool.filter(function (t) { return tq(t) >= 50 && t !== bad; })[0];
+    var take = function (t) { c.role = 'head'; c.team = t; var j = S().job; j.title = 'Head Coach'; j.salary = E.$(coachPay(true, c.skill)); j.company = 'the ' + t.replace(/^the /, '') + ' (' + league() + ')'; E.fame(3); E.stat('happy', 12); return good('I\'m the new head coach of the ' + t.replace(/^the /, '') + ', ' + teamKind(tq(t)) + '. 📋'); };
+    var ch = [{ label: 'Rebuild the ' + bad.replace(/^the /, '') + ' (' + outlook(tq(bad)) + ')', run: function () { return take(bad); } }];
+    if (ok && U.chance(0.35 + c.skill / 200)) ch.push({ label: 'Take over the ' + ok.replace(/^the /, '') + ' (' + outlook(tq(ok)) + ')', run: function () { return take(ok); } });
+    ch.push({ label: 'Stay an assistant for now', run: function () { return 'I stayed on the bench. My time will come.'; } });
+    return { icon: '📋', title: 'Head coaching offer', text: 'After ' + U.plural(c.years, 'season') + ' as an assistant, teams want me to run the show. Coaching skill ' + cskill(x) + '.', choices: ch };
+  } });
+  function coachLine(x) {
+    var c = x.coach; if (!c) return '';
+    return '<div class="small muted" style="margin-top:6px">📋 ' + (S().job && S().job.coach ? (c.role === 'head' ? 'Head coach' : 'Assistant coach') + ', ' + c.team.replace(/^the /, '') : 'Former coach') + ' · skill ' + cskill(x) + (c.head ? ' · ' + c.wins + '-' + c.losses + ' as head coach' : '') + (c.titles ? ' · ' + U.plural(c.titles, 'title') : '') + (c.coy ? ' · ' + c.coy + '× Coach of the Year' : '') + '</div>';
+  }
   function retire() {
     var x = h(), s = S();
     x.stage = 'retired'; x.retiredYear = s.year;
@@ -645,6 +706,8 @@ TL.hoops = (function () {
     ui().menu('Basketball 🏀', function () {
       var x = h(), items = [{ info: true, html: card() }];
       if (!x || x.stage === 'retired' || !x.stage) {
+        if (x && x.stage === 'retired' && !(S().job && S().job.coach)) items.push({ icon: '📋', label: x.coach ? 'Get back into coaching' : 'Become a coach', sub: 'Start as an assistant; basketball IQ ' + attr(x, 'pla'), disabled: usedThisYear('hoops_coachtry'), onClick: becomeCoach });
+        if (x && x.stage === 'retired' && S().job && S().job.coach) items.push({ info: true, html: coachLine(x) });
         if (x && x.stage === 'retired') items.push({ icon: '🎙️', label: 'Become a TV analyst', onClick: function () { if (!onceAYear('hoops_tv')) return done(nope('I already did TV this year.')); var p = E.$(U.rand(200, 900) * 1000); E.addMoney(p); E.fame(2); done(good('I broke down games on TV for ' + E.fmt(p) + '.')); } });
       } else {
         items.push({ section: 'Train' });
