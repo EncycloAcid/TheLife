@@ -389,6 +389,33 @@ TL.acting = (function () {
       } };
     }).concat([{ label: 'Not now', fn: function () { done(null); } }]));
   }
+  // Directing: the studio finances it, my name goes on it. Directing skill grows
+  // with every film; starring in my own film too stretches me thin.
+  function direct() {
+    var x = st();
+    if (count('ac_direct')) return done(nope('I\'m already directing something this year.'));
+    if (busy(x) >= 2) return done(nope('My schedule is too full to direct a film this year.'));
+    var dirs = (x.credits || []).filter(function (c) { return c.directed; }), lastGood = dirs.some(function (c) { return c.review >= 70; });
+    var kinds = [['indie', '🎞️ An indie the studio finances', 150000]];
+    if (x.rep >= 75 || lastGood) kinds.push(['studio', '🎬 A studio film', 2000000]);
+    ui().choose('🎬 Direct a film', 'Directing skill: ' + Math.round(x.dirSkill || dirStart(x)) + (dirs.length ? ' · ' + U.plural(dirs.length, 'film') + ' directed' : ' · my debut') + '. What do I make?', kinds.map(function (kd) {
+      return { label: kd[1] + ' (' + E.fmt(E.$(kd[2])) + ' fee)', fn: function () {
+        var g = U.pick(GENRES.filter(function (q) { return q !== 'musical'; })), t = U.pick(W1) + ' ' + U.pick(W2);
+        ui().choose('🎬 "' + t + '"', E.an(g).replace(/^a/, 'A') + '. Do I star in it too?', [
+          { label: '🎭 Direct and star (more box office, harder to pull off)', fn: function () { startDirect(x, kd, g, true, t); } },
+          { label: '🎥 Stay behind the camera', fn: function () { startDirect(x, kd, g, false, t); } }
+        ]);
+      } };
+    }).concat([{ label: 'Not now', fn: function () { done(null); } }]));
+  }
+  function dirStart(x) { return U.clamp(25 + (x.skill || 0) / 4 + (me().smarts - 50) / 4 + Math.min(10, (x.credits || []).length / 2), 10, 60); }
+  function startDirect(x, kd, g, star, title) {
+    bump('ac_direct'); x.dirSkill = x.dirSkill || dirStart(x);
+    var mine = me().first + ' ' + me().last;
+    var c = { kind: kd[0], part: star ? 'Lead' : 'Director', title: title, studio: pickStudio(kd[0]), genre: g, pay: kd[2], diff: 0, rep: KINDS[kd[0]].parts.Lead[3], directed: true, director: mine, costar: star ? null : pickCostar() };
+    pay(c.pay); x.slate.push(c); E.stat('happy', 8);
+    done(good('I\'m directing ' + (star ? 'and starring in ' : '') + '"' + c.title + '", a ' + g + (c.costar ? ' starring ' + c.costar : '') + '. It comes out at the end of the year. 🎬'));
+  }
   function leaveShow() {
     var x = st();
     ui().confirm('Leave the show?', 'Leave "' + x.series.title + '"?', function () {
@@ -443,6 +470,7 @@ TL.acting = (function () {
       x.slate.filter(datable).forEach(function (r) { items.push({ icon: '📅', label: 'Release date: "' + r.title + '"', sub: r.window ? WINDOWS[r.window][1] : 'Studio\'s call unless I push for a date', onClick: function () { pickWindow(r); } }); });
       if (x.slate.length) items.push({ icon: '🎤', label: 'Do a press tour', sub: 'Better buzz for this year\'s releases', disabled: count('ac_press') > 0, onClick: pressTour });
       if (x.series && x.series.seasons) items.push({ icon: '💰', label: 'Ask for a raise', sub: 'Now ' + E.fmt(E.$(x.series.pay)) + '/season · could backfire', disabled: count('ac_raise') > 0, onClick: askRaise });
+      if (x.rep >= 60 && me().age >= 25 && x.credits.length >= 5) items.push({ icon: '🎬', label: 'Direct a film', sub: 'Directing skill ' + Math.round(x.dirSkill || dirStart(x)) + ((x.credits || []).some(function (c) { return c.directed; }) ? ' · ' + U.plural(x.credits.filter(function (c) { return c.directed; }).length, 'film') + ' directed' : ' · make my debut'), disabled: count('ac_direct') > 0, onClick: direct });
       if (x.rep >= 50 && me().age >= 21) items.push({ icon: '🎥', label: 'Produce my own film', sub: 'Put up the budget, keep a share of the box office' + (x.produced ? ' · ' + U.plural(x.produced, 'film') + ' so far' : ''), disabled: count('ac_produce') > 0, onClick: produce });
       if (x.series) items.push({ icon: '🚪', label: 'Leave "' + x.series.title + '"', onClick: leaveShow });
       if ((x.sagas || []).length) {
@@ -472,6 +500,8 @@ TL.acting = (function () {
       if (best) rows.push({ icon: '⭐', label: 'Best reviewed: "' + best.title + '"', sub: rt(best.review, best.year) + ' (' + best.year + ')' });
       if (fav && dirs[fav] >= 2) rows.push({ icon: '🎥', label: 'Favorite director: ' + fav, sub: U.plural(dirs[fav], 'project') + ' together' + (x.muse === fav ? ' · their muse' : '') });
       if (x.produced) rows.push({ icon: '🎥', label: 'Produced ' + U.plural(x.produced, 'film') });
+      var dd = x.credits.filter(function (c) { return c.directed; });
+      if (dd.length) rows.push({ icon: '🎬', label: 'Directed ' + U.plural(dd.length, 'film'), sub: 'Best reviewed: "' + dd.slice().sort(function (a, b) { return b.review - a.review; })[0].title + '"' + (x.dirNoms ? ' · ' + U.plural(x.dirNoms, 'Best Director nomination') : '') });
       if (x.walk) rows.push({ icon: '⭐', label: 'Star on the Hollywood Walk of Fame', sub: 'Unveiled in ' + x.walk });
       if (x.honorary) rows.push({ icon: '🏆', label: 'Honorary Academy Award', sub: 'For lifetime achievement, ' + x.honorary });
       rows.push({ icon: '🎞️', label: U.plural(x.credits.length, 'credit'), sub: 'Range: ' + CRAFT.map(function (c) { return c[1] + ' ' + ca(x, c[0]); }).join(' · ') });
@@ -607,11 +637,13 @@ TL.acting = (function () {
     var sg = r.saga ? saga(x, r.saga) : null, prev = sg && sg.films.length ? sg.films[sg.films.length - 1] : null;
     // Sequels tend to review a little worse than the film that earned them.
     var q = x.skill * 0.35 + U.rand(5, 60) + fit(r) + (r.passion ? 12 : 0) + (r.franchise ? -8 : 0) + (prev ? -3 * sg.films.length + (r.legacy ? 6 : 0) : 0) + (x.press === s.year ? 4 : 0) + Math.min(4, again * 1.5) + (r.method ? 5 : 0) + (r.prep || 0) + (r.set || 0);
+    if (r.directed) q += ((x.dirSkill || 40) - 50) / 3 + (r.part === 'Lead' ? -4 : 2) - (r.part === 'Director' ? fit(r) : 0);
     var review = U.clamp(Math.round(q), 4, 99);
     var credit = { year: s.year, title: r.title, kind: r.kind, part: r.part, studio: r.studio, review: review, genre: r.genre, director: r.director };
     if (sg) credit.saga = sg.id;
     if (r.costar) credit.costar = r.costar;
     if (r.streaming) credit.streaming = 1;
+    if (r.directed) { credit.directed = 1; x.dirSkill = U.clamp((x.dirSkill || 40) + U.rand(3, 7) + (review >= 75 ? 2 : 0), 0, 99); }
     if (r.kind !== 'commercial') shiftCraft(x, GENRE_CRAFT[r.genre], 0.4);
     if (tc && GENRE_CRAFT[r.genre] && GENRE_CRAFT[r.genre] !== tc && review >= 80 && /Lead/.test(r.part)) E.log('🎭 "' + r.title + '" proved I\'m more than ' + E.an(typeName(tc).toLowerCase()) + '. Critics are calling it a revelation.', 'good');
     if (r.director && again >= 2 && review >= 85 && x.muse !== r.director) { x.muse = r.director; E.log('🎬 ' + r.director + ' calls me their muse. Expect more of their scripts.', 'good'); }
@@ -632,6 +664,7 @@ TL.acting = (function () {
       if (prev) base = Math.max(base * 0.6, (prev.base || prev.gross) * U.randf(0.75, 1.3) * (0.55 + review / 110)) * (r.legacy ? 1.3 : Math.pow(0.9, Math.max(0, sg.films.length - 2)));
       // The pandemic emptied theaters in 2020; 2021 was half a recovery.
       var covid = s.year === 2020 ? 0.2 : s.year === 2021 ? 0.65 : 1; base *= covid;
+      if (r.directed && r.part === 'Lead') base *= 1.15; // my name above the title, twice
       var winNote = '';
       if (r.window === 'summer') {
         var g0 = giant();
@@ -658,10 +691,12 @@ TL.acting = (function () {
       msg = k.icon + ' "' + r.title + '" (' + r.genre + (prev ? (r.legacy ? ', legacy sequel' : ', film ' + (sg.films.length + 1) + ' of the franchise') : '') + ') opened to ' + big(gross * 1e6 * U.randf(0.14, 0.3)) + ' and grossed ' + big(gross * 1e6) + ' worldwide on a ' + big(credit.budget * 1e6) + ' budget, with ' + rt(review) + '. ' + (verdict === 'smash' && gross >= 1000 ? 'A billion-dollar smash! 🍿' : VERDICT[verdict]);
       cls = verdict === 'smash' || verdict === 'hit' ? 'good' : (verdict === 'bomb' || verdict === 'flop') && lead ? 'bad' : '';
       if (r.costar) msg = msg.replace('" (' + r.genre + ')', '" (' + r.genre + ', with ' + r.costar + ')');
+      if (r.directed) msg = msg.replace('" (' + r.genre, '" (' + E.an(r.genre) + (r.part === 'Lead' ? ' I directed and starred in' : ' I directed'));
       if (s.year < 1928) msg = msg.replace('" (' + r.genre, '" (a silent ' + r.genre);
       if (covid < 1) msg += s.year === 2020 ? ' Theaters were mostly closed by the pandemic.' : ' Audiences were only starting to come back to theaters.';
       msg += (covid < 1 ? '' : winNote) + critic(review, s.year);
-      if (r.kind !== 'student') after = function () { if (sg) sagaFilm(x, sg, r, credit); else maybeSequel(x, r, credit); };
+      if (r.directed && review >= 84 && U.chance(0.25 + (review - 84) / 30)) { var dw = 0.15 + (review - 84) / 50; E.queue('award', { award: S().year >= 1929 ? 'Academy Award' : 'Directors Guild Award', cat: 'Best Director for "' + r.title + '"', win: dw }); x.dirNoms = (x.dirNoms || 0) + 1; }
+      if (r.kind !== 'student' && r.part !== 'Director') after = function () { if (sg) sagaFilm(x, sg, r, credit); else maybeSequel(x, r, credit); };
     } else if (r.kind === 'commercial') {
       msg = (s.year < 1949 ? '📻 My radio ad for ' : '📺 My commercial for ') + (r.brand || 'a soda brand') + ' aired nationwide.'; dr = 0.6;
     } else {
