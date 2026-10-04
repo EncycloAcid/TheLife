@@ -32,7 +32,7 @@ TL.mind = (function () {
 
   // ------------------------------------------------------------ memory
   // What I did, in the words they'd use to remember it.
-  var PAST = { 'Insult': 'insulted ~', 'Argue': 'argued with ~', 'Prank': 'pranked ~', 'Compliment': 'complimented ~', 'Give a gift': 'gave ~ a gift', 'Give money': 'gave ~ money', 'Hug': 'hugged ~', 'Spend time': 'spent time with ~', 'Have a conversation': 'had a heart-to-heart with ~', 'Ask for money': 'asked ~ for money', 'Go out partying': 'went out partying with ~', 'Date night': 'took ~ on a date night', 'Sue': 'sued ~', 'Propose': 'proposed to ~', 'Plan the wedding': 'planned our wedding', 'Befriend': 'befriended ~', 'Ask out': 'asked ~ out', 'Try to rekindle': 'tried to win ~ back', 'Read a bedtime story': 'read ~ bedtime stories', 'Help with homework': 'helped ~ with homework', 'Ask for a car': 'asked ~ for a car' };
+  var PAST = { 'Couples counseling': 'went to couples counseling with ~', 'Insult': 'insulted ~', 'Argue': 'argued with ~', 'Prank': 'pranked ~', 'Compliment': 'complimented ~', 'Give a gift': 'gave ~ a gift', 'Give money': 'gave ~ money', 'Hug': 'hugged ~', 'Spend time': 'spent time with ~', 'Have a conversation': 'had a heart-to-heart with ~', 'Ask for money': 'asked ~ for money', 'Go out partying': 'went out partying with ~', 'Date night': 'took ~ on a date night', 'Sue': 'sued ~', 'Propose': 'proposed to ~', 'Plan the wedding': 'planned our wedding', 'Befriend': 'befriended ~', 'Ask out': 'asked ~ out', 'Try to rekindle': 'tried to win ~ back', 'Read a bedtime story': 'read ~ bedtime stories', 'Help with homework': 'helped ~ with homework', 'Ask for a car': 'asked ~ for a car' };
   var ctx = null;
   function wrap(p, items) {
     items.forEach(function (it) {
@@ -45,7 +45,7 @@ TL.mind = (function () {
   function phrase(label, d, p) {
     var t = PAST[label];
     if (!t) return d < 0 ? 'we had a falling-out' : 'I was good to ~';
-    if (d < 0 && /complimented|hugged|spent time|heart-to-heart|partying|date night|gift/.test(t)) t += ', and it went badly';
+    if (d < 0 && /complimented|hugged|spent time|heart-to-heart|partying|date night|gift|counseling/.test(t)) t += ', and it went badly';
     return t;
   }
   // [year, effect, what, forgiven, theirs]: "theirs" marks things they did to me.

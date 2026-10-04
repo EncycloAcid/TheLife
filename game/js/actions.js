@@ -137,6 +137,7 @@ TL.actions = (function () {
       if (['partner', 'fiance', 'spouse'].indexOf(r) >= 0) {
         items.push({ section: 'Romance' });
         items.push({ icon: '🍷', label: 'Date night', onClick: function () { dateNight(p); } });
+        if (me().age >= 18 && p.rel < 75 && !(TL.ancient && TL.ancient.on())) items.push({ icon: '🛋️', label: 'Couples counseling', sub: (used('counsel' + p.id) ? 'Done this year' : 'Work through things together') + ' · ' + E.fmt(E.$(1800)), disabled: !!used('counsel' + p.id), onClick: function () { counseling(p); } });
         if (me().age >= 16) items.push({ icon: '👶', label: 'Try for a baby', onClick: function () { tryBaby(p); } });
         if (me().age >= 21) items.push({ icon: TL.ancient && TL.ancient.on() ? '🙏' : '🧬', label: 'Fertility options', sub: TL.ancient && TL.ancient.on() ? 'Prayers, remedies, adoption' : 'IVF, surrogacy, adoption', onClick: function () { fertility(p); } });
         if (r === 'partner' && me().age >= 18) items.push({ icon: '💍', label: 'Propose', onClick: function () { propose(p); } });
@@ -353,6 +354,29 @@ TL.actions = (function () {
     E.rel(p, 8 * f); E.stat('happy', 6 * f);
     if (U.chance(0.1)) { E.stat('health', -8); return done(bad(TL.ancient && TL.ancient.on() ? TL.ancient.txt('partySick') : 'We partied so hard I ended up in the ER.')); }
     done('I went out partying with ' + p.first + '. 🎉');
+  }
+  // Couples counseling: works best with a willing partner, early, and before
+  // grudges harden. A breakthrough clears old hurts; a bad session can end things.
+  function counseling(p) {
+    var cost = E.$(1800);
+    if (!afford(cost)) return done(noMoney(cost));
+    use('counsel' + p.id); E.addMoney(-cost);
+    var tr = p.traits || [], has = function (t) { return tr.indexOf(t) >= 0; };
+    var hurts = (p.mem || []).filter(function (m) { return m[1] < 0 && !m[3] && !m[4]; });
+    var pain = hurts.reduce(function (t, m) { return t - m[1]; }, 0);
+    var ch = 0.45 + (has('Kind') ? 0.12 : 0) + (has('Loyal') ? 0.1 : 0) + (has('Romantic') ? 0.08 : 0) - (has('Stubborn') ? 0.15 : 0) - (has('Jealous') ? 0.08 : 0) - (has('Moody') ? 0.06 : 0) - (has('Mean') ? 0.1 : 0)
+      - Math.min(0.2, pain / 150) - (p.counsel || 0) * 0.07 + (p.rel < 30 ? -0.1 : 0);
+    ch = U.clamp(ch, 0.12, 0.85); p.counsel = (p.counsel || 0) + 1;
+    var who = p.first, they = p.gender === 'F' ? 'she' : 'he';
+    if (U.chance(ch)) {
+      hurts.forEach(function (m) { m[3] = 1; }); // forgiven
+      E.rel(p, U.rand(15, 25)); E.stat('happy', 6);
+      return done(good('🛋️ Counseling broke through. ' + who + ' and I finally talked about ' + (hurts.length ? 'the things that hurt' : 'what we each need') + ', and ' + they + ' forgave me. We feel like a team again.'));
+    }
+    if (U.chance(0.6)) { E.rel(p, U.rand(4, 9)); E.stat('happy', 2); return done('🛋️ Slow going. ' + who + ' and I learned some tools for fighting fair' + (has('Stubborn') ? ', though ' + they + ' wouldn\'t budge on much' : '') + '.'); }
+    E.rel(p, -U.rand(3, 7)); E.stat('happy', -4);
+    if (p.rel < 20 && p.role === 'spouse' && U.chance(0.4)) { divorce(p, true); return done(bad('🛋️ In our last session, ' + who + ' said ' + they + ' wants a divorce. It\'s over.')); }
+    return done(bad('🛋️ The session turned into a fight. ' + who + ' stormed out halfway through.'));
   }
   function dateNight(p) {
     var f = diminish('date' + p.id);
