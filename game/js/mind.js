@@ -112,7 +112,7 @@ TL.mind = (function () {
     if (['friend', 'best friend', 'sibling'].indexOf(p.role) >= 0 && !p.married && a >= 22 && a <= 50) opts.push([0.8, function () { p.married = true; p.happy = U.clamp(p.happy + 15, 0, 100); return ['💒 ' + My(p) + ' got married. ' + (p.rel >= 60 ? 'I was there to celebrate.' : 'I found out afterward.'), p.rel >= 60 ? 'good' : '']; }]);
     if (['friend', 'best friend', 'sibling'].indexOf(p.role) >= 0 && p.married && a >= 22 && a <= 42 && (p.kids || 0) < 3) opts.push([0.8, function () { p.kids = (p.kids || 0) + 1; return ['👶 ' + My(p) + ' had a baby' + (p.kids > 1 ? ', number ' + p.kids : '') + '.', 'good']; }]);
     if (['friend', 'best friend'].indexOf(p.role) >= 0 && a >= 20 && !p.away) opts.push([0.5, function () { p.away = s.year; E.rel(p, -6); return ['🧳 ' + My(p) + ' moved away. We promised to stay in touch.', '']; }]);
-    if (a >= 50) opts.push([0.5 + (a - 50) / 30, function () { p.health = U.clamp(p.health - U.rand(10, 25), 0, 100); return ['🏥 ' + My(p) + ' had a health scare. ' + (p.rel >= 60 ? 'I was worried sick.' : ''), p.rel >= 60 ? 'bad' : '']; }]);
+    if (a >= 50) opts.push([0.5 + (a - 50) / 30, function () { p.health = U.clamp(p.health - U.rand(10, 25), Math.min(1, p.health), 100); return ['🏥 ' + My(p) + ' had a health scare. ' + (p.rel >= 60 ? 'I was worried sick.' : ''), p.rel >= 60 ? 'bad' : '']; }]);
     if (emp && a >= 62) opts.push([1.5, function () { p.job = 'Retired'; p.happy = U.clamp(p.happy + 8, 0, 100); return ['🎉 ' + My(p) + ' retired.', '']; }]);
     return opts;
   }

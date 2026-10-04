@@ -65,10 +65,13 @@ TL.engine = (function () {
     y.entries.push({ t: text, c: cls || '' });
   }
 
+  var aging = false; // true while ageUp runs
   function stat(name, delta) {
     var m = me(), v = m[name] + delta, lo = Math.floor(v);
     // Round by chance, so small gains (a second trip to the library) still add up on average.
-    m[name] = U.clamp(lo + (Math.random() < v - lo ? 1 : 0), 0, 100);
+    // Outside the year-end death check, health bottoms out at 1 (critical): nobody
+    // walks around for a year at zero health.
+    m[name] = U.clamp(lo + (Math.random() < v - lo ? 1 : 0), name === 'health' && !aging ? Math.min(1, m[name]) : 0, 100);
     return m[name];
   }
   // Where happiness settles over time, and why (shown in About me). People adapt:
@@ -1195,6 +1198,10 @@ TL.engine = (function () {
   function ageUp() {
     var s = S(), m = me();
     if (s.dead) return;
+    aging = true;
+    try { ageUpInner(s, m); } finally { aging = false; }
+  }
+  function ageUpInner(s, m) {
     snapshot();
     m.age++; s.year++;
     s.lastActs = s.yearActs; s.yearActs = {};
