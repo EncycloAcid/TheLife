@@ -216,21 +216,45 @@ TL.music = (function () {
     if (count('mu_album')) return done(nope('I already put out a project this year.'));
     var lp = x.vault.length >= 10;
     ui().choose('💿 Release a' + (lp ? 'n album' : 'n EP'), 'I have ' + x.vault.length + ' songs. How much do I spend on production?', [
-      { label: 'Record it at home', fn: function () { releaseAlbum(lp, 0, 0); } },
-      { label: 'Book a real studio (' + E.fmt(E.$(20000)) + ')', fn: function () { if (S().money < E.$(20000) && !x.label) return done(nope('Studio time costs ' + E.fmt(E.$(20000)) + '.')); if (!x.label) E.addMoney(-E.$(20000)); releaseAlbum(lp, 6, 0); } },
-      { label: 'Hire a star producer (' + E.fmt(E.$(150000)) + ')', fn: function () { if (S().money < E.$(150000) && !(x.label && x.label.kind === 'major')) return done(nope('A star producer costs ' + E.fmt(E.$(150000)) + '.')); if (!(x.label && x.label.kind === 'major')) E.addMoney(-E.$(150000)); releaseAlbum(lp, 11, 0.2); } }
+      { label: 'Record it at home', fn: function () { rollout(lp, 0, 0); } },
+      { label: 'Book a real studio (' + E.fmt(E.$(20000)) + ')', fn: function () { if (S().money < E.$(20000) && !x.label) return done(nope('Studio time costs ' + E.fmt(E.$(20000)) + '.')); if (!x.label) E.addMoney(-E.$(20000)); rollout(lp, 6, 0); } },
+      { label: 'Hire a star producer (' + E.fmt(E.$(150000)) + ')', fn: function () { if (S().money < E.$(150000) && !(x.label && x.label.kind === 'major')) return done(nope('A star producer costs ' + E.fmt(E.$(150000)) + '.')); if (!(x.label && x.label.kind === 'major')) E.addMoney(-E.$(150000)); rollout(lp, 11, 0.2); } }
     ]);
   }
-  function releaseAlbum(lp, prod, hype) {
-    var x = st(), s = S();
+  // How the project comes out: the rollout matters as much as the songs.
+  function rollout(lp, prod, hype) {
+    var x = st(), y = S().year, kind = lp ? 'album' : 'EP', blitz = Math.min(E.$(2e6), Math.max(E.$(20000), Math.round(E.$(x.fans * 0.03) / 1000) * 1000));
+    var labelPays = x.label && x.label.kind === 'major', visual = E.$(250000);
+    var talk = TL.acting && TL.acting.TALK ? TL.acting.TALK.filter(function (q) { return y >= q[1] && y <= q[2]; }) : [];
+    var feat = x.fans >= 3e5 && TL.celebs ? TL.celebs.realMusician(x.genre, x.collabs) : null;
+    var go = function (h, o) { releaseAlbum(lp, prod, hype + h, o || {}); };
+    var opts = [
+      { label: '🎯 Lead single first (steady build)', fn: function () { go(0.15, { how: 'lead', mult: 1.15 }); } },
+      { label: '💥 Surprise drop at midnight' + (x.fans >= 1e6 ? '' : ' (risky without a big fanbase)'), fn: function () { go(0, { how: 'surprise', mult: x.fans >= 1e6 ? 1.4 : 0.6 }); } },
+      { label: '📺 Promo blitz: radio, interviews' + (talk.length ? ', late-night TV' : '') + ' (' + (labelPays ? 'label pays' : E.fmt(blitz)) + ')', fn: function () {
+        if (!labelPays) { if (S().money < blitz) return done(nope('A promo blitz costs ' + E.fmt(blitz) + '.')); E.addMoney(-blitz); }
+        go(0.2, { how: 'blitz', mult: 1.3, show: talk.length ? U.pick(talk)[0] : null });
+      } }
+    ];
+    if (y >= 1981) opts.push({ label: '🎬 Visual ' + kind + ': a video for every song (' + (labelPays ? 'label pays half: ' + E.fmt(visual / 2) : E.fmt(visual)) + ')', fn: function () {
+      var c = labelPays ? visual / 2 : visual; if (S().money < c) return done(nope('A visual ' + kind + ' costs ' + E.fmt(c) + '.')); E.addMoney(-c);
+      go(0.1, { how: 'visual', mult: 1.1, review: 6, buzz: 10 });
+    } });
+    var text = 'How do I roll out the ' + kind + '?' + (feat ? ' ' + feat + ' agreed to feature on a track.' : '');
+    ui().choose('💿 Rollout', text, opts.map(function (o) { var f = o.fn; return { label: o.label, fn: function () { rolloutFeat = feat; f(); } }; }));
+  }
+  var rolloutFeat = null;
+  function releaseAlbum(lp, prod, hype, o) {
+    var x = st(), s = S(); o = o || {};
+    var feat = rolloutFeat; rolloutFeat = null;
     bump('mu_album');
     var tracks = x.vault.slice().sort(function (a, b) { return b.q - a.q; }).slice(0, lp ? 14 : 7);
     x.vault = x.vault.filter(function (v) { return tracks.indexOf(v) < 0; });
     var avg = tracks.reduce(function (a, t) { return a + t.q; }, 0) / tracks.length;
     var hooks = tracks.reduce(function (a, t) { return a + hookOf(t); }, 0) / tracks.length;
-    var review = U.clamp(Math.round(avg * 0.75 + prod + (ca(x, 'pro') - x.skill) / 2 + U.rand(0, 30) - 3), 15, 99);
+    var review = U.clamp(Math.round(avg * 0.75 + prod + (o.review || 0) + (ca(x, 'pro') - x.skill) / 2 + U.rand(0, 30) - 3), 15, 99);
     var promo = labelPromo(x) + hype;
-    var week = Math.round((x.fans * U.randf(0.005, 0.02) + Math.pow(review, 2) * U.randf(1, 3) * promo) * (lp ? 1 : 0.4) * (0.8 + hooks / 250));
+    var week = Math.round((x.fans * U.randf(0.005, 0.02) + Math.pow(review, 2) * U.randf(1, 3) * Math.max(0.5, promo)) * (lp ? 1 : 0.4) * (0.8 + hooks / 250) * (feat ? 1.15 : 1) * (o.mult || 1));
     if (x.firstRel == null) x.firstRel = s.year;
     shift(x, 'pro', 0.5);
     var peak = week >= 3e5 ? 1 : week >= 1e5 ? U.rand(2, 5) : week >= 3e4 ? U.rand(6, 20) : week >= 8e3 ? U.rand(21, 100) : week >= 3e3 ? U.rand(101, 200) : 0;
@@ -238,7 +262,8 @@ TL.music = (function () {
     var gain = week * U.randf(2.5, 6) * (review / 70) / (1 + x.fans / 6e6) * early(x);
     addFans(x, gain); x.streams += streams; x.released++;
     var title = U.chance(0.4) ? tracks[0].title : U.pick(W1) + ' ' + U.pick(W2);
-    var rec = { title: title, year: s.year, kind: lp ? 'album' : 'EP', review: review, week: week, peak: peak, units: total };
+    var rec = { title: title, year: s.year, kind: lp ? 'album' : 'EP', review: review, week: week, peak: peak, units: total, how: o.how };
+    if (feat) { rec.feat = feat; (x.collabs = x.collabs || []).push(feat); }
     var c = cert(total); if (c) rec.cert = c;
     x.albums.push(rec);
     var earned = royalties(x, streams) + Math.round(total * 0.15 * 10 * (x.label ? x.label.rate : 0.85));
@@ -250,7 +275,10 @@ TL.music = (function () {
     if (peak === 1) E.achieve('number_one');
     E.log('💿 My ' + (lp ? 'album' : 'EP') + ' "' + title + '" got a ' + review + ' on Metacritic' + (peak ? ' and debuted at #' + peak + ' on the Billboard 200 with ' + big(week) + ' first-week units' : '') + '.' + (c ? ' Certified ' + c + '! 💿' : ''), review >= 80 || (peak && peak <= 10) ? 'good' : review < 45 ? 'bad' : '');
     rec.nomEligible = review >= 80;
-    x.buzz = U.clamp((x.buzz || 0) + (peak && peak <= 10 ? 20 : peak ? 8 : 0) + (review >= 80 ? 10 : 0), 0, 100);
+    x.buzz = U.clamp((x.buzz || 0) + (peak && peak <= 10 ? 20 : peak ? 8 : 0) + (review >= 80 ? 10 : 0) + (o.buzz || 0) + (o.how === 'surprise' && x.fans >= 1e6 ? 10 : 0), 0, 100);
+    if (o.show) { E.fame(2); E.log('📺 I performed my new single on ' + o.show + '.', 'good'); }
+    if (o.how === 'surprise') E.log(x.fans >= 1e6 ? '💥 The surprise drop broke the internet. Everyone was talking about it by morning.' : '💥 The surprise drop... mostly surprised nobody. Not enough people were watching.', x.fans >= 1e6 ? 'good' : 'bad');
+    if (feat) E.log('🤝 ' + feat + '\'s feature on the ' + (lp ? 'album' : 'EP') + ' got its own buzz.', 'good');
     if (fulfilled) s.pending.push({ id: 'mu_label_done', data: {} });
     if (c && /Platinum|Diamond/.test(c)) E.achieve('platinum');
     return done({ text: '💿 "' + title + '" is out now. ' + (review >= 80 ? 'Critics love it.' : review >= 60 ? 'Solid reviews.' : 'Critics were not kind.'), cls: '', quiet: true });
@@ -428,7 +456,7 @@ TL.music = (function () {
   function discography() {
     var x = st();
     ui().menu('Discography', function () {
-      var all = x.albums.map(function (a) { return { icon: '💿', label: '"' + a.title + '" (' + a.year + ')', sub: U.cap(a.kind) + ' · ' + a.review + ' Metacritic' + (a.peak ? ' · #' + a.peak + ' Billboard 200' : '') + (a.cert ? ' · ' + a.cert : ''), right: a.grammy ? '🏆' : '', y: a.year }; })
+      var all = x.albums.map(function (a) { return { icon: '💿', label: '"' + a.title + '" (' + a.year + ')', sub: U.cap(a.kind) + ' · ' + a.review + ' Metacritic' + (a.peak ? ' · #' + a.peak + ' Billboard 200' : '') + (a.cert ? ' · ' + a.cert : '') + (a.feat ? ' · feat. ' + a.feat : '') + (a.how ? ' · ' + { lead: 'lead single rollout', surprise: 'surprise drop', blitz: 'promo blitz', visual: 'visual ' + a.kind }[a.how] : ''), right: a.grammy ? '🏆' : '', y: a.year }; })
         .concat(x.songs.map(function (s2) { return { icon: '🎧', label: '"' + s2.title + '" (' + s2.year + ')', sub: 'Single · ' + big(s2.streams) + ' streams' + (s2.peak ? ' · #' + s2.peak + ' Hot 100' + (s2.top ? ' (' + s2.top + ' wk at #1)' : s2.weeks ? ' · ' + s2.weeks + ' wks' : '') : '') + (s2.cert ? ' · ' + s2.cert : ''), right: '', y: s2.year }; }));
       if (!all.length) return [{ info: true, html: '<p class="muted">Nothing released yet.</p>' }];
       return all.sort(function (a, b) { return b.y - a.y; });
