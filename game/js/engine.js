@@ -1226,6 +1226,7 @@ TL.engine = (function () {
     }
     // social media passive growth
     if (TL.social) TL.social.yearly(); // platforms, deals, DMs and drama (js/social.js)
+    if (TL.celebs) TL.celebs.yearly(); // life with a famous partner (js/celebs.js)
     else if (s.social.platform && s.followers > 0) {
       s.followers = Math.max(0, Math.round(s.followers * U.randf(0.9, 1.2) + s.fame * U.rand(50, 500)));
     }
