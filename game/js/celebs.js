@@ -116,7 +116,8 @@ TL.celebs = (function () {
   // ---- meeting real stars. Real people only ever appear as moments (a selfie,
   // a chat, a shoutout), never as someone in my life I could date, insult or sue.
   // [name, first year, last year active] (a star who has died stops appearing).
-  var MUSIC = [['Billie Holiday', 1935, 1959], ['Ella Fitzgerald', 1935, 1990], ['Frank Sinatra', 1940, 1990], ['Elvis Presley', 1956, 1977], ['Ray Charles', 1955, 2004], ['Aretha Franklin', 1961, 2017], ['Paul McCartney', 1962, 2030], ['Bob Dylan', 1962, 2030], ['Mick Jagger', 1963, 2030], ['Stevie Wonder', 1963, 2030], ['Diana Ross', 1964, 2020], ['Dolly Parton', 1967, 2035], ['Elton John', 1970, 2025], ['Michael Jackson', 1971, 2009], ['Bruce Springsteen', 1973, 2030], ['Prince', 1979, 2016], ['Madonna', 1983, 2030], ['Whitney Houston', 1985, 2012], ['Mariah Carey', 1990, 2035], ['Celine Dion', 1990, 2030], ['Tupac Shakur', 1991, 1996], ['Jay-Z', 1996, 2035], ['Usher', 1997, 2035], ['Beyoncé', 1998, 2040], ['Britney Spears', 1998, 2016], ['Shakira', 1998, 2035], ['Eminem', 1999, 2035], ['Rihanna', 2005, 2035], ['Taylor Swift', 2006, 2045], ['Adele', 2008, 2040], ['Lady Gaga', 2008, 2045], ['Drake', 2009, 2040], ['Bruno Mars', 2010, 2040], ['Ed Sheeran', 2011, 2040], ['Kendrick Lamar', 2011, 2045], ['Ariana Grande', 2013, 2045], ['SZA', 2017, 2045], ['Bad Bunny', 2018, 2045], ['Billie Eilish', 2019, 2050], ['Olivia Rodrigo', 2021, 2050]];
+  // [name, first year, last year active, genre]
+  var MUSIC = [['Billie Holiday', 1935, 1959, 'Jazz'], ['Ella Fitzgerald', 1935, 1990, 'Jazz'], ['Louis Armstrong', 1925, 1971, 'Jazz'], ['Duke Ellington', 1925, 1974, 'Jazz'], ['Frank Sinatra', 1940, 1990, 'Pop'], ['Miles Davis', 1949, 1991, 'Jazz'], ['Elvis Presley', 1956, 1977, 'Rock'], ['Johnny Cash', 1955, 2003, 'Country'], ['Ray Charles', 1955, 2004, 'R&B'], ['Aretha Franklin', 1961, 2017, 'R&B'], ['Paul McCartney', 1962, 2030, 'Rock'], ['Bob Dylan', 1962, 2030, 'Indie'], ['Mick Jagger', 1963, 2030, 'Rock'], ['Stevie Wonder', 1963, 2030, 'R&B'], ['Diana Ross', 1964, 2020, 'R&B'], ['Dolly Parton', 1967, 2035, 'Country'], ['Elton John', 1970, 2025, 'Pop'], ['Willie Nelson', 1970, 2030, 'Country'], ['Michael Jackson', 1971, 2009, 'Pop'], ['Bruce Springsteen', 1973, 2030, 'Rock'], ['Prince', 1979, 2016, 'R&B'], ['Madonna', 1983, 2030, 'Pop'], ['Whitney Houston', 1985, 2012, 'R&B'], ['Gloria Estefan', 1985, 2020, 'Latin'], ['Mariah Carey', 1990, 2035, 'R&B'], ['Celine Dion', 1990, 2030, 'Pop'], ['Garth Brooks', 1989, 2030, 'Country'], ['Tupac Shakur', 1991, 1996, 'Hip Hop'], ['Dr. Dre', 1992, 2030, 'Hip Hop'], ['Thom Yorke', 1993, 2030, 'Indie'], ['Jay-Z', 1996, 2035, 'Hip Hop'], ['Usher', 1997, 2035, 'R&B'], ['Beyoncé', 1998, 2040, 'R&B'], ['Britney Spears', 1998, 2016, 'Pop'], ['Shakira', 1998, 2035, 'Latin'], ['Ricky Martin', 1998, 2030, 'Latin'], ['Eminem', 1999, 2035, 'Hip Hop'], ['Avicii', 2011, 2018, 'EDM'], ['Kanye West', 2004, 2020, 'Hip Hop'], ['Rihanna', 2005, 2035, 'Pop'], ['Taylor Swift', 2006, 2045, 'Pop'], ['Adele', 2008, 2040, 'Pop'], ['Lady Gaga', 2008, 2045, 'Pop'], ['Drake', 2009, 2040, 'Hip Hop'], ['David Guetta', 2009, 2035, 'EDM'], ['Calvin Harris', 2009, 2035, 'EDM'], ['Bruno Mars', 2010, 2040, 'Pop'], ['Skrillex', 2011, 2035, 'EDM'], ['Ed Sheeran', 2011, 2040, 'Pop'], ['Kendrick Lamar', 2011, 2045, 'Hip Hop'], ['Lana Del Rey', 2012, 2040, 'Indie'], ['Ariana Grande', 2013, 2045, 'Pop'], ['Luke Combs', 2017, 2045, 'Country'], ['SZA', 2017, 2045, 'R&B'], ['Phoebe Bridgers', 2017, 2045, 'Indie'], ['Bad Bunny', 2018, 2045, 'Latin'], ['Karol G', 2018, 2045, 'Latin'], ['Billie Eilish', 2019, 2050, 'Pop'], ['Marshmello', 2016, 2045, 'EDM'], ['Olivia Rodrigo', 2021, 2050, 'Pop'], ['Morgan Wallen', 2020, 2045, 'Country']];
   var SPORT = [['Babe Ruth', 1920, 1935], ['Jackie Robinson', 1947, 1956], ['Pelé', 1957, 1977], ['Muhammad Ali', 1960, 1981], ['Billie Jean King', 1966, 1983], ['Wayne Gretzky', 1979, 1999], ['Tiger Woods', 1996, 2020], ['Venus Williams', 1997, 2020], ['Serena Williams', 1998, 2022], ['Tom Brady', 2000, 2022], ['Cristiano Ronaldo', 2003, 2028], ['Lionel Messi', 2005, 2030], ['Megan Rapinoe', 2006, 2023], ['Usain Bolt', 2008, 2017], ['Simone Biles', 2013, 2024], ['Patrick Mahomes', 2018, 2035], ['Shohei Ohtani', 2018, 2035]];
   function active(list, y) { return list.filter(function (q) { return y >= q[1] && y <= q[2]; }).map(function (q) { return q[0]; }); }
   // A real star who fits the year (and my line of work, when I have one).
@@ -134,6 +135,14 @@ TL.celebs = (function () {
     if (!out.length) return null;
     var fav = out.filter(function (q) { return q[2] === prefer; });
     return U.pick(fav.length && U.chance(0.7) ? fav : out);
+  }
+  // A real musician to collaborate with: same genre when possible, active this year.
+  function realMusician(genre, not) {
+    var y = S().year, mine = me().first + ' ' + me().last;
+    var live = MUSIC.filter(function (q) { return y >= q[1] && y <= q[2] && q[0] !== mine && (not || []).indexOf(q[0]) < 0; });
+    var same = live.filter(function (q) { return q[3] === genre; });
+    var pick = same.length && U.chance(0.85) ? same : live;
+    return pick.length ? U.pick(pick)[0] : null;
   }
   var KIND_WORD = { actor: 'the actor', singer: 'the singer', athlete: 'the sports legend', 'NBA star': 'the NBA star', 'WNBA star': 'the WNBA star' };
   function where(ind) {
@@ -224,5 +233,5 @@ TL.celebs = (function () {
     ] };
   } });
 
-  return { starsMenu: starsMenu, realStar: realStar, available: available, unlocked: unlocked, lockReason: lockReason, menu: menu, yearly: yearly, make: make, odds: odds };
+  return { realMusician: realMusician, starsMenu: starsMenu, realStar: realStar, available: available, unlocked: unlocked, lockReason: lockReason, menu: menu, yearly: yearly, make: make, odds: odds };
 })();

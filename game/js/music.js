@@ -335,9 +335,11 @@ TL.music = (function () {
     if (count('mu_feat')) return done(nope('I already did a feature this year.'));
     if (!x.vault.length && x.fans < 5000) return done(nope('Nobody big will feature me yet.'));
     bump('mu_feat'); x.lastActive = S().year;
-    var star = x.fans >= 2e6 ? U.pick(['a global superstar', 'a legendary producer', 'the biggest rapper in the world']) : x.fans >= 1e5 ? U.pick(['a rising star', 'a platinum artist', 'a hot producer']) : U.pick(['a local rapper', 'a SoundCloud artist', 'a friend from the scene']);
+    var real = (x.fans >= 3e5 || (x.fans >= 1e5 && U.chance(0.4))) && TL.celebs ? TL.celebs.realMusician(x.genre, x.collabs) : null;
+    var star = real ? real : x.fans >= 2e6 ? U.pick(['a global superstar', 'a legendary producer', 'the biggest rapper in the world']) : x.fans >= 1e5 ? U.pick(['a rising star', 'a platinum artist', 'a hot producer']) : U.pick(['a local rapper', 'a SoundCloud artist', 'a friend from the scene']);
     if (U.chance(0.25)) return done('I sent my verse to ' + star + ', but the song never came out. 🤷');
-    var gain = Math.max(100, x.fans * U.randf(0.02, 0.07) / (1 + x.fans / 5e6)); addFans(x, gain);
+    var gain = Math.max(100, x.fans * U.randf(0.02, 0.07) / (1 + x.fans / 5e6) * (real ? 1.5 : 1)); addFans(x, gain);
+    if (real) { (x.collabs = x.collabs || []).push(real); E.fame(2); }
     pay(Math.round(gain * 0.05));
     return done(good('I did a feature with ' + star + '. +' + big(gain) + ' fans. 🤝'));
   }
@@ -408,7 +410,7 @@ TL.music = (function () {
       items.push({ icon: '✍️', label: 'Write a song', sub: (4 - count('mu_write')) + ' left this year', disabled: count('mu_write') >= 4, onClick: write });
       items.push({ icon: '🎧', label: 'Release a single', sub: x.vault.length ? 'Catchiest unreleased: "' + catchiest(x).title + '" (hook ' + hookOf(catchiest(x)) + ')' : 'Write a song first', disabled: !x.vault.length || count('mu_single') >= 3, onClick: single });
       items.push({ icon: '💿', label: x.vault.length >= 10 ? 'Release an album' : 'Release an EP', sub: x.vault.length >= 5 ? U.plural(x.vault.length, 'song') + ' ready' : 'Needs 5+ songs (' + x.vault.length + ')', disabled: x.vault.length < 5 || count('mu_album') > 0, onClick: album });
-      items.push({ icon: '🤝', label: 'Do a feature', disabled: count('mu_feat') > 0, onClick: feature });
+      items.push({ icon: '🤝', label: 'Do a feature', sub: (x.collabs && x.collabs.length ? 'Worked with ' + x.collabs.slice(-3).reverse().join(', ') : 'Bigger names come with more fans'), disabled: count('mu_feat') > 0, onClick: feature });
       var ol = online();
       items.push({ icon: ol[0], label: ol[1], sub: x.vault.length ? 'Free · could get noticed' : 'Write a song first', disabled: !x.vault.length || count('mu_online') > 0, onClick: postOnline });
       items.push({ section: 'Live' });
@@ -511,6 +513,7 @@ TL.music = (function () {
     var s = S();
     if (!s || s.dead || !s.music || hasJob()) return;
     var earned = year();
+    var xm = st(); if (xm && !xm.retired && xm.fans >= 3e5 && U.chance(0.18 + Math.min(0.2, xm.fans / 5e7))) s.pending.push({ id: 'mu_collab', data: {} });
     if (earned) { E.addMoney(Math.round(earned * 0.75)); E.log('🎵 Music income: ' + E.fmt(Math.round(earned * 0.75)), 'money'); }
   }
   function onAward(name, cat) {
@@ -549,8 +552,25 @@ TL.music = (function () {
       { label: 'Say no, it\'s not for sale', run: function () { E.karma(1); return 'I turned it down. Some songs aren\'t for sale.'; } }
     ] };
   } });
+  def('mu_collab', { cond: function () { var x = st(); return !!(x && !x.retired && x.fans >= 3e5); }, build: function (d) {
+    var x = st(); if (!x) return null;
+    var star = d && d.star || (TL.celebs && TL.celebs.realMusician(x.genre, x.collabs)); if (!star) return null;
+    return { icon: '🎙️', title: 'Collab request', text: star + '\'s team called. They want me on the next single.', choices: [
+      { label: 'Get in the studio with ' + star, run: function () {
+        if (U.chance(0.15)) return 'We recorded it, but ' + star + '\'s label shelved the song. Still, what a session. 🎚️';
+        var g = Math.max(20000, x.fans * U.randf(0.08, 0.2) / (1 + x.fans / 2e7)); addFans(x, g); pay(U.rand(50, 400) * 1000); E.fame(4); E.stat('happy', 10);
+        (x.collabs = x.collabs || []).push(star); x.lastActive = S().year;
+        return { text: 'My single with ' + star + ' hit the charts. +' + big(g) + ' fans. 🔥', cls: 'good' };
+      } },
+      { label: 'Ask for a writing credit too', run: function () {
+        if (U.chance(0.5)) { var g = Math.max(15000, x.fans * U.randf(0.06, 0.15) / (1 + x.fans / 2e7)); addFans(x, g); pay(U.rand(150, 700) * 1000); (x.collabs = x.collabs || []).push(star); E.fame(3); return { text: star + ' agreed. I co-wrote and featured on the single. +' + big(g) + ' fans. ✍️', cls: 'good' }; }
+        return star + '\'s team found someone easier to work with. Lesson learned.';
+      } },
+      { label: 'Pass, I\'m focused on my own album', run: function () { return 'I passed. The single did fine without me.'; } }
+    ] };
+  } });
   def('mu_opener', { cond: function () { var x = st(); return !!(x && !x.retired); }, build: function () {
-    var x = st(), star = U.pick(x.genre === 'Hip Hop' ? ['the biggest rapper in the world', 'a hip hop legend'] : x.genre === 'Country' ? ['a country superstar', 'a Nashville legend'] : x.genre === 'EDM' ? ['a world-famous DJ', 'a festival-headlining DJ'] : x.genre === 'Rock' ? ['a stadium rock band', 'a legendary rock band'] : ['a pop superstar', 'a global superstar']);
+    var x = st(), headliner = TL.celebs && U.chance(0.7) ? TL.celebs.realMusician(x.genre) : null, star = headliner ? headliner : U.pick(x.genre === 'Hip Hop' ? ['the biggest rapper in the world', 'a hip hop legend'] : x.genre === 'Country' ? ['a country superstar', 'a Nashville legend'] : x.genre === 'EDM' ? ['a world-famous DJ', 'a festival-headlining DJ'] : x.genre === 'Rock' ? ['a stadium rock band', 'a legendary rock band'] : ['a pop superstar', 'a global superstar']);
     return { icon: '🚌', title: 'Opening slot', text: U.cap(star) + ' asked me to open their arena tour this year. The pay is small, but every night is a room full of new ears.', choices: [
       { label: 'Join the tour', run: function () {
         if (count('mu_tour')) return 'I was already booked on my own tour, so I had to pass.';
