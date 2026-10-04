@@ -113,6 +113,56 @@ TL.celebs = (function () {
     return done(U.pick(party ? [c.first + ' was polite, then disappeared with their entourage.', c.first + '\'s publicist steered them away from me all night.'] : ['Left on read by ' + c.first + '. 💀', c.first + ' never answered. Their team probably filters DMs.', c.first + ' replied with a single 👍. That\'s a no.']));
   }
 
+  // ---- meeting real stars. Real people only ever appear as moments (a selfie,
+  // a chat, a shoutout), never as someone in my life I could date, insult or sue.
+  // [name, first year, last year active] (a star who has died stops appearing).
+  var MUSIC = [['Billie Holiday', 1935, 1959], ['Ella Fitzgerald', 1935, 1990], ['Frank Sinatra', 1940, 1990], ['Elvis Presley', 1956, 1977], ['Ray Charles', 1955, 2004], ['Aretha Franklin', 1961, 2017], ['Paul McCartney', 1962, 2030], ['Bob Dylan', 1962, 2030], ['Mick Jagger', 1963, 2030], ['Stevie Wonder', 1963, 2030], ['Diana Ross', 1964, 2020], ['Dolly Parton', 1967, 2035], ['Elton John', 1970, 2025], ['Michael Jackson', 1971, 2009], ['Bruce Springsteen', 1973, 2030], ['Prince', 1979, 2016], ['Madonna', 1983, 2030], ['Whitney Houston', 1985, 2012], ['Mariah Carey', 1990, 2035], ['Celine Dion', 1990, 2030], ['Tupac Shakur', 1991, 1996], ['Jay-Z', 1996, 2035], ['Usher', 1997, 2035], ['Beyoncé', 1998, 2040], ['Britney Spears', 1998, 2016], ['Shakira', 1998, 2035], ['Eminem', 1999, 2035], ['Rihanna', 2005, 2035], ['Taylor Swift', 2006, 2045], ['Adele', 2008, 2040], ['Lady Gaga', 2008, 2045], ['Drake', 2009, 2040], ['Bruno Mars', 2010, 2040], ['Ed Sheeran', 2011, 2040], ['Kendrick Lamar', 2011, 2045], ['Ariana Grande', 2013, 2045], ['SZA', 2017, 2045], ['Bad Bunny', 2018, 2045], ['Billie Eilish', 2019, 2050], ['Olivia Rodrigo', 2021, 2050]];
+  var SPORT = [['Babe Ruth', 1920, 1935], ['Jackie Robinson', 1947, 1956], ['Pelé', 1957, 1977], ['Muhammad Ali', 1960, 1981], ['Billie Jean King', 1966, 1983], ['Wayne Gretzky', 1979, 1999], ['Tiger Woods', 1996, 2020], ['Venus Williams', 1997, 2020], ['Serena Williams', 1998, 2022], ['Tom Brady', 2000, 2022], ['Cristiano Ronaldo', 2003, 2028], ['Lionel Messi', 2005, 2030], ['Megan Rapinoe', 2006, 2023], ['Usain Bolt', 2008, 2017], ['Simone Biles', 2013, 2024], ['Patrick Mahomes', 2018, 2035], ['Shohei Ohtani', 2018, 2035]];
+  function active(list, y) { return list.filter(function (q) { return y >= q[1] && y <= q[2]; }).map(function (q) { return q[0]; }); }
+  // A real star who fits the year (and my line of work, when I have one).
+  function realStar(prefer) {
+    var y = S().year, out = [];
+    var actors = TL.acting && TL.acting.COSTARS ? TL.acting.COSTARS.filter(function (q) { return y >= q[2] && y <= q[3]; }).map(function (q) { return q[0]; }) : [];
+    var hoops = [];
+    if (TL.nba) ['M', 'F'].forEach(function (g) { try { var n = TL.nba.anyStar(g, y); if (n) hoops.push([n, g === 'F' ? 'WNBA star' : 'NBA star']); } catch (e) { } });
+    actors.forEach(function (n) { out.push([n, 'actor', 'acting']); });
+    active(MUSIC, y).forEach(function (n) { out.push([n, 'singer', 'music']); });
+    active(SPORT, y).forEach(function (n) { out.push([n, 'athlete', 'sports']); });
+    hoops.forEach(function (h) { out.push([h[0], h[1], 'hoops']); });
+    var mine = me().first + ' ' + me().last, seen = (S().metStars || []).map(function (m) { return m.name; });
+    out = out.filter(function (q) { return q[0] !== mine && seen.indexOf(q[0]) < 0; });
+    if (!out.length) return null;
+    var fav = out.filter(function (q) { return q[2] === prefer; });
+    return U.pick(fav.length && U.chance(0.7) ? fav : out);
+  }
+  var KIND_WORD = { actor: 'the actor', singer: 'the singer', athlete: 'the sports legend', 'NBA star': 'the NBA star', 'WNBA star': 'the WNBA star' };
+  function where(ind) {
+    var y = S().year;
+    var big = { acting: ['the Oscars after-party', 'a movie premiere', 'a table read', 'the Golden Globes'], music: ['the Grammys', 'a studio session', 'a music festival backstage', 'an album release party'], hoops: ['the All-Star Game', 'a charity game', 'a summer pro-am'], sports: ['the ESPYs', 'a charity golf event', 'a sneaker launch'] }[ind];
+    var any = ['the airport', 'a coffee shop', 'a restaurant in ' + (y < 1960 ? 'Hollywood' : 'Beverly Hills'), 'a charity gala', 'a hotel lobby'];
+    return U.pick(big && U.chance(0.7) ? big : any);
+  }
+  def('celeb_meet', { build: function (d) {
+    var r = d && d.name ? [d.name, d.kind, d.ind] : realStar(myIndustry());
+    if (!r) return null;
+    var at = d && d.at || where(myIndustry()), s = S(), famous = s.fame >= 60;
+    var log = function (how) { (s.metStars = s.metStars || []).push({ name: r[0], kind: r[1], year: s.year, how: how }); };
+    var selfie = y0() >= 2008 ? 'Ask for a selfie' : y0() >= 1950 ? 'Ask for a photo' : 'Ask for an autograph';
+    return { icon: '🤳', title: 'Star sighting', text: 'I ran into ' + (KIND_WORD[r[1]] || '') + ' ' + r[0] + ' at ' + at + '.', choices: [
+      { label: selfie, run: function () { log(selfie.replace(/^Ask for an? /, '').toLowerCase()); E.stat('happy', 6); if (y0() >= 2008) s.followers = (s.followers || 0) + U.rand(20, 400); return good(r[0] + ' was so nice about it. ' + (y0() >= 2008 ? 'My post blew up. 📸' : 'I\'m framing it. ✍️')); } },
+      { label: famous ? 'Say hi as a peer' : 'Chat for a minute', run: function () { log('chatted'); E.stat('happy', 5); if (famous) { E.fame(2); return good(r[0] + ' said they\'re a fan of my work! We talked for twenty minutes. 🤯'); } return 'We talked for a minute. ' + r[0] + ' was kind, and a little in a hurry.'; } },
+      { label: 'Play it cool and let them be', run: function () { E.karma(1); return 'I gave ' + r[0] + ' some space. Still, what a story.'; } }
+    ] };
+  } });
+  function y0() { return S().year; }
+  function starsMenu() {
+    ui().menu('Stars I\'ve met 🤳', function () {
+      var list = (S().metStars || []).slice().reverse();
+      if (!list.length) return [{ info: true, html: '<p class="muted">No star sightings yet. Fame, a famous job or just luck brings them.</p>' }];
+      return list.map(function (m) { return { icon: m.kind === 'singer' ? '🎤' : m.kind === 'actor' ? '🎬' : /NBA/.test(m.kind) ? '🏀' : '🏅', label: m.name, sub: U.cap(m.kind) + ' · ' + m.year + ' · ' + m.how }; });
+    });
+  }
+
   // ---- life with a famous partner
   function famous() { var p = E.partner && E.partner(); return p && p.celeb && p.alive ? p : null; }
   function yearly() {
@@ -124,10 +174,13 @@ TL.celebs = (function () {
     }
     // Famous and single: a star may make the first move.
     else if (!E.partner() && me().age >= 18 && s.fame >= 50 && U.chance(0.12)) s.pending.push({ id: 'celeb_dm', data: {} });
+    // Real stars cross my path: often if I'm famous or in the business, now and then for anyone.
+    var a = me().age, ch = a < 10 ? 0 : s.fame >= 50 || myIndustry() ? 0.3 : s.fame >= 20 ? 0.12 : 0.03;
+    if (!s.prison && U.chance(ch)) s.pending.push({ id: 'celeb_meet', data: {} });
   }
 
   var defs = TL.events.defs;
-  function def(id, o) { o.id = id; o.scripted = true; o.w = 10; defs[id] = o; }
+  function def(id, o) { o.id = id; o.scripted = true; o.w = 10; TL.events.defs[id] = o; }
   function who(d) { var p = d && d.pid ? E.person(d.pid) : null; return p && p.alive && p.celeb ? p : null; }
   def('celeb_paps', { build: function (d) {
     var p = who(d); if (!p) return null;
@@ -171,5 +224,5 @@ TL.celebs = (function () {
     ] };
   } });
 
-  return { available: available, unlocked: unlocked, lockReason: lockReason, menu: menu, yearly: yearly, make: make, odds: odds };
+  return { starsMenu: starsMenu, realStar: realStar, available: available, unlocked: unlocked, lockReason: lockReason, menu: menu, yearly: yearly, make: make, odds: odds };
 })();

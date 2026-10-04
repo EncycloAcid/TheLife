@@ -850,5 +850,5 @@ TL.acting = (function () {
   }
   // A won acting award counts toward my record (called from the award event).
   function onAward(name) { var x = S().acting; if (x && /Academy|Emmy|Golden Globe|Tony/.test(name)) { x.wins++; x.rep = Math.min(100, x.rep + 6); var c = x.credits.filter(function (r) { return r.nom; }).pop(); if (c) c.award = name; } }
-  return { menu: menu, year: year, yearly: yearly, summary: summary, aboutRow: aboutRow, title: title, onAward: onAward, st: st, KINDS: KINDS };
+  return { menu: menu, year: year, yearly: yearly, summary: summary, aboutRow: aboutRow, title: title, onAward: onAward, st: st, KINDS: KINDS, COSTARS: COSTARS };
 })();

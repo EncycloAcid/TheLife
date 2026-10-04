@@ -91,6 +91,7 @@ TL.actions = (function () {
       if (TL.ancient && TL.ancient.on() && me().age >= 15 && !E.partner() && TL.ancient.st().cls !== 'slave') meet.push({ icon: '💍', label: 'Ask my family to find a match', sub: TL.ancient.txt('matchSub'), onClick: function () { if (S().yearActs.r_match) return done(nope('My family is still searching.')); S().yearActs.r_match = 1; if (!U.chance(0.6)) return done('My family couldn\'t find a suitable match this year.'); S().pending.push({ id: TL.ancient.txt('matchEvent'), data: {} }); ui().runPending(); } });
       if (me().age >= 16 && !S().prison && (!TL.history || TL.history.exists('dating'))) meet.push({ icon: '💘', label: 'Dating app', sub: 'Find someone special', onClick: datingApp });
       if (me().age >= 18 && !S().prison && TL.celebs && TL.celebs.available()) meet.push({ icon: '⭐', label: 'Celebrity dating', sub: TL.celebs.unlocked() ? 'Movie stars, pop stars, athletes, models' : TL.celebs.lockReason(), disabled: !TL.celebs.unlocked(), onClick: TL.celebs.menu });
+      if (TL.celebs && (S().metStars || []).length) meet.push({ icon: '🤳', label: 'Stars I\'ve met', sub: U.plural(S().metStars.length, 'star sighting'), onClick: TL.celebs.starsMenu });
       var at = -1;
       items.forEach(function (it, k) { if (at < 0 && it.section && ['School & Work', 'Others', 'Pets'].indexOf(it.section) >= 0) at = k; });
       if (meet.length > 1) Array.prototype.splice.apply(items, [at < 0 ? items.length : at, 0].concat(meet));
