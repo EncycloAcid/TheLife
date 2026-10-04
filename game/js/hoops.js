@@ -338,6 +338,8 @@ TL.hoops = (function () {
     if (me().age >= 40 || x.ovr < 56 || (me().age >= 35 && x.ovr < 68)) { S().pending.push({ id: 'hoops_retire', data: {} }); }
     else if (x.league === 'G League' && x.ovr >= 74 && U.chance(0.3)) { var t = U.pick(teams()); sign(t, league(), 2, salaryFor(x.ovr)); E.log('📞 The ' + t + ' called me up from the ' + lgName('G League') + '! I\'m in the ' + league() + '!', 'good'); E.stat('happy', 12); }
     else if (x.contract.years <= 0) S().pending.push({ id: 'hoops_fa', data: {} });
+    // Outplaying my deal: the team tries to extend me before free agency.
+    else if ((lg === 'NBA' || lg === 'WNBA') && x.ovr >= 74 && salaryFor(x.ovr) >= x.contract.salary * 1.4 && x.extYear !== s.year && U.chance(0.55)) { x.extYear = s.year; S().pending.push({ id: 'hoops_ext', data: {} }); }
     else if (!x.shoe && S().fame >= 45 && U.chance(0.5)) S().pending.push({ id: 'hoops_shoe', data: {} });
     drift(x);
     if (TL.hsocial) TL.hsocial.season(x, line);
@@ -424,20 +426,38 @@ TL.hoops = (function () {
     return good('With the ' + U.ordinal(pick) + ' pick in the ' + yr + ' ' + league() + ' Draft, the ' + team + ' selected me! 🧢');
   }
   def('hoops_fa', { cond: pro, build: function () {
-    var x = h(), o = x.ovr, ch = [], lg = x.league;
+    var x = h(), o = x.ovr, ch = [], lg = x.league, bet = x.betSelf ? 1.12 : 1; x.betSelf = false;
     // Teams only want players good enough for the league.
     var gl = lg === 'G League' ? 3 : 0; // G Leaguers have to prove a bit more
     var interest = o >= 76 + gl ? U.rand(2, 3) : o >= 71 + gl ? U.rand(1, 2) : o >= 67 + gl && U.chance(0.4) ? 1 : 0;
     var pool = U.shuffle(teams().filter(function (t) { return t !== x.team; })).slice(0, interest);
-    if (o >= 66 && (lg === 'NBA' || lg === 'WNBA')) ch.push({ label: '✍️ Re-sign with the ' + x.team + ' (' + outlook(tq(x.team)) + ', ' + E.fmt(E.$(salaryFor(o))) + '/yr)', run: function () { var t = x.team; sign(t, lg, U.rand(2, 4), salaryFor(o)); E.stat('happy', 5); return 'I re-signed with the ' + t + '.'; } });
+    if (o >= 66 && (lg === 'NBA' || lg === 'WNBA')) ch.push({ label: '✍️ Re-sign with the ' + x.team + ' (' + outlook(tq(x.team)) + ', ' + E.fmt(E.$(Math.round(salaryFor(o) * bet))) + '/yr)', run: function () { var t = x.team; sign(t, lg, U.rand(2, 4), Math.round(salaryFor(o) * bet)); E.stat('happy', 5); return 'I re-signed with the ' + t + '.'; } });
     // Contenders pay less (the ring is the pitch); rebuilding teams pay more.
     pool.forEach(function (t) {
-      var q = tq(t), pay = Math.round(salaryFor(o) * (q >= 60 ? U.randf(0.8, 1.0) : q < 39 ? U.randf(1.05, 1.3) : U.randf(0.9, 1.15))), yrs = U.rand(1, 5);
+      var q = tq(t), pay = Math.round(salaryFor(o) * bet * (q >= 60 ? U.randf(0.8, 1.0) : q < 39 ? U.randf(1.05, 1.3) : U.randf(0.9, 1.15))), yrs = U.rand(1, 5);
       ch.push({ label: '🖊️ ' + t + ' (' + outlook(q) + '): ' + yrs + ' yrs, ' + E.fmt(E.$(pay)) + '/yr', run: function () { sign(t, league(), yrs, pay); E.stat('happy', 6); return good('I signed a ' + yrs + '-year deal with the ' + t + '!'); } });
     });
     if (!ch.length || o < 66) ch.push({ label: '🌍 Sign overseas', run: function () { sign(U.pick(EURO), 'EuroLeague', 2, Math.round(salaryFor(o + 6) * 0.6)); return 'I signed with ' + h().team + ' in Europe.'; } });
     ch.push({ label: '🧓 Retire', run: function () { return retire(); } });
     return { icon: '✍️', title: 'Free agency', text: 'My contract with the ' + x.team + ' is up. I\'m ' + me().age + ' and rated ' + o + '. Do I chase money or a ring?', choices: ch };
+  } });
+  // A breakout player on a cheap deal: the extension (a max deal for superstars), betting on myself, or a holdout.
+  def('hoops_ext', { cond: function () { var x = h(); return !!(x && x.stage === 'pro' && x.contract && x.contract.years >= 1); }, build: function () {
+    var x = h(), c = x.contract, a = me().age, market = salaryFor(x.ovr), maxDeal = x.ovr >= 88;
+    if (market < c.salary * 1.25) return null;
+    var offer = maxDeal ? salaryFor(95) : Math.round(market * U.randf(0.85, 0.95) / 1000) * 1000, yrs = U.clamp(c.years + U.rand(2, 4) - Math.max(0, a - 30), c.years + 1, 5);
+    var take = function (pay, msg) { c.salary = pay; c.years = yrs; x.betSelf = false; if (S().job) S().job.salary = E.$(pay); return msg; };
+    var ch = [
+      { label: (maxDeal ? '💰 Sign the max: ' : '✍️ Sign it: ') + E.fmt(E.$(offer)) + '/yr for ' + U.plural(yrs, 'year'), run: function () { E.stat('happy', 8); return good(take(offer, 'I signed a ' + U.plural(yrs, 'year') + (maxDeal ? ' max' : '') + ' extension with the ' + x.team + ' at ' + E.fmt(E.$(offer)) + ' a year. ✍️')); } },
+      { label: '🎲 Bet on myself (play it out, hit free agency)', run: function () { x.betSelf = true; E.fame(1); return 'I turned down the extension. Stay healthy, keep balling, and free agency pays more. 🎲'; } }
+    ];
+    if (x.ovr >= 82 && !maxDeal) ch.push({ label: '😤 Demand a trade or a bigger deal', run: function () {
+      if (U.chance(U.clamp(0.3 + (x.ovr - 82) / 20, 0.3, 0.75))) { var big = Math.round(market * U.randf(1, 1.1) / 1000) * 1000; E.stat('happy', 10); E.fame(2); return good(take(big, 'The ' + x.team + ' caved: ' + E.fmt(E.$(big)) + ' a year for ' + U.plural(yrs, 'year') + '. 💰')); }
+      if (U.chance(0.5)) { var old = x.team.replace(/^the /, ''), t = U.pick(teams().filter(function (q) { return q !== x.team; })); x.team = t; if (S().job) S().job.company = 'the ' + t + ' (' + x.league + ')'; E.fame(2); return 'The ' + old + ' wouldn\'t pay, so they traded me. I\'m on the ' + t + ' now, ' + teamKind(tq(t)) + '. 🔁'; }
+      E.stat('happy', -8); E.fame(-2); E.karma(-1);
+      return bad('The front office called my bluff. Fans booed me on opening night, and I\'m still on my old deal.');
+    } });
+    return { icon: '✍️', title: maxDeal ? 'Max extension' : 'Contract extension', text: 'The ' + x.team.replace(/^the /, '') + ' want to lock me up before free agency. I\'m rated ' + x.ovr + ', and my deal pays ' + E.fmt(E.$(c.salary)) + ' a year with ' + U.plural(c.years, 'year') + ' left.', choices: ch };
   } });
   def('hoops_shoe', { cond: pro, build: function () {
     var x = h(), b = U.pick(SHOES), pay = Math.round(salaryFor(x.ovr) * U.randf(0.15, 0.5) + 200000 * (S().fame / 50));
