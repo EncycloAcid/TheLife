@@ -764,7 +764,7 @@ TL.eras.rome = (function () {
   } });
   def('r_marriage', { notRuler: true, min: 16, max: 35, w: 7, cond: function () { return !E.partner() && st().cls !== 'slave' && !(S().job && S().job.career === 'r_vestal'); }, build: function () {
     if (S().job && S().job.career === 'r_vestal') return null;
-    var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = U.pick(g === 'M' ? c.male : c.female) + ' ' + D.gentile(U.pick(c.last), g);
+    var c = D.country(S().country), g = me().interest === 'A' ? (U.chance(0.5) ? 'M' : 'F') : me().interest, nm = (function () { for (var i = 0; i < 8; i++) { var f = U.pick(g === 'M' ? c.male : c.female), l = D.gentile(U.pick(c.last), g); if (f !== l) return f + ' ' + l; } return f + ' ' + l; })(); // never "Claudia Claudia"
     return { icon: '💍', title: 'An arranged match', text: 'My family has arranged a marriage to ' + nm + ', from a respectable family.', choices: [
       { label: 'Agree to the marriage', run: function () { var p = E.addPerson({ role: 'spouse', gender: g, age: me().age + U.rand(-3, 8), rel: U.rand(40, 75) }); p.first = nm.split(' ')[0]; p.last = nm.split(' ')[1]; E.achieve('married'); E.stat('happy', 8); return good('We were married in a ceremony at home. Feliciter! 💍'); } },
       { label: 'Refuse', run: function () { E.people(['mother', 'father']).forEach(function (p) { E.rel(p, -15); }); return 'My family is furious with me.'; } }

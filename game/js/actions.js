@@ -1418,23 +1418,37 @@ TL.actions = (function () {
   function vacationMenu() {
     ui().menu('Vacation ✈️', function () {
       return D.VACATIONS.map(function (v) {
-        var cost = E.$(v.cost);
-        return { icon: '🏝️', label: v.name, right: E.fmt(cost), onClick: function () {
+        var cost = E.$(v.cost), kind = tripKind(v);
+        return { icon: kind[0], label: v.name, sub: kind[1], right: E.fmt(cost), onClick: function () {
+          gainFrom = snap();
           if (!afford(cost)) return done(noMoney(cost));
           if (used('vacation') >= 2) return done(nope('I\'ve already been on enough vacations this year.'));
           use('vacation');
           E.addMoney(-cost); S().counts.vacations++;
           if (v.aurora) S().flags.aurora = true;
-          E.stat('happy', U.rand(10, 20)); E.stat('health', 3);
+          // Each kind of trip gives something different; pricier trips go deeper.
+          E.stat('happy', U.rand(10, 18) + Math.min(10, Math.log10(Math.max(1, v.cost / 1000)) * 4) + (kind[2] === 'party' ? 6 : 0)); E.stat('health', 3);
+          if (kind[2] === 'adventure') { me().athl = U.clamp(me().athl + U.rand(2, 4), 0, 100); E.stat('health', 3); }
+          if (kind[2] === 'culture') E.stat('smarts', U.rand(2, 4));
+          if (kind[2] === 'luxury') { E.stat('health', 4); E.stat('looks', 2); }
+          if (kind[2] === 'party') E.stat('health', -4);
           var pt = E.partner(); if (pt) E.rel(pt, 10);
           var r = U.rand(1, 100);
-          if (r <= 8) { E.addCondition('Food Poisoning'); return done(bad('I went on a ' + v.name.toLowerCase() + ' but got food poisoning. 🤢')); }
-          if (r <= 16 && !pt && me().age < 60) { var p = E.addPerson({ role: 'partner', age: U.clamp(me().age + U.rand(-4, 4), 18, 99), gender: me().interest === 'A' ? undefined : me().interest, rel: 65 }); return done(good('I had an amazing time on my ' + v.name.toLowerCase() + ' and fell for ' + p.first + '! Vacation romance! 💕')); }
-          if (r <= 22) { S().social.platform && (S().followers += U.rand(50, 2000)); return done(good('My ' + v.name.toLowerCase() + ' photos blew up online!')); }
-          done(good('I had an incredible time on my ' + v.name.toLowerCase() + '. 🌴'));
+          if (r <= 8) { E.addCondition('Food Poisoning'); E.stat('health', -8); E.stat('happy', -8); return done(bad('I went on a ' + v.name + ' but got food poisoning. 🤢')); }
+          if (r <= 16 && !pt && me().age < 60) { var p = E.addPerson({ role: 'partner', age: U.clamp(me().age + U.rand(-4, 4), 18, 99), gender: me().interest === 'A' ? undefined : me().interest, rel: 65 }); return done(good('I had an amazing time on my ' + v.name + ' and fell for ' + p.first + '! Vacation romance! 💕')); }
+          if (r <= 22) { S().social.platform && (S().followers += U.rand(50, 2000)); return done(good('My ' + v.name + ' photos blew up online!')); }
+          done(good('I had an incredible time on my ' + v.name + '. 🌴'));
         } };
       });
     });
+  }
+  // What a destination is good for: [icon, menu blurb, kind].
+  function tripKind(v) {
+    var n = v.name;
+    if (/Carnival|Rio/.test(n)) return ['🎉', 'Party · huge fun, rough on the body', 'party'];
+    if (/Dubai|Maldives|Private Island|Bali|Santorini/.test(n)) return ['🏖️', 'Luxury · deep rest, health and looks', 'luxury'];
+    if (/Trek|Safari|Antarctica|Northern Lights|Road Trip|Adventure/.test(n)) return ['🥾', 'Adventure · athleticism and health', 'adventure'];
+    return ['🏛️', 'Culture · museums and history, smarts', 'culture'];
   }
   function drivingTest() {
     if (used('dmv')) return done(nope('I have to wait until next year to retake the test.'));

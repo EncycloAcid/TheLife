@@ -71,7 +71,7 @@ TL.engine = (function () {
     var s = S(), m = me(), a = m.age, parts = [];
     var friends = s.people.some(function (p) { return p.alive && /friend/.test(p.role) && p.rel >= 50; });
     // Habits count: taking care of myself (exercise, meditation, reading, hobbies) lifts my baseline.
-    var la = acts || {}, care = ['med', 'walk', 'gym', 'karate', 'diet', 'lib'].filter(function (k) { return la[k]; }).length + Object.keys(la).filter(function (k) { return /^skill/.test(k); }).length;
+    var la = acts || {}, care = ['med', 'walk', 'gym', 'karate', 'diet', 'lib', 'vacation'].filter(function (k) { return la[k]; }).length + Object.keys(la).filter(function (k) { return /^skill/.test(k); }).length;
     function add(v, why) { if (v) parts.push([v, why]); return v; }
     var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.reduce(function (t, n) { var il = D.illness(n); return t + (!il ? 3 : il.happy || il.selfHeal >= 0.5 ? 1 : 3); }, 0), 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
     return { t: U.clamp(Math.round(t), 0, 100), parts: parts };
