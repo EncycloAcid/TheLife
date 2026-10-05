@@ -387,6 +387,27 @@ TL.events = (function () {
     ] };
   } });
   // A neglected car gives out: fix it, junk it or keep limping along.
+  def('estate_dispute', {
+    scripted: true,
+    build: function (d) {
+      var sib = E.person(d.sib), share = d.share, fee = Math.round(share * 0.08);
+      var take = function (amt, line) { E.addMoney(amt); E.log('📜 I inherited ' + E.fmt(amt) + ' from ' + d.from + (line ? ' ' + line : '') + '.', 'good'); };
+      if (!sib || !sib.alive) return { icon: '📜', title: 'The will', text: 'The lawyers finished settling my ' + d.rel + '\'s estate.', choices: [{ label: 'OK', run: function () { take(share); return good('My share came to ' + E.fmt(share) + '.'); } }] };
+      var nm = sib.first, odds = U.clamp(0.4 + (E.me().smarts - 50) / 250 + (sib.rel < 30 ? 0.1 : 0), 0.2, 0.75);
+      return {
+        icon: '📜', title: 'Fighting over the will', text: 'My ' + d.rel + ' left an estate, and my ' + (sib.gender === 'F' ? 'sister' : 'brother') + ' ' + nm + ' says the will isn\'t fair. My share is ' + E.fmt(share) + ', and ' + nm + ' wants more of it.',
+        choices: [
+          { label: 'Split it fairly with ' + nm, run: function () { take(share); E.rel(sib, 10); E.karma(2); return good('We sat down and split everything the way ' + d.from + ' wanted. ' + nm + ' hugged me at the end.'); } },
+          { label: 'Fight it in court (' + E.fmt(fee) + ' in legal fees)', run: function () {
+            E.addMoney(-fee);
+            if (U.chance(odds)) { take(Math.round(share * 1.75), 'after winning in court'); E.rel(sib, -40); sib.money = Math.max(0, Math.round((sib.money || 0) - share * 0.75)); E.stat('happy', 2); return 'The judge ruled for me and I got most of ' + nm + '\'s share too. ' + nm + ' hasn\'t spoken to me since.'; }
+            take(Math.round(share * 0.7), 'after losing in court'); E.rel(sib, -25); E.stat('happy', -6); return bad('The judge sided with ' + nm + '. I ended up with less than I started with, and a sibling who won\'t return my calls.');
+          } },
+          { label: 'Let ' + nm + ' have my share', run: function () { E.rel(sib, 25); E.karma(6); E.stat('happy', 3); E.log('📜 I gave my inheritance from ' + d.from + ' to ' + nm + '.'); return good('Money isn\'t worth losing my ' + (sib.gender === 'F' ? 'sister' : 'brother') + ' over. ' + nm + ' cried.'); } }
+        ]
+      };
+    }
+  });
   def('pet_lost', {
     scripted: true,
     build: function (d) {

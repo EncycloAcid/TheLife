@@ -1271,6 +1271,13 @@ TL.engine = (function () {
       if (p.rel < 25) share = Math.round(share * 0.2);
     }
     if (share > $(100)) {
+      // A big estate and a grown sibling can mean a fight over the will (js/events.js).
+      var sibs = people(['sibling']).filter(function (q) { return q.age >= 18; });
+      if ((p.role === 'mother' || p.role === 'father') && sibs.length && share > $(40000) && !s.prison && U.chance(0.35)) {
+        var rival = sibs.slice().sort(function (a, b) { return a.rel - b.rel; })[0];
+        queue('estate_dispute', { share: share, from: p.first, rel: relWord(p), sib: rival.id });
+        return;
+      }
       addMoney(share);
       log('📜 I inherited ' + fmt(share) + ' from ' + p.first + '.', 'good');
     }

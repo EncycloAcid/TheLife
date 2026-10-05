@@ -412,13 +412,15 @@ TL.ui = (function () {
   // Bad news waiting in a dialog means no party, even in a year with good news.
   var SOMBER = /^(funeral|crime_caught|parole_hearing|hoops_injury|workplace_injury|car_accident|debt_collectors|spouse_leaves|pet_sick|market_crash|m_blackdeath|r_insula_fire)$/;
   var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
+  var GRIEF = /\b(died|passed away|killed|cancer|stage [34]|terminal)\b/i;
   function celebrate(y) {
     if (!y) return;
     var key = y.age + ':' + y.year, from = logSeen && logSeen.key === key ? logSeen.n : logSeen ? 0 : y.entries.length;
     var fresh = y.entries.slice(from);
     logSeen = { key: key, n: y.entries.length };
     // Only my own milestones: "My brother got promoted" is news, not a party.
-    if (!S().dead && fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { if (!S().pending.some(function (q) { return SOMBER.test(q.id); })) TL.motion.confetti(); }, 250);
+    // Someone else's news I only heard about isn't mine, and a death or a grim diagnosis this year means no party.
+    if (!S().dead && !fresh.some(function (e) { return e.c === 'bad' && GRIEF.test(String(e.t)); }) && fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /^\W*(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t) && !/\bI (found out|heard|learned|read)\b/i.test(t)); }) && TL.motion) setTimeout(function () { if (!S().pending.some(function (q) { return SOMBER.test(q.id); })) TL.motion.confetti(); }, 250);
   }
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
