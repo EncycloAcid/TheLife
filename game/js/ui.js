@@ -409,6 +409,8 @@ TL.ui = (function () {
     return '<div class="entry ' + (e.c || '') + '"><span class="e-ico' + (ico ? ' em' : '') + '">' + (ico || '<span class="e-dot"></span>') + '</span><span class="e-txt">' + U.esc(txt) + (e.n > 1 ? '<span class="times">×' + e.n + '</span>' : '') + '</span></div>';
   }
   // Confetti for life's big moments, once each, as they appear in the log.
+  // Bad news waiting in a dialog means no party, even in a year with good news.
+  var SOMBER = /^(funeral|hoops_injury|workplace_injury|car_accident|debt_collectors|spouse_leaves|pet_sick|market_crash|m_blackdeath|r_insula_fire)$/;
   var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
   function celebrate(y) {
     if (!y) return;
@@ -416,7 +418,7 @@ TL.ui = (function () {
     var fresh = y.entries.slice(from);
     logSeen = { key: key, n: y.entries.length };
     // Only my own milestones: "My brother got promoted" is news, not a party.
-    if (!S().dead && fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { TL.motion.confetti(); }, 250);
+    if (!S().dead && fresh.some(function (e) { var t = String(e.t); return e.c !== 'bad' && CELEBRATE.test(t) && (/Challenge complete|Achievement unlocked|Bucket list:/.test(t) || /\b(I|We)\b|\b(our|my) (wedding|baby|surrogate)/i.test(t)); }) && TL.motion) setTimeout(function () { if (!S().pending.some(function (q) { return SOMBER.test(q.id); })) TL.motion.confetti(); }, 250);
   }
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
@@ -601,6 +603,7 @@ TL.ui = (function () {
       // A broken event must never block aging up: drop it and move on.
       try { ev = TL.events.build(p); } catch (err) { if (window.console) console.error(err); }
       if (!ev) { s.pending.shift(); continue; }
+      if (SOMBER.test(p.id)) Array.prototype.forEach.call(document.querySelectorAll('.confetti'), function (el) { el.remove(); });
       showDialog({
         icon: ev.icon, title: ev.title, text: ev.text,
         buttons: ev.choices.map(function (c, i) {

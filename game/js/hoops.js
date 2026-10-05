@@ -236,12 +236,21 @@ TL.hoops = (function () {
     develop(x, s.flags.hoopsTrain ? 1 : 0); s.flags.hoopsTrain = 0;
     var r = role(x.ovr), gp = games(), mins = r[1], earned = j.salary || E.$(x.contract.salary);
     // Injury check
-    var injured = null;
-    if (U.chance(0.1 + Math.max(0, me().age - 29) * 0.03 - (me().health - 70) / 400)) {
-      injured = U.weighted(INJURIES.map(function (i, k) { return { w: [30, 22, 16, 12, 8, 4][k], i: i }; })).i;
-      x.ovr = U.clamp(x.ovr - injured[2], 20, 99); E.stat('health', -injured[2] * 3 - 3); E.stat('happy', -6);
+    // Injuries: a body that was rushed back is more fragile, and a long rehab
+    // after surgery costs part of the next season but gives back what was lost.
+    var injured = null, healed = 0, rehabGames = x.rehab ? Math.round(gp * 0.25) : 0;
+    if (x.rehab) {
+      healed = x.rehab; x.ovr = U.clamp(x.ovr + x.rehab, 20, 99); delete x.rehab;
+      E.log('🩹 After a long rehab I came back close to my old self (+' + healed + ' overall).', 'good');
     }
-    var played = injured ? Math.max(0, gp - Math.round(injured[1] * gp / 82)) : gp - U.rand(0, Math.round(gp * 0.08));
+    if (U.chance(0.1 + Math.max(0, me().age - 29) * 0.03 - (me().health - 70) / 400 + (x.fragile ? 0.12 : 0))) {
+      injured = U.weighted(INJURIES.map(function (i, k) { return { w: [30, 22, 16, 12, 8, 4][k], i: i }; })).i;
+      if (x.fragile && U.chance(0.4)) injured = INJURIES[Math.min(INJURIES.length - 1, INJURIES.indexOf(injured) + 1)]; // the old injury gives way
+      x.ovr = U.clamp(x.ovr - injured[2], 20, 99); E.stat('health', -injured[2] * 3 - 3); E.stat('happy', -6);
+      (x.inj = x.inj || []).push({ what: injured[0], year: s.year });
+    }
+    if (x.fragile) x.fragile--;
+    var played = Math.max(0, (injured ? Math.max(0, gp - Math.round(injured[1] * gp / 82)) : gp - U.rand(0, Math.round(gp * 0.08))) - rehabGames);
     // My game plan this season (chosen from the menu last year): score-first, team-first or lockdown D.
     var gpl = s.flags.hoopsPlan && s.flags.hoopsPlan.y >= s.year - 1 ? s.flags.hoopsPlan.k : null; delete s.flags.hoopsPlan;
     var l = planLine(statLine(x, mins), gpl), lg = x.league, proLeague = lg === 'NBA' || lg === 'WNBA' || lg === 'EuroLeague', home = lg === 'NBA' || lg === 'WNBA';
@@ -274,6 +283,7 @@ TL.hoops = (function () {
     var hi = played >= 10 ? Math.round(l.ppg + Math.max(4, l.ppg * 0.45) * U.randf(0.6, 1.6) + (U.chance(0.04) ? U.rand(8, 15) : 0)) : 0;
     var line = { year: s.year, age: me().age, team: x.team, league: lg, mates: mates.length ? mates.slice(0, 3) : undefined, gp: played, ppg: l.ppg, rpg: l.rpg, apg: l.apg, spg: l.spg, bpg: l.bpg, fg: l.fg, tp: l.tp, hi: hi, rec: rec, result: result };
     var rookie = !x.seasons.some(function (q) { return q.league === x.league && x.league !== 'NCAA'; }) && x.league !== 'G League';
+    if (injured && injured[2] >= 2) line.injured = injured[0];
     x.seasons.push(line);
     E.log('🏀 ' + s.year + ' with the ' + x.team.replace(/^the /, '') + ' (' + rec + '): ' + fmtLine(l) + ' in ' + played + ' games.' + (mates.length ? ' Teammates included ' + mates.slice(0, 2).join(' and ') + '.' : '') + (injured ? ' I missed time with ' + injured[0] + '.' : ''), injured ? 'bad' : '');
     if (hi) {
@@ -300,6 +310,19 @@ TL.hoops = (function () {
       // All-Star Weekend contests go to the best shooters and dunkers.
       var c3 = attr(x, 'sho') >= 86, dunk = !F && attr(x, 'ath') >= 84 && me().age <= 30;
       if (lg !== 'EuroLeague' && (c3 || dunk) && played >= gp * 0.5 && U.chance(0.3)) s.pending.push({ id: 'hoops_contest', data: { year: s.year, kind: c3 && (!dunk || U.chance(0.5)) ? '3pt' : 'dunk' } });
+    }
+    // A serious injury means a choice about how to come back from it.
+    // A serious injury lowers my ceiling too, unless I come back from it the right way.
+    if (injured && injured[2] >= 2 && proLeague) {
+      var potLoss = Math.ceil(injured[2] / 2) + 1;
+      x.pot = U.clamp(x.pot - potLoss, 20, 99);
+      s.pending.push({ id: 'hoops_injury', data: { what: injured[0], loss: injured[2], pot: potLoss, year: s.year } });
+    }
+    // Back from a lost season: Comeback Player of the Year (an NBA award in 1981-86 and from 2022).
+    var prev = x.seasons[x.seasons.length - 2];
+    if (prev && prev.injured && !injured && played >= gp * 0.6 && (allStar || l.ppg >= 17 * sc)) {
+      if (lg === 'NBA' && (s.year <= 1986 && s.year >= 1981 || s.year >= 2022) && U.chance(0.6)) { award(x, 'Comeback Player of the Year', line); E.log('💪 I won Comeback Player of the Year!', 'good'); E.fame(4); }
+      else E.log('💪 Everyone said I\'d never be the same. I proved them wrong.', 'good');
     }
     // Playoffs: sometimes it comes down to one possession.
     if (sim && sim.wait) {
@@ -559,6 +582,27 @@ TL.hoops = (function () {
     }
     if (r && played >= gp * 0.3) S().pending.push({ id: 'hoops_rival', data: { year: S().year } });
   }
+  // A serious injury: how do I come back from it?
+  def('hoops_injury', {
+    scripted: true,
+    build: function (d) {
+      var x = h(), cost = E.$(me().gender === 'F' ? 40000 : 150000);
+      if (!x || x.stage !== 'pro') return null;
+      return {
+        icon: '🩹', title: 'Injury', text: 'I suffered ' + d.what + '. The team doctors laid out my options.',
+        choices: [
+          { label: 'Surgery and a full rehab', run: function () { x.rehab = Math.max(1, Math.ceil(d.loss * 0.6)); x.pot = U.clamp(x.pot + (d.pot || 0), 20, 99); E.stat('happy', -2); return 'I\'ll do it right. I\'ll miss the start of next season, but I should get most of my game back.'; } },
+          { label: 'Rush back as soon as I can', run: function () { x.fragile = 3; E.fame(1); if (U.chance(0.35)) { x.ovr = U.clamp(x.ovr - 1, 20, 99); x.pot = U.clamp(x.pot - 1, 20, 99); return bad('I played through it. The fans loved the toughness, but it never fully healed and I\'m more likely to get hurt again.'); } return 'I played through it. The fans loved the toughness, but I\'m more likely to get hurt again for a while.'; } },
+          { label: 'Experimental treatment abroad (' + E.fmt(cost) + ')', run: function () {
+            if (S().money < cost) { x.rehab = Math.max(1, Math.ceil(d.loss * 0.6)); x.pot = U.clamp(x.pot + (d.pot || 0), 20, 99); return bad('I can\'t afford it. I had surgery and did the standard rehab instead.'); }
+            E.addMoney(-cost);
+            if (U.chance(0.55)) { x.ovr = U.clamp(x.ovr + d.loss, 20, 99); x.pot = U.clamp(x.pot + (d.pot || 0), 20, 99); return good('The treatment worked. I feel like nothing happened.'); }
+            return bad('I flew across the world for it and it didn\'t help.');
+          } }
+        ]
+      };
+    }
+  });
   def('hoops_rival', { cond: pro, build: function (d) {
     var x = h(), r = x && x.rival, team = r && rivalTeam(r);
     if (!r || !team || (d && d.year !== S().year - 1 && d.year !== S().year)) return null;
@@ -697,8 +741,8 @@ TL.hoops = (function () {
   }
 
   // ------------------------------------------------------------------ menu
-  var ICONS = { 'MVP': '🏆', 'Finals MVP': '🏅', 'All-Star': '⭐', 'Rookie of the Year': '🌱', 'Defensive Player of the Year': '🔒', 'Sixth Man of the Year': '🪑', 'Most Improved Player': '📈', 'Scoring title': '🔥', 'Three-Point Contest': '🎯', 'Slam Dunk Contest': '💥', 'Olympic gold': '🥇', 'Olympic silver': '🥈', 'Olympic bronze': '🥉' };
-  var ORDER = [/^MVP/, /^Finals/, /^All-Star/, /^All-.* First/, /^All-.* Second/, /^All-.* Third/, /^Defensive/, /^Sixth/, /^Most Improved/, /^Scoring/, /^Rookie/, /^Olympic gold/, /^Olympic silver/, /^Olympic bronze/, /Contest/];
+  var ICONS = { 'Comeback Player of the Year': '💪', 'MVP': '🏆', 'Finals MVP': '🏅', 'All-Star': '⭐', 'Rookie of the Year': '🌱', 'Defensive Player of the Year': '🔒', 'Sixth Man of the Year': '🪑', 'Most Improved Player': '📈', 'Scoring title': '🔥', 'Three-Point Contest': '🎯', 'Slam Dunk Contest': '💥', 'Olympic gold': '🥇', 'Olympic silver': '🥈', 'Olympic bronze': '🥉' };
+  var ORDER = [/^MVP/, /^Finals/, /^All-Star/, /^All-.* First/, /^All-.* Second/, /^All-.* Third/, /^Defensive/, /^Sixth/, /^Most Improved/, /^Comeback/, /^Scoring/, /^Rookie/, /^Olympic gold/, /^Olympic silver/, /^Olympic bronze/, /Contest/];
   function rank(k) { for (var i = 0; i < ORDER.length; i++) if (ORDER[i].test(k)) return i; return ORDER.length; }
   function accolades(x) {
     var acc = [], aw = x.aw || {}, n;
@@ -723,7 +767,8 @@ TL.hoops = (function () {
       (x.stage === 'pro' && (x.league === 'NBA' || x.league === 'WNBA') && TL.nba && TL.nba.starsOn(m.gender, x.team, S().year).length ? '<p class="small">🤝 Teammates: ' + U.esc(TL.nba.starsOn(m.gender, x.team, S().year).slice(0, 3).join(', ')) + '</p>' : '') +
       (x.contract && x.stage === 'pro' ? '<p class="small muted">Contract: ' + E.fmt(S().job.salary) + '/yr · ' + U.plural(Math.max(0, x.contract.years), 'year') + ' left' + (x.shoe ? ' · 👟 ' + x.shoe.brand : '') + '</p>' : '') +
       (pro.length ? '<p class="small">Career: <b>' + avg('ppg') + '</b> PTS · <b>' + avg('rpg') + '</b> REB · <b>' + avg('apg') + '</b> AST · ' + pts.toLocaleString() + ' points' + (x.high ? ' · high of ' + x.high.pts : '') + '</p>' : '') +
-      (acc.length ? '<p class="small">' + acc.join(' · ') + '</p>' : '');
+      (acc.length ? '<p class="small">' + acc.join(' · ') + '</p>' : '') +
+      (x.inj && x.inj.length ? '<p class="small muted">🩹 Injuries: ' + x.inj.slice(-4).map(function (q) { return U.esc(q.what.replace(/^an? /, '')) + ' (' + q.year + ')'; }).join(', ') + (x.fragile ? ' · still not 100%' : '') + '</p>' : '');
   }
   function trophyCase() {
     ui().menu('Trophy case', function () {
