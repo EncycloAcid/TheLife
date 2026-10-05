@@ -208,3 +208,69 @@ h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -.035em; }
 /* Quiet years match the year chips above and below them. */
 .quiet-row { padding: 0 4px; }
 .quiet-row b { text-transform: none; letter-spacing: 0; font-size: .75rem; padding: 3px 10px; border-radius: var(--r-full); background: var(--surface-high); color: var(--muted); }
+
+/* ============================================================ v2.5 bolder */
+/* Hero card: me, my money and my four stats in one tonal container. */
+.hero { margin: 4px 12px 10px; padding: 4px 6px 10px; border-radius: 32px; background: var(--primary-c); color: var(--on-primary-c); box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--primary) 70%, transparent); position: relative; z-index: 2; }
+.hero .gh { padding: 8px 10px 10px 4px; }
+.hero .icon-btn { color: var(--on-primary-c); }
+.hero .avatar-ring { width: 56px; height: 56px; background: var(--cell); }
+.hero .avatar { font-size: 1.8rem; }
+.hero .gh-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; }
+.hero .gh-sub, .hero .gh-age { color: color-mix(in srgb, var(--on-primary-c) 72%, transparent); }
+.hero .gh .money { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; color: var(--on-primary-c); }
+.hero .gh .money.neg { color: var(--bad); }
+.hero .stats { margin: 0 4px; gap: 6px; }
+.hero .stat { background: color-mix(in srgb, var(--cell) 78%, transparent); border-radius: var(--r-l); padding: 9px 2px 7px; }
+.hero .stat.low { background: var(--bad-bg); }
+.hero .stat-lbl { color: color-mix(in srgb, var(--text) 70%, transparent); }
+.hero .floater { top: -4px; }
+/* Wavy progress rings */
+.ring { width: 50px; height: 50px; }
+.ring .rb { stroke-width: 4; stroke-opacity: .16; }
+.ring .rf { stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke-dashoffset 1s var(--bounce); }
+.ring-ico { font-size: 1.1rem; }
+/* The log scrolls under the hero. */
+.log { padding-top: 2px; }
+/* Year headers as display type: "Age 16" big, the year beside it. */
+.year-h { align-items: baseline; margin: 6px 0 8px 6px; }
+.year-h b { padding: 0; background: none; font-size: 1.375rem; font-weight: 800; letter-spacing: -.03em; color: var(--text); }
+.year.latest .year-h b { background: none; color: var(--primary); }
+.year-h span { font-size: .875rem; font-weight: 600; color: var(--muted); }
+.year.latest .year-h span { color: var(--primary); }
+.year.latest .ycard { box-shadow: none; background: var(--cell); outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: -2px; }
+.quiet-row b { font-size: .8125rem; }
+/* Sheets: a large headline that hands off to the bar title when you scroll. */
+.sheet-large { margin: 2px 6px 6px; font-size: 2rem; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; color: var(--text); transition: opacity .2s ease, transform var(--spring-ms) var(--spring); transform-origin: 0 50%; }
+.sheet-head h3 { opacity: 0; transform: translateY(6px); transition: opacity .2s ease, transform var(--spring-ms) var(--spring); }
+.sheet.scrolled .sheet-head h3 { opacity: 1; transform: none; }
+.sheet.scrolled .sheet-large { opacity: 0; transform: scale(.92); }
+.jump { margin-top: 4px; }
+/* Bigger, bouncier presses on list tiles and stats. */
+.group .item { transition: background-color .2s ease, border-radius var(--spring-ms) var(--spring), transform var(--bounce-ms) var(--bounce); }
+.group .item:active:not(.disabled):not(.static) { transform: scale(.98); }
+.hero .stats:active .stat { border-radius: var(--r-m); transform: scale(.96); }
+.hero .stat { transition: border-radius var(--spring-ms) var(--spring), transform var(--bounce-ms) var(--bounce); }
+/* New year's card springs in a touch more. */
+.year.fresh .ycard { animation: card-in var(--bounce-ms) var(--bounce); }
+@keyframes card-in { from { transform: translateY(18px) scale(.96); border-radius: var(--r-m); opacity: 0; } }
+/* The age button: bigger, with a bolder press. */
+.ageup { width: 68px; height: 68px; border-radius: 24px; background: var(--primary); color: var(--on-primary); }
+.ageup.pop::after { border-radius: 24px; }
+@keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.82) rotate(-8deg); } 100% { border-radius: 24px; } }
+/* Hero header: name gets the full width; money and age sit on a line below. */
+.hero .gh { display: grid; grid-template-columns: 40px 56px 1fr auto; grid-template-rows: auto auto; column-gap: 10px; row-gap: 0; align-items: center; }
+.hero #h-menu { grid-row: 1 / span 2; grid-column: 1; }
+.hero .avatar-ring { grid-row: 1 / span 2; grid-column: 2; }
+.hero .gh-mid { grid-row: 1; grid-column: 3; align-self: end; }
+.hero #h-phone { grid-row: 1 / span 2; grid-column: 4; }
+.hero .gh-right { grid-row: 2; grid-column: 3; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 8px; align-self: start; text-align: left; }
+.hero .gh-sub { display: none; }
+.hero .gh-age::before { content: '· '; }
+.hero .gh-age { font-size: .875rem; font-weight: 600; }
+.hero .delta { left: 0; right: auto; }
+/* Stat change floaters stay inside their tile. */
+.hero .stat { overflow: hidden; }
+.hero .floater { top: 4px; left: auto; right: 8px; font-size: .75rem; }
+.hero .gh-sub { display: block; font-size: .8125rem; margin-top: 1px; }
+.hero .gh-right { margin-top: 2px; }

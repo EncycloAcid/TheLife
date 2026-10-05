@@ -354,6 +354,8 @@ TL.ui = (function () {
   }
   // Four ring gauges. Built once, then updated in place so changes animate.
   var RING_R = 20, RING_C = 2 * Math.PI * RING_R;
+  // Material 3 Expressive wavy progress: the filled arc ripples around the ring.
+  var WAVE = (function () { var d = '', n = 180; for (var i = 0; i <= n; i++) { var t = i / n * 2 * Math.PI, r = RING_R + 1.4 * Math.sin(t * 11); d += (i ? 'L' : 'M') + (25 + r * Math.cos(t)).toFixed(2) + ' ' + (25 + r * Math.sin(t)).toFixed(2); } return d; })();
   var lastMoney = null, lastAge = null, prevStats = null, logSeen = null;
   var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--tint)'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
@@ -361,13 +363,13 @@ TL.ui = (function () {
     var built = !box.querySelector('.ring');
     if (built) {
       box.innerHTML = STAT_DEFS.map(function (d) {
-        return '<div class="stat" data-k="' + d[0] + '" style="--c:' + d[3] + '"><div class="ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="' + RING_R + '"/><circle class="rf" cx="25" cy="25" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(1) + '" stroke-dashoffset="' + RING_C.toFixed(1) + '"/></svg><span class="ring-ico">' + d[1] + '</span></div><div class="stat-lbl">' + d[2] + ' <b></b></div></div>';
+        return '<div class="stat" data-k="' + d[0] + '" style="--c:' + d[3] + '"><div class="ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="' + RING_R + '"/><path class="rf" d="' + WAVE + '" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/></svg><span class="ring-ico">' + d[1] + '</span></div><div class="stat-lbl">' + d[2] + ' <b></b></div></div>';
       }).join('');
     }
     if (built) void box.offsetWidth; // let freshly built rings sweep in from empty
     STAT_DEFS.forEach(function (d) {
       var v = m[d[0]], el = box.querySelector('[data-k="' + d[0] + '"]'), was = prevStats ? prevStats[d[0]] : null;
-      el.querySelector('.rf').setAttribute('stroke-dashoffset', (RING_C * (1 - v / 100)).toFixed(1));
+      el.querySelector('.rf').setAttribute('stroke-dashoffset', (100 - v).toFixed(1));
       var num = el.querySelector('b');
       if (was != null && was !== v && TL.motion) {
         TL.motion.countTo(num, was, v, function (x) { return String(Math.round(x)); }, 600);
@@ -718,6 +720,9 @@ TL.ui = (function () {
     body.innerHTML = '';
     // Resetting an empty list is free; only a restored offset needs layout.
     if (sheetScroll) { body.scrollTop = 0; sheetScroll = 0; }
+    // A large headline title that hands off to the small bar title on scroll.
+    var big = document.createElement('h2'); big.className = 'sheet-large'; big.textContent = top.title; body.appendChild(big);
+    $('#sheet').classList.remove('scrolled');
     var items = top.build(), group = null;
     // Long menus get a row of chips that jump to each section.
     var secs = items.filter(function (it) { return it.section; });
@@ -741,7 +746,7 @@ TL.ui = (function () {
       if (!group) { group = document.createElement('div'); group.className = 'group'; body.appendChild(group); }
       group.appendChild(el);
     });
-    if (st > 0) { body.scrollTop = st; sheetScroll = body.scrollTop; }
+    if (st > 0) { body.scrollTop = st; sheetScroll = body.scrollTop; $('#sheet').classList.toggle('scrolled', sheetScroll > 36); }
   }
   function menuItem(it) {
     var el;
@@ -866,7 +871,7 @@ TL.ui = (function () {
         // The card behind grows back toward full size as the sheet comes down.
         if (behind) behind.style.transform = 'translateY(calc((10px + var(--safe-t)) * ' + (1 - k).toFixed(3) + ')) scale(' + (0.92 + 0.08 * k).toFixed(4) + ')';
       }
-      body.addEventListener('scroll', function () { sheetScroll = body.scrollTop; }, { passive: true });
+      body.addEventListener('scroll', function () { sheetScroll = body.scrollTop; $('#sheet').classList.toggle('scrolled', sheetScroll > 36); }, { passive: true });
       panel.addEventListener('touchstart', function (e) {
         y0 = body.contains(e.target) && sheetScroll > 0 ? null : e.touches[0].clientY; dy = 0; vel = 0;
         lastY = y0; lastT = Date.now(); h = panel.offsetHeight || 1;
