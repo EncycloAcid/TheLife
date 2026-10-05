@@ -1091,7 +1091,16 @@ TL.engine = (function () {
     s.pets.forEach(function (pet) {
       pet.age++;
       pet.rel = U.clamp(pet.rel - U.rand(0, 5), 0, 100);
-      if (pet.age > pet.life - 2 && U.chance(0.35 + (pet.age - pet.life) * 0.2)) {
+      // Trained pets are a joy; sick ones need the vet (js/actions.js).
+      if (pet.trained) stat('happy', pet.trained);
+      if (pet.sick) {
+        if (U.chance(0.35)) { log('🐾 ' + pet.name + ' got over ' + pet.sick + ' without the vet.'); pet.sick = null; }
+        else { pet.life -= 1; pet.rel = U.clamp(pet.rel - 5, 0, 100); log('🐾 ' + pet.name + ' is still suffering from ' + pet.sick + '.', 'bad'); }
+      } else if (U.chance(0.07 + (pet.age > pet.life * 0.7 ? 0.08 : 0))) {
+        pet.sick = U.pick(['an ear infection', 'a stomach bug', 'an injured leg', 'a parasite', 'a skin infection']);
+        log('🤒 ' + pet.name + ' seems unwell. It looks like ' + pet.sick + '.', 'bad');
+      }
+      if (pet.age > pet.life - 2 && U.chance(0.35 + (pet.age - pet.life) * 0.2 + (pet.sick ? 0.15 : 0))) {
         pet.dead = true;
         log('🐾 My ' + pet.species.toLowerCase() + ' ' + pet.name + ' passed away.', 'bad');
         stat('happy', -10);

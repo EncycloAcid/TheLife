@@ -454,7 +454,7 @@ TL.events = (function () {
   def('promotion_offer', { min: 22, max: 65, w: 3, cond: function () { var j = S().job; return j && !j.partTime && !j.fame && j.level < D.career(j.career).levels.length - 1; }, build: function () {
     var j = S().job, c = D.career(j.career);
     return { icon: '🧳', title: 'Relocation offer', text: 'My company offers me a promotion to ' + c.levels[j.level + 1][0] + ', but I\'d need to relocate and work longer hours.', choices: [
-      { label: 'Accept', run: function () { j.level++; j.levelYears = 0; E.stat('happy', -3); E.people(['friend']).forEach(function (p) { E.rel(p, -10); }); var pt = E.partner(); if (pt) E.rel(pt, -8); return good('I\'m now ' + E.an(E.jobTitle(j)) + ' earning ' + E.fmt(E.jobSalary(j)) + '!'); } },
+      { label: 'Accept', run: function () { j.level++; j.levelYears = 0; j.rival = null; E.stat('happy', -3); E.people(['friend']).forEach(function (p) { E.rel(p, -10); }); var pt = E.partner(); if (pt) E.rel(pt, -8); return good('I\'m now ' + E.an(E.jobTitle(j)) + ' earning ' + E.fmt(E.jobSalary(j)) + '!'); } },
       { label: 'Decline', run: function () { return 'I stayed where I am.'; } }
     ] };
   } });

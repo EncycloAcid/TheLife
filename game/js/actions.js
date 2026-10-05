@@ -552,16 +552,53 @@ TL.actions = (function () {
     E.checkAchievements();
     return pet;
   }
+  // Training: how much each species can learn (cats do it on their own terms).
+  var PET_TRAIN = { Dog: 1, Horse: 0.9, Parrot: 0.8, Cat: 0.5 };
+  var PET_LEVELS = ['Untrained', 'Knows a few tricks', 'Well trained', 'Show-ready'];
+  function petVet(pet) {
+    var cost = E.$(pet.sick ? 600 : 200);
+    if (!afford(cost)) return done(noMoney(cost));
+    E.addMoney(-cost);
+    if (pet.sick) {
+      if (U.chance(0.9)) { var was = pet.sick; pet.sick = null; pet.rel = U.clamp(pet.rel + 6, 0, 100); return done(good('The vet treated ' + pet.name + '\'s ' + was.replace(/^an? /, '') + '. ' + (pet.species === 'Dog' ? 'Tail wagging again! 🐕' : 'Back to normal. 🐾'))); }
+      return done(bad('The vet tried, but ' + pet.name + ' is still unwell. We\'ll try again.'));
+    }
+    pet.vetYear = S().year;
+    if ((pet.vetBonus || 0) < 3 && U.chance(0.3)) { pet.life++; pet.vetBonus = (pet.vetBonus || 0) + 1; return done(good('The vet caught something early. ' + pet.name + ' should have a longer, healthier life. 🩺')); }
+    return done(pet.name + ' got a clean bill of health. 🩺');
+  }
+  function petTrain(pet) {
+    var lv = pet.trained || 0, cost = E.$(150 * (lv + 1));
+    if (!afford(cost)) return done(noMoney(cost));
+    E.addMoney(-cost); pet.trainYear = S().year;
+    var ok = U.chance(U.clamp((0.75 - lv * 0.15 + pet.rel / 400) * PET_TRAIN[pet.species], 0.1, 0.95));
+    pet.rel = U.clamp(pet.rel + 5, 0, 100);
+    if (!ok) return done(pet.species === 'Cat' ? pet.name + ' stared at the trainer and walked away. Maybe next year. 🐈' : pet.name + ' had fun, but nothing really stuck. Maybe next year.');
+    pet.trained = lv + 1; E.stat('happy', 3);
+    return done(good(pet.name + ' is now ' + PET_LEVELS[pet.trained].toLowerCase() + '! 🎓'));
+  }
+  function petShow(pet) {
+    pet.showYear = S().year;
+    var r = Math.random(), win = 0.1 + pet.rel / 500;
+    if (r < win) { var prize = E.$(U.rand(2, 20) * 100); E.addMoney(prize); pet.ribbons = (pet.ribbons || 0) + 1; E.fame(1); E.stat('happy', 8); E.log('🏅 ' + pet.name + ' won best in show! (' + E.fmt(prize) + ')', 'good'); return done(good(pet.name + ' won best in show and ' + E.fmt(prize) + '! 🏅')); }
+    if (r < win + 0.35) { E.stat('happy', 3); return done(pet.name + ' placed in the top three. Not bad at all. 🥈'); }
+    return done(pet.name + ' didn\'t place this time. ' + pet.name + ' still thinks it\'s the best. 🐾');
+  }
   function petMenu(pet) {
     ui().menu(pet.name, function () {
       return [
         { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + pet.age + ' years old.</p>' },
         { icon: '🎾', label: 'Play', onClick: function () { var f = diminish('pet' + pet.id); pet.rel = U.clamp(pet.rel + 10 * f, 0, 100); E.stat('happy', 4 * f); done('I played with ' + pet.name + '.'); } },
         { icon: '🦮', label: 'Go for a walk', onClick: function () { var f = diminish('walkpet' + pet.id); pet.rel = U.clamp(pet.rel + 8 * f, 0, 100); E.stat('health', 3 * f); done('I took ' + pet.name + ' for a walk.'); } },
-        { icon: '🏥', label: 'Take to the vet', right: E.fmt(E.$(200)), onClick: function () { E.addMoney(-E.$(200)); pet.life += U.chance(0.5) ? 1 : 0; done(pet.name + ' got a clean bill of health.'); } },
+        { icon: '🏥', label: pet.sick ? 'Get ' + pet.name + ' treated' : 'Take to the vet', sub: pet.sick ? 'Sick with ' + pet.sick : pet.vetYear === S().year ? 'Checked up this year' : 'Yearly checkup', disabled: !pet.sick && pet.vetYear === S().year, right: E.fmt(E.$(pet.sick ? 600 : 200)), onClick: function () { petVet(pet); } },
+      ].concat(PET_TRAIN[pet.species] && (pet.trained || 0) < 3 ? [
+        { icon: '🎓', label: 'Training classes', sub: PET_LEVELS[pet.trained || 0] + (pet.trainYear === S().year ? ' · trained this year' : ''), disabled: pet.trainYear === S().year, right: E.fmt(E.$(150 * ((pet.trained || 0) + 1))), onClick: function () { petTrain(pet); } }
+      ] : []).concat(pet.trained >= 3 ? [
+        { icon: '🏅', label: 'Enter a ' + pet.species.toLowerCase() + ' show', sub: 'Show-ready · ' + (pet.ribbons ? U.plural(pet.ribbons, 'blue ribbon') + ' · ' : '') + (pet.showYear === S().year ? 'Competed this year' : 'Win a ribbon and prize money'), disabled: pet.showYear === S().year || !!pet.sick, onClick: function () { petShow(pet); } }
+      ] : []).concat([
         { icon: '✏️', label: 'Rename', onClick: function () { ui().prompt('Rename', 'New name for ' + pet.name + ':', pet.name, function (v) { if (v) { pet.name = v.slice(0, 20); done('I renamed my pet ' + pet.name + '.'); } }); } },
         { icon: '🏠', label: 'Rehome', danger: true, onClick: function () { S().pets = S().pets.filter(function (x) { return x !== pet; }); E.stat('happy', -5); ui().back(); done('I gave ' + pet.name + ' to a new family.'); } }
-      ];
+      ]);
     });
   }
   function petStore() {
@@ -1615,7 +1652,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu,
     achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();
