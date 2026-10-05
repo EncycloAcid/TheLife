@@ -25,6 +25,17 @@ TL.talents = (function () {
       found: ['My drawing won the district art contest.', 'My teacher framed one of my paintings for the classroom.', 'I filled three sketchbooks this year. They\'re actually good.'] },
     { id: 'charm', icon: '💬', name: 'Silver tongue', sub: 'Charming and quick: comedy practice pays off faster and my posts land better.', at: [8, 13],
       found: ['I talked my way out of detention. Twice.', 'Everyone wants to sit with me at lunch. I just know what to say.', 'I won the school debate without preparing.'] },
+    // Career gifts: each one makes certain special careers (js/specials.js) much easier to master.
+    { id: 'palate', icon: '👅', name: 'Golden palate', sub: 'Flavors make sense to me: chefs and food critics would kill for this tongue.', at: [6, 12], career: true,
+      found: ['I named every spice in my grandmother\'s stew. She was stunned.', 'I fixed the soup at a family dinner with one pinch of something. Everyone asked for seconds.', 'I can tell which bakery a croissant came from with my eyes closed.'] },
+    { id: 'nerve', icon: '🧊', name: 'Nerves of steel', sub: 'Calm under pressure: poker, stunts, climbing, surfing, rodeo, racing and fighting come easier.', at: [8, 13], career: true,
+      found: ['I climbed to the top of the tallest tree in the park and waved. Mom nearly fainted.', 'Everyone else panicked during the fire drill. I calmly led my class out.', 'I bluffed my uncle out of his whole stack at family poker night. I was nine.'] },
+    { id: 'reflex', icon: '⚡', name: 'Lightning reflexes', sub: 'Faster than everyone: esports, racing, fighting, skateboarding, sprinting and riding come easier.', at: [6, 11], career: true,
+      found: ['I caught a falling glass before it hit the floor. Nobody even saw me move.', 'I beat my older cousin at every video game he owns. He stopped inviting me over.', 'The coach says he\'s never seen a kid react to the starting whistle that fast.'] },
+    { id: 'stage', icon: '🎤', name: 'Stage presence', sub: 'Every room is mine: comedy, magic, DJing, hosting, opera, modeling and ballet come easier.', at: [7, 13], career: true,
+      found: ['I walked onstage at the school assembly and the whole gym went quiet.', 'My magic trick at the talent show got a standing ovation. It wasn\'t even a good trick.', 'Strangers stop and watch when I tell a story. I don\'t know why.'] },
+    { id: 'grace', icon: '🩰', name: 'Natural grace', sub: 'I move like water: ballet, figure skating, gymnastics, swimming and surfing come easier.', at: [5, 10], career: true,
+      found: ['My dance teacher asked my parents how long I\'ve been training. It was my first class.', 'I did a perfect cartwheel on my first try, then a back walkover.', 'At the pool, the swim coach asked who taught me that stroke. Nobody did.'] },
     { id: 'iron', icon: '💪', name: 'Iron constitution', sub: 'Healthier from birth, and I get sick far less often.', at: [8, 14],
       found: ['I\'ve never missed a day of school for being sick.', 'The doctor said I\'m one of the healthiest kids she\'s seen.', 'The whole class got the flu. I didn\'t.'] }
   ];
@@ -46,9 +57,12 @@ TL.talents = (function () {
     apply(id, m);
   }
   // At birth: about 55% of people have a gift, 15% have two, 2% are prodigies with three.
-  function roll(inherit) {
+  function roll(inherit, pick) {
     var m = me(); if (!m) return;
     m.talents = m.talents || [];
+    // Chosen on the New Life screen: exactly that gift (or none at all).
+    if (pick === 'none') return;
+    if (pick && get(pick)) { give(pick, false); return; }
     (inherit || []).forEach(function (t) { if (U.chance(0.4)) give(t.id, false); });
     var n = U.weighted([{ w: 45, n: 0 }, { w: 38, n: 1 }, { w: 15, n: 2 }, { w: 2, n: 3 }]).n - m.talents.length;
     var pool = U.shuffle(LIST.map(function (t) { return t.id; }));

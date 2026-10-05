@@ -217,6 +217,8 @@ TL.ui = (function () {
     }
     sel.value = U.pick(D.COUNTRIES).name;
     // Birth year: today, or any decade back to 1900 (js/history.js).
+    var ts = $('#c-talent');
+    if (ts && TL.talents && ts.options.length <= 2) TL.talents.LIST.forEach(function (d) { var op = document.createElement('option'); op.value = d.id; op.textContent = d.icon + ' ' + d.name; ts.appendChild(op); });
     var ys = $('#c-year'), now = new Date().getFullYear();
     if (ys && !ys.options.length) {
       var opts = [['', 'Today (' + now + ')'], ['random', '🎲 A random year in history']].concat(TL.ancient ? TL.ancient.birthOptions() : []);
@@ -256,12 +258,12 @@ TL.ui = (function () {
       var rf = $('#c-first').value.trim(), rl = $('#c-last').value.trim(), rc = D.country(era.land), ln = D.surname(rl, 'M', era.id);
       // Born to the ruler: the family's throne passes to me (js/eras.js, TL.dynasty). Norway had no king of all the land before 872.
       var royal = $('#c-royal').checked, yrs = royal && era.royalYears ? era.royalYears : era.years;
-      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, royal: royal, wealth: royal ? 'rich' : $('#c-wealth').value || undefined, stats: readStats(), year: U.rand(yrs[0], yrs[1]) });
+      E.newLife({ first: rc.male.concat(rc.female).indexOf(rf) >= 0 ? rf : undefined, last: rc.last.indexOf(ln) >= 0 ? ln : undefined, gender: g, country: era.land, interest: interest, royal: royal, wealth: royal ? 'rich' : $('#c-wealth').value || undefined, stats: readStats(), talent: $('#c-talent') ? $('#c-talent').value || undefined : undefined, year: U.rand(yrs[0], yrs[1]) });
       E.save(); return startGame();
     }
     if (yv === 'random') year = U.rand(1900, now - 20);
     else if (yv) year = Math.min(now, +yv + U.rand(0, 9));
-    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats(), year: year });
+    E.newLife({ first: $('#c-first').value.trim().slice(0, 20) || undefined, last: $('#c-last').value.trim().slice(0, 24) || undefined, gender: g, country: $('#c-country').value, interest: interest, royal: $('#c-royal').checked, wealth: $('#c-wealth').value || undefined, stats: readStats(), talent: $('#c-talent') ? $('#c-talent').value || undefined : undefined, year: year });
     E.save();
     startGame();
   }

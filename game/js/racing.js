@@ -127,7 +127,7 @@ TL.racing = (function () {
     var w = x();
     if (count('rctrain') >= 2) return done(nope('That\'s enough training for this season.'));
     bump('rctrain');
-    if (kind === 'sim') { var g = Math.max(1, Math.round((95 - w.skill) / 22 * U.randf(0.6, 1.2) * (TL.talents && TL.talents.has('athlete') ? 1.3 : 1))); w.skill = cl(w.skill + g); return done(good((yr() >= 1990 ? 'I spent days in the simulator' : 'I walked the tracks and studied every corner') + ' (+' + g + ' racecraft).')); }
+    if (kind === 'sim') { var g = Math.max(1, Math.round((95 - w.skill) / 22 * U.randf(0.6, 1.2) * (TL.talents && (TL.talents.has('reflex') || TL.talents.has('nerve')) ? 1.5 : TL.talents && TL.talents.has('athlete') ? 1.3 : 1))); w.skill = cl(w.skill + g); return done(good((yr() >= 1990 ? 'I spent days in the simulator' : 'I walked the tracks and studied every corner') + ' (+' + g + ' racecraft).')); }
     me().athl = cl(me().athl + U.rand(1, 3)); E.stat('health', 2);
     done(good('I trained my neck and core for the g-forces.'));
   }
@@ -183,7 +183,7 @@ TL.racing = (function () {
       var injured = out > 0, crash = false, mech = false;
       if (injured) { out--; my.dnf++; }
       else {
-        var me0 = w.skill * 0.55 + car * 0.4 + m.athl * 0.05 + st[1] + U.randf(-9, 9) * st[2] - Math.max(0, m.age - 36) * 1.2;
+        var me0 = w.skill * 0.55 + car * 0.4 + m.athl * 0.05 + st[1] + U.randf(-9, 9) * st[2] - Math.max(0, m.age - 36) * 1.2 + (TL.talents && TL.talents.has('reflex') ? 2 : 0); // lightning reflexes find tenths
         var q = w.skill * 0.5 + car * 0.45 + U.randf(-6, 6);
         if (fl.every(function (d) { return d.r * 0.5 + d.car * 0.45 + U.randf(-6, 6) < q; })) { my.poles++; w.poles++; }
         crash = U.chance((0.035 + st[3]) * danger); mech = U.chance(0.03 * (1.3 - car / 140) * (yr() < 1980 ? 2 : 1));

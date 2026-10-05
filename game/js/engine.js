@@ -276,7 +276,7 @@ TL.engine = (function () {
     var wealthTier = tiers.filter(function (t) { return t.t === opts.wealth; })[0] || U.weighted(tiers);
     if (opts.stats) ['happy', 'health', 'smarts', 'looks'].forEach(function (k) { if (opts.stats[k] != null) st.me[k] = U.clamp(Math.round(opts.stats[k]), 0, 100); });
     st.flags.wealth = wealthTier.t;
-    if (TL.talents) TL.talents.roll(); // born with a gift? (js/talents.js)
+    if (TL.talents) TL.talents.roll(null, opts.talent); // born with a gift? (js/talents.js) Or the one I picked.
     var momAge = U.rand(18, 42), dadAge = momAge + U.rand(-4, 8);
     var parentsMarried = U.chance(0.7);
     var mom = addPerson({ role: 'mother', gender: 'F', age: momAge, last: parentsMarried ? st.me.last : undefined, rel: U.rand(55, 100), money: $(wealthTier.m * U.randf(0.5, 1.5)) });

@@ -419,12 +419,20 @@ TL.specials = (function () {
   var GAMES = [['StarCraft', 1998], ['Counter-Strike', 2000], ['Halo 2', 2004], ['League of Legends', 2009], ['Dota 2', 2013], ['Fortnite', 2017], ['Valorant', 2020]];
 
   // Born talents (js/talents.js) that suit each career: a gift makes the work and the practice easier.
-  var GIFT = { model: ['beauty'], chef: ['artist'], gamer: ['genius'], comic: ['charm', 'acting'], designer: ['artist', 'beauty'], author: ['genius', 'artist'], poker: ['genius', 'charm'], racer: ['athlete'], magician: ['charm', 'acting'], dj: ['music'], lifter: ['athlete', 'iron'], chess: ['genius'], wrestler: ['athlete', 'charm'],
-    director: ['artist', 'acting'], golfer: ['athlete'], fighter: ['athlete', 'iron'], ballet: ['athlete', 'artist'], painter: ['artist'], tattoo: ['artist'], surfer: ['athlete'], photographer: ['artist'], skater: ['athlete'], opera: ['music'],
-    host: ['charm', 'acting'], stunt: ['athlete', 'iron'], rodeo: ['athlete', 'iron'], jockey: ['athlete'], skating: ['athlete', 'artist'], gymnast: ['athlete'], swimmer: ['athlete'], sprinter: ['athlete'], climber: ['iron', 'athlete'], gamedev: ['genius'] };
+  var GIFT = { model: ['beauty', 'stage'], chef: ['palate', 'artist'], gamer: ['reflex', 'genius'], comic: ['stage', 'charm', 'acting'], designer: ['artist', 'beauty'], author: ['genius', 'artist'], poker: ['nerve', 'genius', 'charm'], racer: ['reflex', 'nerve', 'athlete'], magician: ['stage', 'charm', 'acting'], dj: ['music', 'stage'], lifter: ['athlete', 'iron'], chess: ['genius'], wrestler: ['athlete', 'stage', 'charm'],
+    director: ['artist', 'acting'], golfer: ['nerve', 'athlete'], fighter: ['reflex', 'nerve', 'athlete', 'iron'], ballet: ['grace', 'stage', 'athlete'], painter: ['artist'], tattoo: ['artist'], surfer: ['grace', 'nerve', 'athlete'], photographer: ['artist'], skater: ['reflex', 'athlete'], opera: ['music', 'stage'],
+    host: ['stage', 'charm', 'acting'], stunt: ['nerve', 'athlete', 'iron'], rodeo: ['nerve', 'athlete', 'iron'], jockey: ['reflex', 'athlete'], skating: ['grace', 'athlete', 'artist'], gymnast: ['grace', 'athlete'], swimmer: ['grace', 'athlete'], sprinter: ['reflex', 'athlete'], climber: ['nerve', 'iron', 'athlete'], gamedev: ['genius'] };
+  // A matching gift is a real edge: more power on every gig, faster training, faster fame, and more stamina.
+  var GIFT_POWER = 9, GIFT_TRAIN = 1.5, GIFT_REP = 1.3;
   function gift(id) { return TL.talents ? (GIFT[id] || []).filter(function (t) { return TL.talents.has(t); })[0] || null : null; }
   function giftKnown(id) { var g = gift(id); return g && (me().talents || []).some(function (t) { return t.id === g && t.known; }) ? g : null; }
-  function powerOf(c, x) { return c.power(x) + (gift(c.id) ? 4 : 0); }
+  // What my gift does for this career, shown on its screen once I know about it.
+  function giftLine(id) {
+    var g = giftKnown(id), d = g && TL.talents.get(g);
+    if (!d) { var any = (GIFT[id] || []).map(function (k) { var q = TL.talents && TL.talents.get(k); return q ? q.icon + ' ' + q.name : ''; }).filter(Boolean); return any.length ? '<p class="small muted">Gifts that help: ' + any.join(', ') + '</p>' : ''; }
+    return '<p class="small">🎁 ' + d.icon + ' <b>' + d.name + '</b> suits this career: stronger on every gig, training ' + Math.round((GIFT_TRAIN - 1) * 100) + '% faster, fame ' + Math.round((GIFT_REP - 1) * 100) + '% faster, more stamina.</p>';
+  }
+  function powerOf(c, x) { return c.power(x) + (gift(c.id) ? GIFT_POWER : 0); }
   function bigName(c) { return typeof c.big[1] === 'function' ? c.big[1]() : c.big[1]; }
   function all() { return S().sp || (S().sp = {}); }
   function st(id) { return all()[id]; }
@@ -494,7 +502,7 @@ TL.specials = (function () {
     if (U.chance(odds)) {
       var pay = E.$(Math.round(g[2] * U.randf(0.7, 1.3) * (1 + x.rep / 100) * (ag ? 1 + ag.pay : 1)));
       if (S().job && S().job.special === id) x.earn = (x.earn || 0) + pay; else E.addMoney(pay); // juniors get paid on the spot
-      x.rep = U.clamp(x.rep + g[3] * U.randf(0.6, 1.2) * (106 - x.rep) / 80 * (c.gain || 1), 0, 100); // the top is crowded; some fields are harder to rise in
+      x.rep = U.clamp(x.rep + (g[3] * U.randf(0.7, 1.2) + Math.max(0, powerOf(c, x) - g[4]) / 20) * (112 - x.rep) / 60 * Math.max(0.8, c.gain || 1) * (gift(id) ? GIFT_REP : 1), 0, 100); // the top is crowded, but outclassing the gig gets noticed
       E.stat('happy', 3); E.fame(g[3] / 3);
       if (/^Cover of/.test(g[1])) x.covers = (x.covers || 0) + 1;
       if (/^Major|^LAN|^Online/.test(g[1]) && U.chance(0.3 + (powerOf(c, x) - g[4]) / 80)) {
@@ -512,8 +520,10 @@ TL.specials = (function () {
     if (count('spbreak')) return done(nope('I\'m taking this year off.'));
     if (count('sptrain') >= 2) return done(nope('I\'ve trained as much as I can this year.'));
     bump('sptrain');
-    var gain = Math.max(1, Math.round((100 - x.skill) / 12 * U.randf(0.6, 1.2) * (gift(id) ? 1.25 : 1)));
+    var gain = Math.max(1, Math.round((100 - x.skill) / 12 * U.randf(0.6, 1.2) * (gift(id) ? GIFT_TRAIN : 1)));
     x.skill = U.clamp(x.skill + gain, 0, 100);
+    // Practice is visible: a little reputation every time, a bit more once I'm really good.
+    x.rep = U.clamp(x.rep + 0.5 + x.skill / 100, 0, 100);
     if (id === 'gamer') { E.stat('health', -1); E.stat('happy', -1); }
     done(good(c.train[1] + ' (+' + gain + ' ' + c.skillName.toLowerCase() + ')' + (giftKnown(id) ? ' It comes naturally to me.' : '')));
   }
@@ -652,13 +662,13 @@ TL.specials = (function () {
     // Workload: three gigs, two trainings and a big swing every year wears anyone down.
     var load = lastCount('spgig') + lastCount('sptrain') + lastCount('spbig') + lastCount('spduel'), rested = lastCount('spbreak');
     if (rested) { x.burn = 0; E.stat('happy', 8); E.stat('health', 4); x.rep = Math.max(0, x.rep - 1); earn = Math.round(earn * 0.5); }
-    else if (load >= 7) x.burn = (x.burn || 0) + 1;
+    else if (load >= (gift(id) ? 9 : 8)) x.burn = (x.burn || 0) + 1; // a gift means more stamina for the grind
     else if (load <= 4) x.burn = Math.max(0, (x.burn || 0) - 1);
     if ((x.burn || 0) >= 3) { E.stat('happy', -3); E.stat('health', -2); if (x.burn === 3) E.log('😮‍💨 I\'m burning out. I need to slow down.', 'bad'); }
     // Age catches up with models and gamers.
     if (c.decline && m.age > c.decline) { var d = (m.age - c.decline) * (x.rep >= 85 ? 0.25 : 0.5); x.rep = Math.max(0, x.rep - d); if (id === 'gamer') x.skill = Math.max(0, x.skill - 1); }
     // Out of sight, out of mind; working steadily keeps you relevant.
-    x.rep = Math.max(0, x.rep - (lastCount('spgig') || rested ? 0.5 : 2.5) - x.rep * 0.03); // fame fades unless I keep earning it
+    x.rep = Math.max(0, x.rep - (lastCount('spgig') || rested ? 0.3 + x.rep * 0.012 : 2.5 + x.rep * 0.03)); // fame fades slowly while I work, fast if I disappear
     if (id === 'chef') if (x.rep < 60) x.rep = Math.min(60, x.rep + 0.3 + x.skill / 150); // a good kitchen builds a name slowly, but fame takes more
     if (x.contract) {
       earn += x.contract.pay; x.contract.years--;
@@ -892,7 +902,7 @@ TL.specials = (function () {
           if (me().age >= 14) items.push({ icon: c.icon, label: 'Turn pro', sub: 'Make it my job', onClick: function () { start(id); } });
           return items;
         }
-        items.push({ info: true, html: '<p class="muted">' + summary(id) + '</p>' });
+        items.push({ info: true, html: '<p class="muted">' + summary(id) + '</p>' + giftLine(id) });
         // Say why it's closed up front instead of after a tap.
         var age = me().age, why = age < c.minAge ? 'Age ' + c.minAge + '+' : !x && c.maxStart && age > c.maxStart ? 'Too late: everyone starts by ' + c.maxStart : c.need ? c.need() : null;
         items.push({ icon: c.icon, label: x ? 'Make a comeback' : 'Start my career', sub: x ? summary(id) : why || 'Age ' + c.minAge + '+' + (c.maxStart ? ', start by ' + c.maxStart : ''), disabled: !!why && age >= c.minAge, onClick: function () { start(id); } });
@@ -906,7 +916,7 @@ TL.specials = (function () {
         (x.honors.length ? '<br>🏅 ' + U.esc(x.honors.slice(-3).join(' · ')) : '') +
         (x.agent ? '<br>🤝 Represented by ' + x.agent.name + ' (' + Math.round(x.agent.cut * 100) + '%)' : '') +
         (x.rival ? '<br>😤 Rival: ' + U.esc(x.rival.name) + ' · reputation ' + Math.round(x.rival.rep) + ' · ' + x.rival.w + '-' + x.rival.l : '') +
-        ((x.burn || 0) >= 3 ? '<br>😮‍💨 Burning out' : '') + (giftKnown(id) ? '<br>🎁 A natural: ' + U.esc(TL.talents.get(giftKnown(id)).name) : '') + '</div>' });
+        ((x.burn || 0) >= 3 ? '<br>😮‍💨 Burning out' : '') + '</div>' + giftLine(id)});
       items.push({ section: 'Work' });
       items.push({ icon: '💪', label: c.train[0], sub: c.skillName + ' ' + x.skill, onClick: function () { train(id); } });
       c.gigs().forEach(function (g) {
@@ -941,5 +951,5 @@ TL.specials = (function () {
     var j = S().job; if (!j || !j.special || !st(j.special)) return null;
     return [C[j.special].icon, C[j.special].name, title(j) + ' · reputation ' + Math.round(st(j.special).rep)];
   }
-  return { C: C, gift: gift, year: year, title: title, menu: menu, fameItems: fameItems, summary: summary, active: active, aboutRow: aboutRow, start: start, st: st };
+  return { C: C, GIFT: GIFT, gift: gift, year: year, title: title, menu: menu, fameItems: fameItems, summary: summary, active: active, aboutRow: aboutRow, start: start, st: st };
 })();

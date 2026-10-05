@@ -177,15 +177,15 @@ TL.wrestling = (function () {
     if (count('wrtrain') >= 2) return done(nope('My body needs rest. Twice a year is enough at the training center.'));
     bump('wrtrain');
     var gifted = function (t) { return TL.talents && TL.talents.has(t); };
-    if (kind === 'ring') { var g = Math.max(1, Math.round((100 - w.ring) / 15 * U.randf(0.6, 1.2) * (gifted('athlete') ? 1.4 : 1))); w.ring = cl(w.ring + g); w.wear = cl(w.wear + 1); return done(good('I drilled in the ring all week (+' + g + ' in-ring).')); }
-    var g2 = Math.max(1, Math.round((100 - w.mic) / 15 * U.randf(0.6, 1.2) * (gifted('charm') || gifted('acting') ? 1.4 : 1))); w.mic = cl(w.mic + g2);
+    if (kind === 'ring') { var g = Math.max(1, Math.round((100 - w.ring) / 15 * U.randf(0.6, 1.2) * (gifted('athlete') || gifted('grace') ? 1.4 : 1))); w.ring = cl(w.ring + g); w.wear = cl(w.wear + 1); return done(good('I drilled in the ring all week (+' + g + ' in-ring).')); }
+    var g2 = Math.max(1, Math.round((100 - w.mic) / 15 * U.randf(0.6, 1.2) * (gifted('stage') ? 1.6 : gifted('charm') || gifted('acting') ? 1.4 : 1))); w.mic = cl(w.mic + g2);
     done(good('I worked on my promos with a coach (+' + g2 + ' mic skills).'));
   }
   function promo() {
     var w = x();
     if (count('wrpromo')) return done(nope('I already had my big promo this year.'));
     bump('wrpromo');
-    var p = U.clamp(0.3 + (w.mic - 40) / 80 + (me().looks - 50) / 300 + (w.feud ? 0.08 : 0), 0.08, 0.92);
+    var p = U.clamp(0.3 + (w.mic - 40) / 80 + (me().looks - 50) / 300 + (w.feud ? 0.08 : 0) + (TL.talents && TL.talents.has('stage') ? 0.1 : 0), 0.08, 0.92);
     if (U.chance(p)) {
       var g = U.rand(4, 9); w.mom = cl(w.mom + g, -50, 50); w.pop = cl(w.pop + g / 2); if (w.feud) w.feud.heat = cl(w.feud.heat + 10);
       E.fame(1);
