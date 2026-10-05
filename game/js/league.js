@@ -51,8 +51,17 @@ TL.league = (function () {
     var tab = R.table(g), mv = R.mvps(g), count = {};
     Object.keys(mv).forEach(function (yr) { count[mv[yr]] = (count[mv[yr]] || 0) + 1; });
     Object.keys(tab).forEach(function (f) { var n = R.nameIn(tab[f], sy); if (n && !Object.keys(L.teams).some(function (k) { return L.teams[k].n === n; })) L.teams[f] = { n: n, c: EAST[g].indexOf(f) >= 0 ? 'East' : 'West', rec: {} }; });
-    // Real stars on their real teams, rated by how great they really were.
-    R.stars(g).forEach(function (sp) {
+    // From 2025 on, the whole league is the real 2025-26 rosters (js/nbarosters.js).
+    var real = g === 'M' && sy >= 2025 && TL.nbaRosters ? TL.nbaRosters.all() : null;
+    if (real) Object.keys(real).forEach(function (f) {
+      if (!L.teams[f]) return;
+      real[f].forEach(function (q) {
+        var a = q.a - (TL.nbaRosters.SEASON - sy), up = a < 23 ? U.rand(4, 10) : a < 26 ? U.rand(1, 5) : 0;
+        player(L, { n: q.n, a: a, o: q.o, p: q.o + up, pos: q.pos, t: f, r: q.o >= 84 ? 1 : 0, c: U.rand(1, 4) });
+      });
+    });
+    // Before that: real stars on their real teams, rated by how great they really were.
+    if (!real) R.stars(g).forEach(function (sp) {
       var name = sp[0], spans = sp.slice(1), cur = spans.filter(function (q) { return sy >= q[1] && sy <= q[2]; })[0];
       if (!cur || !L.teams[cur[0]]) return;
       var first = Math.min.apply(null, spans.map(function (q) { return q[1]; })), age = 20 + (sy - first);
@@ -145,7 +154,7 @@ TL.league = (function () {
       if (!to) return;
       var back = roster(L, to).slice(3, 5), from = p.t;
       back.forEach(function (q) { q.t = from; }); p.t = to;
-      moves.push('🔁 ' + p.n + ' was traded to the ' + L.teams[to].n + (back.length ? ' for ' + back.map(function (q) { return q.n; }).join(' and ') : '') + '.');
+      moves.push(('🔁 ' + p.n + ' was traded to the ' + L.teams[to].n + (back.length ? ' for ' + back.map(function (q) { return q.n; }).join(' and ') : '')).replace(/\.?$/, '.'));
     });
     // The draft: worst teams pick first, top four by lottery.
     var dorder = Object.keys(L.teams).sort(function (a, b) { return pct[a] - pct[b]; });
@@ -290,6 +299,7 @@ TL.league = (function () {
   function teamNames(g) { var L = st(g); return L ? Object.keys(L.teams).map(function (f) { return L.teams[f].n; }) : []; }
   function starsOn(g, name) { var L = st(g); if (!L) return []; var f = fidOf(L, name); return f ? roster(L, f).filter(function (p) { return p.o >= 80; }).slice(0, 3).map(function (p) { return p.n; }) : []; }
   function anyStar(g, not) { var L = st(g); if (!L) return null; var l = L.pl.filter(function (p) { return p.o >= 84 && (not || []).indexOf(p.n) < 0; }); return l.length ? U.pick(l).n : null; }
+  function rosterOf(g, name) { var L = st(g); if (!L) return []; var f = fidOf(L, name); return f ? roster(L, f) : []; }
   function histOf(g, y) { var L = ensure(g, y); return L && y >= L.start && L.year >= y && !(L.wait && L.year === y) ? L.hist[y] || null : null; }
 
   // ------------------------------------------------------------ the menu
@@ -317,7 +327,7 @@ TL.league = (function () {
       var top = L.pl.slice().sort(function (a, b) { return b.o - a.o; }).slice(0, 15);
       if (me) top.push({ n: me.n + ' (me)', o: me.o, a: me.a, t: me.t, pos: S().hoops.pos }), top.sort(function (a, b) { return b.o - a.o; });
       top.slice(0, 16).forEach(function (p, i) { items.push({ icon: String(i + 1), label: p.n, sub: (L.teams[p.t] ? L.teams[p.t].n : 'Free agent') + ' · ' + p.pos + ' · age ' + p.a, right: p.o + ' OVR' }); });
-      var mv2 = (H.moves || []).concat(H.retired && H.retired.length ? ['👋 Retired: ' + H.retired.slice(0, 5).join(', ') + '.'] : []).concat(H.top ? ['🎓 #1 pick: ' + H.top + ' (' + H.topTeam + ')'] : []).concat(H.roy ? ['🌱 Rookie of the Year: ' + H.roy] : []);
+      var mv2 = (H.moves || []).concat(H.retired && H.retired.length ? ['👋 Retired: ' + H.retired.slice(0, 5).join(', ').replace(/\.?$/, '.')] : []).concat(H.top ? ['🎓 #1 pick: ' + H.top + ' (' + H.topTeam + ')'] : []).concat(H.roy ? ['🌱 Rookie of the Year: ' + H.roy] : []);
       if (mv2.length) { items.push({ section: 'News' }); mv2.forEach(function (m) { items.push({ info: true, html: '<p class="small">' + U.esc(m) + '</p>' }); }); }
       return items;
     });
@@ -327,7 +337,7 @@ TL.league = (function () {
   function team(f) {
     var g = S().me.gender, L = st(g), t = L.teams[f], me = meIn(g);
     TL.ui.menu(t.n, function () {
-      var items = [{ info: true, html: '<div class="hb-arch">' + (TL.logos ? TL.logos.badge(t.n, { shape: 'team' }) + ' ' : '') + U.esc(t.n) + ' · ' + t.c + (t.born ? ' · since ' + t.born : '') + '</div>' }];
+      var items = [{ info: true, html: '<div class="hb-arch" style="display:flex;align-items:center;gap:10px">' + (TL.logos ? TL.logos.badge(t.n, { shape: 'team', size: 'md' }) : '') + '<span>' + U.esc(t.n) + ' · ' + t.c + (t.born ? ' · since ' + t.born : '') + '</span></div>' }];
       items.push({ section: 'Roster' });
       var r = roster(L, f).map(function (p) { return p; });
       if (me && me.t === f) r.push({ n: me.n + ' (me)', o: me.o, a: me.a, pos: S().hoops.pos }), r.sort(function (a, b) { return b.o - a.o; });
@@ -338,5 +348,5 @@ TL.league = (function () {
     });
   }
 
-  return { st: st, active: active, begin: begin, ensure: ensure, mine: mine, resume: resume, quality: quality, teamNames: teamNames, starsOn: starsOn, anyStar: anyStar, hist: histOf, menu: menu };
+  return { st: st, active: active, begin: begin, ensure: ensure, mine: mine, resume: resume, quality: quality, teamNames: teamNames, starsOn: starsOn, anyStar: anyStar, rosterOf: rosterOf, hist: histOf, menu: menu };
 })();

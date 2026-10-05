@@ -699,6 +699,31 @@ TL.hoops = (function () {
     var more = fmtMore(q);
     ui().alert(q.year + ' · ' + q.team.replace(/^the /, ''), [(q.league || '') + (q.rec ? ' · ' + q.rec : '') + (q.gp ? ' · ' + q.gp + ' games' : ''), fmtLine(q) + (more ? ' · ' + more : ''), q.hi ? 'Season high: ' + q.hi + ' points' : '', q.result || '', q.honors ? 'Honors: ' + q.honors.join(', ') : '', q.mates ? 'Teammates: ' + q.mates.join(', ') : ''].filter(Boolean).join('. ') + '.', '');
   }
+  // ------------------------------------------------------------ teammates
+  // The real (or simulated) roster around me, and a veteran to learn from.
+  function mates(x) { return TL.league ? TL.league.rosterOf(me().gender, x.team) : []; }
+  function mentorOf(x) { var a = me().age; return mates(x).filter(function (p) { return p.o >= 80 && p.a >= a + 3; })[0] || null; }
+  function teamLine(x) { var r = mates(x).slice(0, 3).map(function (p) { return p.n; }); return r.length ? 'With ' + r.join(', ') : 'The roster'; }
+  function teammates() {
+    var x = h();
+    ui().menu('👥 ' + x.team.replace(/^the /, ''), function () {
+      var r = mates(x).slice(), m = mentorOf(x), items = [];
+      r.push({ n: me().first + ' ' + me().last + ' (me)', o: x.ovr, a: me().age, pos: x.pos || '' }); r.sort(function (a, b) { return b.o - a.o; });
+      if (m) items.push({ icon: '🏋️', label: 'Work out with ' + m.n, sub: usedThisYear('hoops_mentor') ? 'Done this year' : 'Learn from a ' + m.a + '-year-old veteran (' + m.o + ' OVR)', disabled: usedThisYear('hoops_mentor'), onClick: function () { workout(m); } });
+      else items.push({ info: true, html: '<p class="small muted">No veteran star on the roster to learn from right now.</p>' });
+      items.push({ section: 'Roster' });
+      r.forEach(function (p) { items.push({ icon: p.pos || '🏀', label: p.n, sub: 'Age ' + p.a, right: p.o + ' OVR' }); });
+      return items;
+    });
+  }
+  function workout(m) {
+    if (!onceAYear('hoops_mentor')) return done(nope('I already worked out with ' + m.n + ' this year.'));
+    var x = h(), gain = x.ovr < x.pot ? Math.min(x.pot - x.ovr, U.rand(1, 2)) : 0, lift = m.o >= 88 && x.pot < 99 && U.chance(0.25);
+    x.ovr += gain; if (lift) x.pot++;
+    E.stat('happy', 3); me().athl = U.clamp(me().athl + 1, 0, 100);
+    E.log('🏋️ I spent the offseason working out with ' + m.n + '.' + (lift ? ' Some of that greatness rubbed off on me.' : ''), lift ? 'good' : '');
+    return done((lift ? good : function (t) { return t; })(m.n + (lift ? ' showed me what it takes to be great. My ceiling just went up. 🏋️' : gain ? ' put me through brutal workouts. I got better. 🏋️' : ' pushed me hard. I\'m already maxed out, but I learned a lot. 🏋️')));
+  }
   function train(kind) {
     if (!onceAYear('hoops_' + kind)) return done(nope('I already worked on that this year.'));
     var x = h(), s = S(), k = { shoot: 'sho', handle: 'pla', defense: 'def', strength: 'ath' }[kind];
@@ -736,6 +761,7 @@ TL.hoops = (function () {
       if (x && x.stage === 'pro') {
         var gpNow = S().flags.hoopsPlan && S().flags.hoopsPlan.y === S().year ? S().flags.hoopsPlan.k : null;
         items.push({ icon: '📋', label: 'Game plan', sub: gpNow ? { score: 'Score-first this season', team: 'Team-first this season', def: 'Lockdown defense this season' }[gpNow] : 'Pick how I play this season', onClick: gamePlan });
+        if (TL.league && homeLeague() && TL.league.rosterOf(me().gender, x.team).length) items.push({ icon: '👥', label: 'My teammates', sub: teamLine(x), onClick: teammates });
         items.push({ section: 'Off the court' });
         items.push({ icon: '🎤', label: 'Press conference', onClick: function () {
           if (!onceAYear('hoops_press')) return done(nope('One press conference a year is plenty.'));
