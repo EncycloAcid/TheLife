@@ -317,3 +317,42 @@ h1 { font-weight: 700; }
 @keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.84); } 100% { border-radius: 22px; } }
 /* Section labels: iOS small caps-free footnote style in the seed color. */
 .section { font-size: .8125rem; font-weight: 600; }
+
+/* ============================================================ v2.6 layout */
+/* Life log as a timeline: a rail down the left, a shaped age badge per year. */
+.year { position: relative; padding-left: 50px; }
+.year::before { content: ''; position: absolute; left: 21px; top: 20px; bottom: -22px; width: 2px; border-radius: 2px; background: var(--sep); }
+.year.latest::before { display: none; }
+.year-h { min-height: 42px; margin: 0 0 6px; align-items: center; }
+.y-node { position: absolute; left: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; clip-path: var(--cookie); background: var(--surface-high); color: var(--text); font-style: normal; font-size: .9375rem; font-weight: 750; font-variant-numeric: tabular-nums; z-index: 1; }
+.year.latest .y-node { background: var(--primary); color: var(--on-primary); }
+.year.fresh .y-node { animation: node-in var(--bounce-ms) var(--bounce); }
+@keyframes node-in { from { transform: scale(.4) rotate(-40deg); } }
+.year-h b { font-size: 1.0625rem; font-weight: 700; }
+.year-h span { font-size: .8125rem; }
+.ycard { border-radius: 22px; }
+.year.quiet { position: relative; padding-left: 50px; }
+.year.quiet::before { top: 0; bottom: -10px; }
+.quiet-row { position: relative; padding: 4px 0; }
+.quiet-row .q-dot { position: absolute; left: -36px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 0; clip-path: var(--cookie); background: var(--surface-top); }
+.log { padding-left: 12px; padding-right: 14px; }
+
+/* Collapsing hero: scrolling back through the years folds it to a slim bar. */
+.hero .stats { max-height: 120px; overflow: hidden; transition: max-height var(--spring-ms) var(--spring), opacity .25s ease, margin var(--spring-ms) var(--spring); }
+.hero .avatar-ring { transition: width var(--spring-ms) var(--spring), height var(--spring-ms) var(--spring); }
+.hero .gh-sub { transition: opacity .2s ease; }
+.hero { transition: padding var(--spring-ms) var(--spring), border-radius var(--spring-ms) var(--spring); }
+.hero.compact { padding-bottom: 2px; border-radius: 22px; }
+.hero.compact .stats { max-height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; }
+.hero.compact .avatar-ring { width: 40px; height: 40px; }
+.hero.compact .gh { grid-template-columns: 40px 40px 1fr auto; padding-top: 4px; padding-bottom: 6px; }
+.hero.compact .gh-sub { display: none; }
+
+/* Home: expressive shapes floating behind the title. */
+#screen-home { overflow: hidden; }
+#screen-home::before, #screen-home::after { content: ''; position: absolute; z-index: 0; pointer-events: none; }
+#screen-home::before { width: 300px; height: 300px; left: -110px; top: -80px; clip-path: var(--cookie); background: var(--primary-c); opacity: .7; animation: drift 18s ease-in-out infinite alternate; }
+#screen-home::after { width: 220px; height: 220px; right: -90px; top: 150px; clip-path: var(--sunny); background: var(--tertiary-c); opacity: .6; animation: drift 22s ease-in-out infinite alternate-reverse; }
+@keyframes drift { to { transform: rotate(40deg) translateY(16px); } }
+.home-wrap { position: relative; z-index: 1; }
+.logo { background: var(--cell); box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--primary) 50%, transparent); }

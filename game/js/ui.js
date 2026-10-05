@@ -408,7 +408,7 @@ TL.ui = (function () {
   // Only years whose content changed are rebuilt, so tapping around (or a
   // new birthday) doesn't re-layout sixty cards and drop animation frames.
   function yearHtml(y, last) {
-    var html = '<div class="year-h"><b>Age ' + y.age + '</b><span>' + E.yearLabel(y.year) + '</span></div><div class="ycard">';
+    var html = '<div class="year-h"><i class="y-node">' + y.age + '</i><b>Age ' + y.age + '</b><span>' + E.yearLabel(y.year) + '</span></div><div class="ycard">';
     // Money lines are bookkeeping, not story: they sit in a quiet footer.
     var story = y.entries.filter(function (e) { return e.c !== 'money'; });
     var cash = y.entries.filter(function (e) { return e.c === 'money'; });
@@ -842,6 +842,9 @@ TL.ui = (function () {
     $('#sheet-back').onclick = back;
     $('#sheet-scrim').onclick = closeAll;
     $('#stats').onclick = moreStats;
+    // Reading back through the years folds the hero card down to a slim bar.
+    var logEl = $('#log'), heroEl = document.querySelector('.hero');
+    if (logEl && heroEl) logEl.addEventListener('scroll', function () { heroEl.classList.toggle('compact', logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight > 160); }, { passive: true });
     $('#h-menu').onclick = function () { E.save(); home(); };
     if ($('#h-phone')) $('#h-phone').onclick = function () { if (TL.phone) TL.phone.open(); };
     $('#c-random').onclick = randomName;
