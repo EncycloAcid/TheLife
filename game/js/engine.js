@@ -902,6 +902,8 @@ TL.engine = (function () {
     s.assets = s.assets.filter(function (a) { return !a.bankrupt; });
     // pets
     if (!s.prison) expense += s.pets.length * $(700);
+    // caring for an aging parent (js/events.js parent_care)
+    expense += careYear();
     // health insurance premiums and prescriptions
     if (TL.health) expense += TL.health.costs();
 
@@ -1025,7 +1027,7 @@ TL.engine = (function () {
     else if (h.type === 'owned') stat('happy', 2);
     else if (h.type === 'palace') stat('happy', 3);
     else if (h.type === 'homeless') { stat('happy', -8); stat('health', -4); }
-    else if (h.type === 'parents' && m.age >= 25 && !ancient()) {
+    else if (h.type === 'parents' && m.age >= 25 && !ancient() && !(s.flags.care && s.flags.care.kind === 'home')) {
       stat('happy', -2);
       parentsAround().forEach(function (p) { rel(p, -U.rand(0, 2)); });
       if (m.age === 30) log('I\'m 30 and I still live with my parents...', 'bad');
@@ -1364,6 +1366,29 @@ TL.engine = (function () {
   }
 
   // ---------- event queue ----------
+  // Caring for an aging parent: at home (cheaper, harder on me) or in a care home.
+  var CARE_COST = { home: 4000, carehome: 24000 };
+  function careYear() {
+    var s = S(), c = s.flags.care;
+    if (!c) return 0;
+    var p = person(c.pid);
+    if (!p || !p.alive) {
+      if (p) log('🕊️ I looked after my ' + relWord(p) + ' ' + p.first + ' until the end. I\'m glad I did.', 'good');
+      delete s.flags.care; return 0;
+    }
+    if (s.prison) { log('🏥 With me in prison, ' + p.first + ' moved into a state care home.', 'bad'); rel(p, -10); delete s.flags.care; return 0; }
+    c.years = (c.years || 0) + 1;
+    p.health = U.clamp(p.health + U.rand(c.kind === 'home' ? 2 : 1, c.kind === 'home' ? 6 : 4), 0, 100);
+    rel(p, c.kind === 'home' ? 3 : 1);
+    if (c.kind === 'home') { stat('happy', -2); stat('health', -1); if (c.years % 4 === 0) log('🫶 ' + U.plural(c.years, 'year') + ' of looking after ' + p.first + '. Some days are hard, most are worth it.'); }
+    return $(CARE_COST[c.kind]);
+  }
+  function stopCare() {
+    var s = S(), c = s.flags.care; if (!c) return null;
+    var p = person(c.pid); delete s.flags.care;
+    if (p && p.alive) { rel(p, -15); return p; }
+    return null;
+  }
   // In prison, my pets need someone on the outside, or they go to a shelter.
   function petsToShelter() {
     var s = S();
@@ -1727,7 +1752,7 @@ TL.engine = (function () {
     countryName: countryName, jobPhrase: jobPhrase, an: an,
     S: S, me: me, country: country, k: k, $: $, fmt: fmt, fullName: fullName, relWord: relWord, moodTarget: moodTarget, he: he, his: his, him: him,
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
-    partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
+    partner: partner, rel: rel, stopCare: stopCare, CARE_COST: CARE_COST, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
     achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,

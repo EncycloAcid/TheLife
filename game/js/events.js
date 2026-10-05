@@ -387,6 +387,26 @@ TL.events = (function () {
     ] };
   } });
   // A neglected car gives out: fix it, junk it or keep limping along.
+  def('parent_care', { min: 30, max: 90, w: 5, cond: function () { var s = S(); return !s.flags.care && !s.prison && !E.ancient() && E.parentsAround().some(function (p) { return p.age >= 72 && p.health < 50; }); }, build: function () {
+    var s = S(), p = E.parentsAround().filter(function (q) { return q.age >= 72 && q.health < 50; }).sort(function (a, b) { return a.health - b.health; })[0];
+    var sib = E.people('sibling').filter(function (q) { return q.age >= 18; }).sort(function (a, b) { return b.rel - a.rel; })[0];
+    var atHome = E.home().type === 'parents', homeless = E.home().type === 'homeless', w = E.relWord(p), nm = p.first;
+    var homeCost = E.$(E.CARE_COST.home), careCost = E.$(E.CARE_COST.carehome);
+    var choices = [
+      { label: (atHome ? 'Look after ' + nm + ' here at home' : 'Move ' + nm + ' in with me') + ' (' + E.fmt(homeCost) + '/yr)', run: function () {
+        s.flags.care = { pid: p.id, kind: 'home', since: s.year }; E.rel(p, 15); E.karma(4);
+        return good(atHome ? 'I\'m not just living with my ' + w + ' anymore. I\'m looking after ' + (p.gender === 'M' ? 'him' : 'her') + '.' : nm + ' moved into my spare room. It\'s a lot, but we\'re family.');
+      } },
+      { label: 'Pay for a good care home (' + E.fmt(careCost) + '/yr)', run: function () { s.flags.care = { pid: p.id, kind: 'carehome', since: s.year }; E.rel(p, 5); E.karma(1); return nm + ' moved into a care home with a garden and a nurse on every floor. I visit when I can.'; } }
+    ];
+    if (homeless) choices.shift(); // no home to bring them to
+    if (sib) choices.push({ label: 'Ask my ' + E.relWord(sib) + ' ' + sib.first + ' to take ' + nm + ' in', run: function () {
+      if (U.chance(sib.rel / 120)) { E.rel(sib, -8); E.rel(p, -3); return sib.first + ' agreed to take ' + nm + ' in, but made it clear I owe them one.'; }
+      E.rel(sib, -12); E.rel(p, -10); p.health = U.clamp(p.health - 8, 0, 100); return bad(sib.first + ' said it was my turn. In the end nobody took ' + nm + ' in.');
+    } });
+    else choices.push({ label: 'Let ' + nm + ' manage alone', run: function () { E.rel(p, -15); E.karma(-4); p.health = U.clamp(p.health - 10, 0, 100); return bad(nm + ' insists on staying alone. The house is getting harder to manage.'); } });
+    return { icon: '🫶', title: 'Caring for my ' + w, text: 'My ' + w + ' ' + nm + ' is ' + p.age + ' and struggling to manage alone. The doctor says ' + (p.gender === 'M' ? 'he' : 'she') + ' needs someone around every day.', choices: choices };
+  } });
   def('npc_wedding', {
     scripted: true,
     build: function (d) {

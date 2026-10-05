@@ -129,6 +129,8 @@ TL.actions = (function () {
       if (me().age >= 6 && S().money > 0) items.push({ icon: '🎁', label: 'Give a gift', onClick: function () { giftMenu(p); } });
       if (me().age >= 5 && ['mother', 'father', 'grandparent', 'spouse', 'sibling', 'child', 'friend', 'best friend'].indexOf(r) >= 0 && p.age >= 18)
         items.push({ icon: '💸', label: 'Ask for money', onClick: function () { askMoney(p); } });
+      var care = S().flags.care;
+      if (care && care.pid === p.id) items.push({ icon: '🫶', label: care.kind === 'home' ? 'Stop caring for ' + p.first + ' at home' : 'Stop paying for ' + p.first + '\'s care home', sub: (care.kind === 'home' ? 'I look after ' + p.first : p.first + ' lives in a care home') + ' · ' + E.fmt(E.$(E.CARE_COST[care.kind])) + '/yr', danger: true, onClick: function () { E.stopCare(); ui().back(); done(bad(p.first + ' is on their own again. ' + p.first + ' didn\'t say much, but I could tell it hurt.')); } });
       if (me().age >= 18 && p.age >= 3 && S().money > 0 && ['mother', 'father', 'sibling', 'child', 'friend', 'grandparent', 'best friend', 'grandchild'].indexOf(r) >= 0)
         items.push({ icon: '💵', label: 'Give money', onClick: function () { giveMoney(p); } });
       if (me().age >= 5) items.push({ icon: '😜', label: 'Prank', onClick: function () { prank(p); } });

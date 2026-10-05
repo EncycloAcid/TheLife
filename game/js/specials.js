@@ -889,7 +889,9 @@ TL.specials = (function () {
           return items;
         }
         items.push({ info: true, html: '<p class="muted">' + summary(id) + '</p>' });
-        items.push({ icon: c.icon, label: x ? 'Make a comeback' : 'Start my career', sub: x ? summary(id) : 'Age ' + c.minAge + '+', onClick: function () { start(id); } });
+        // Say why it's closed up front instead of after a tap.
+        var age = me().age, why = age < c.minAge ? 'Age ' + c.minAge + '+' : !x && c.maxStart && age > c.maxStart ? 'Too late: everyone starts by ' + c.maxStart : c.need ? c.need() : null;
+        items.push({ icon: c.icon, label: x ? 'Make a comeback' : 'Start my career', sub: x ? summary(id) : why || 'Age ' + c.minAge + '+' + (c.maxStart ? ', start by ' + c.maxStart : ''), disabled: !!why && age >= c.minAge, onClick: function () { start(id); } });
         return items;
       }
       var r = rung(id, x.rep), nxt = c.ladder.filter(function (q) { return q[0] > x.rep; })[0];
