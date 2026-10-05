@@ -163,7 +163,7 @@ TL.specials = (function () {
       decline: 40
     },
     chess: {
-      gain: 0.8, name: 'Chess player', icon: '♟️', minAge: 6, skillName: 'Calculation', blurb: 'Opens, norms, Grandmaster, a World Championship match · smart',
+      gain: 0.62, name: 'Chess player', icon: '♟️', minAge: 6, skillName: 'Calculation', blurb: 'Opens, norms, Grandmaster, a World Championship match · smart',
       need: function () { return me().smarts < 60 ? 'I need sharper calculation first (60+ smarts).' : null; },
       power: function (x) { return x.skill * 0.6 + me().smarts * 0.4; },
       ladder: [[0, 'Club Player', 0], [20, 'FIDE Master', 6000], [40, 'International Master', 25000], [60, 'Grandmaster', 120000], [80, 'Elite Grandmaster', 600000]],
@@ -233,7 +233,7 @@ TL.specials = (function () {
       decline: 32
     },
     painter: {
-      gain: 0.7, name: 'Painter', icon: '🎨', minAge: 12, skillName: 'Craft', blurb: 'Street fairs, galleries, museums, blue-chip dealers',
+      gain: 0.63, name: 'Painter', icon: '🎨', minAge: 12, skillName: 'Craft', blurb: 'Street fairs, galleries, museums, blue-chip dealers',
       power: function (x) { return x.skill * 0.7 + me().smarts * 0.15 + me().happy * 0.15; },
       ladder: [[0, 'Unknown Artist', 0], [20, 'Emerging Artist', 10000], [40, 'Gallery Artist', 60000], [65, 'Celebrated Artist', 250000], [85, 'Art Icon', 1000000]],
       agencies: function () { return ['my studio']; },
@@ -415,8 +415,16 @@ TL.specials = (function () {
       honor: [72, 0.1, function () { return yr() >= 2014 ? 'The Game Awards Game of the Year' : 'Game of the Year'; }]
     }
   };
+  Object.keys(C).forEach(function (k) { C[k].id = k; });
   var GAMES = [['StarCraft', 1998], ['Counter-Strike', 2000], ['Halo 2', 2004], ['League of Legends', 2009], ['Dota 2', 2013], ['Fortnite', 2017], ['Valorant', 2020]];
 
+  // Born talents (js/talents.js) that suit each career: a gift makes the work and the practice easier.
+  var GIFT = { model: ['beauty'], chef: ['artist'], gamer: ['genius'], comic: ['charm', 'acting'], designer: ['artist', 'beauty'], author: ['genius', 'artist'], poker: ['genius', 'charm'], racer: ['athlete'], magician: ['charm', 'acting'], dj: ['music'], lifter: ['athlete', 'iron'], chess: ['genius'], wrestler: ['athlete', 'charm'],
+    director: ['artist', 'acting'], golfer: ['athlete'], fighter: ['athlete', 'iron'], ballet: ['athlete', 'artist'], painter: ['artist'], tattoo: ['artist'], surfer: ['athlete'], photographer: ['artist'], skater: ['athlete'], opera: ['music'],
+    host: ['charm', 'acting'], stunt: ['athlete', 'iron'], rodeo: ['athlete', 'iron'], jockey: ['athlete'], skating: ['athlete', 'artist'], gymnast: ['athlete'], swimmer: ['athlete'], sprinter: ['athlete'], climber: ['iron', 'athlete'], gamedev: ['genius'] };
+  function gift(id) { return TL.talents ? (GIFT[id] || []).filter(function (t) { return TL.talents.has(t); })[0] || null : null; }
+  function giftKnown(id) { var g = gift(id); return g && (me().talents || []).some(function (t) { return t.id === g && t.known; }) ? g : null; }
+  function powerOf(c, x) { return c.power(x) + (gift(c.id) ? 4 : 0); }
   function bigName(c) { return typeof c.big[1] === 'function' ? c.big[1]() : c.big[1]; }
   function all() { return S().sp || (S().sp = {}); }
   function st(id) { return all()[id]; }
@@ -480,14 +488,14 @@ TL.specials = (function () {
     bump(key);
     if (buy) E.addMoney(-buy);
     var ag = x.agent ? AGENTS[x.agent.kind] : null;
-    var odds = U.clamp(0.25 + (c.power(x) - g[4]) / 60 + (x.rep - g[0]) / 200 + (ag ? ag.odds : 0) - (x.burn || 0) * 0.04, 0.08, 0.92);
+    var odds = U.clamp(0.25 + (powerOf(c, x) - g[4]) / 60 + (x.rep - g[0]) / 200 + (ag ? ag.odds : 0) - (x.burn || 0) * 0.04, 0.08, 0.92);
     if (U.chance(odds)) {
       var pay = E.$(Math.round(g[2] * U.randf(0.7, 1.3) * (1 + x.rep / 100) * (ag ? 1 + ag.pay : 1)));
       if (S().job && S().job.special === id) x.earn = (x.earn || 0) + pay; else E.addMoney(pay); // juniors get paid on the spot
       x.rep = U.clamp(x.rep + g[3] * U.randf(0.6, 1.2) * (106 - x.rep) / 80 * (c.gain || 1), 0, 100); // the top is crowded; some fields are harder to rise in
       E.stat('happy', 3); E.fame(g[3] / 3);
       if (/^Cover of/.test(g[1])) x.covers = (x.covers || 0) + 1;
-      if (/^Major|^LAN|^Online/.test(g[1]) && U.chance(0.3 + (c.power(x) - g[4]) / 80)) {
+      if (/^Major|^LAN|^Online/.test(g[1]) && U.chance(0.3 + (powerOf(c, x) - g[4]) / 80)) {
         x.titles = (x.titles || 0) + 1; x.earn += pay; // the winner's share doubles the payout
         return done(good('🏆 I won the ' + g[1].toLowerCase() + '! (+' + E.fmt(pay * 2) + ')'));
       }
@@ -502,10 +510,10 @@ TL.specials = (function () {
     if (count('spbreak')) return done(nope('I\'m taking this year off.'));
     if (count('sptrain') >= 2) return done(nope('I\'ve trained as much as I can this year.'));
     bump('sptrain');
-    var gain = Math.max(1, Math.round((100 - x.skill) / 12 * U.randf(0.6, 1.2)));
+    var gain = Math.max(1, Math.round((100 - x.skill) / 12 * U.randf(0.6, 1.2) * (gift(id) ? 1.25 : 1)));
     x.skill = U.clamp(x.skill + gain, 0, 100);
     if (id === 'gamer') { E.stat('health', -1); E.stat('happy', -1); }
-    done(good(c.train[1] + ' (+' + gain + ' ' + c.skillName.toLowerCase() + ')'));
+    done(good(c.train[1] + ' (+' + gain + ' ' + c.skillName.toLowerCase() + ')' + (giftKnown(id) ? ' It comes naturally to me.' : '')));
   }
   // Signature moves: a luxury contract, my own restaurant, the World Championship.
   function bigMove(id) {
@@ -535,7 +543,7 @@ TL.specials = (function () {
     if (count('spbig')) return done(nope('Worlds only comes once a year.'));
     bump('spbig');
     var rounds = ['the group stage', 'the quarterfinals', 'the semifinals', 'the final'], r = 0;
-    while (r < 4 && U.chance(U.clamp(0.35 + (C.gamer.power(x) - 75) / 90, 0.12, 0.72))) r++;
+    while (r < 4 && U.chance(U.clamp(0.35 + (powerOf(C.gamer, x) - 75) / 90, 0.12, 0.72))) r++;
     if (r === 4) { x.worlds = (x.worlds || 0) + 1; var prize = E.$(U.rand(500000, 2000000)); x.earn = (x.earn || 0) + prize; x.rep = Math.min(100, x.rep + 10); E.fame(8); E.stat('happy', 15); x.honors.push('World Champion ' + s.year); return done(good('🏆 WE WON WORLDS! ' + x.team + ' are world champions. (+' + E.fmt(prize) + ')')); }
     x.rep = U.clamp(x.rep + r * 2 - 1, 0, 100);
     done(r ? 'We made it to ' + rounds[r] + ' at Worlds before losing.' : bad('We went out in the group stage at Worlds.'));
@@ -559,7 +567,7 @@ TL.specials = (function () {
       var cost = E.$(o.cost);
       if (s.money < cost) return done(nope('That takes about ' + E.fmt(cost) + '.'));
       E.addMoney(-cost);
-      x.rest = { name: U.pick(o.names) + me().last, since: s.year, q: Math.round(c.power(x)), stars: 0, noun: o.noun };
+      x.rest = { name: U.pick(o.names) + me().last, since: s.year, q: Math.round(powerOf(c, x)), stars: 0, noun: o.noun };
       E.stat('happy', 12);
       return done(good(b[0] + ' I launched my own ' + o.noun + ', ' + x.rest.name + '!'));
     }
@@ -571,7 +579,7 @@ TL.specials = (function () {
     if (buy && s.money < buy) return done(nope('The buy-in is ' + E.fmt(buy) + '.'));
     bump('spbig'); if (buy) E.addMoney(-buy);
     var r = 0;
-    while (r < 4 && U.chance(U.clamp(o.base + (c.power(x) - 75) / 90, 0.12, 0.78))) r++;
+    while (r < 4 && U.chance(U.clamp(o.base + (powerOf(c, x) - 75) / 90, 0.12, 0.78))) r++;
     if (r === 4) {
       var prize = Math.round(E.$(U.rand(o.prize[0], o.prize[1])));
       x.earn = (x.earn || 0) + prize; x.rep = Math.min(100, x.rep + 8); x.wins = (x.wins || 0) + 1;
@@ -655,7 +663,7 @@ TL.specials = (function () {
     }
     if (id === 'chef' && x.rest) {
       var R = x.rest;
-      R.q = U.clamp(Math.round(R.q * 0.6 + c.power(x) * 0.4 + U.rand(-8, 8)), 0, 100);
+      R.q = U.clamp(Math.round(R.q * 0.6 + powerOf(c, x) * 0.4 + U.rand(-8, 8)), 0, 100);
       var profit = E.$(Math.round((R.q - 55) * 8000 + R.stars * 150000));
       earn += profit;
       var guide = yr() >= 1926 ? 'Michelin' : null;
@@ -665,7 +673,7 @@ TL.specials = (function () {
     }
     if (id !== 'chef' && x.rest) {
       var V = x.rest;
-      V.q = U.clamp(Math.round(V.q * 0.6 + c.power(x) * 0.4 + U.rand(-8, 8)), 0, 100);
+      V.q = U.clamp(Math.round(V.q * 0.6 + powerOf(c, x) * 0.4 + U.rand(-8, 8)), 0, 100);
       var vp = E.$(Math.round((V.q - 55) * 9000));
       earn += vp;
       if (V.q >= 85 && U.chance(0.2)) { E.log('🏷️ ' + V.name + ' had a breakout year.', 'good'); x.rep = Math.min(100, x.rep + 3); }
@@ -719,7 +727,7 @@ TL.specials = (function () {
     if (!r) return;
     if (count('spduel')) return done(nope('We already went at it this year.'));
     bump('spduel');
-    var p = U.clamp(0.5 + (c.power(x) - r.rep) / 60 + (x.rep - r.rep) / 150, 0.1, 0.9);
+    var p = U.clamp(0.5 + (powerOf(c, x) - r.rep) / 60 + (x.rep - r.rep) / 150, 0.1, 0.9);
     if (U.chance(p)) { r.w++; x.rep = U.clamp(x.rep + 2.5, 0, 100); r.rep = Math.max(0, r.rep - 4); E.fame(2); E.stat('happy', 5); return done(good('⚔️ I beat ' + r.name + ' head to head. (' + r.w + '-' + r.l + ' all time)')); }
     r.l++; x.rep = Math.max(0, x.rep - 3); r.rep = Math.min(100, r.rep + 3); E.stat('happy', -4);
     done(bad('⚔️ ' + r.name + ' got the better of me this time. (' + r.w + '-' + r.l + ' all time)'));
@@ -831,7 +839,7 @@ TL.specials = (function () {
   function fill(t, x) { return String(t).replace(/\{rival\}/g, x.rival ? x.rival.name : 'My rival'); }
   function apply(x, c, e) {
     if (e.p != null) {
-      var p = U.clamp(e.p + (e.pw ? (c.power(x) - 60) / 100 : 0), 0.05, 0.95);
+      var p = U.clamp(e.p + (e.pw ? (powerOf(c, x) - 60) / 100 : 0), 0.05, 0.95);
       if (e.cost) { var pre = E.$(e.cost); if (S().money < pre) return bad('I couldn\'t afford it.'); E.addMoney(-pre); }
       return apply(x, c, U.chance(p) ? e.ok : e.no);
     }
@@ -892,7 +900,7 @@ TL.specials = (function () {
         (x.honors.length ? '<br>🏅 ' + U.esc(x.honors.slice(-3).join(' · ')) : '') +
         (x.agent ? '<br>🤝 Represented by ' + x.agent.name + ' (' + Math.round(x.agent.cut * 100) + '%)' : '') +
         (x.rival ? '<br>😤 Rival: ' + U.esc(x.rival.name) + ' · reputation ' + Math.round(x.rival.rep) + ' · ' + x.rival.w + '-' + x.rival.l : '') +
-        ((x.burn || 0) >= 3 ? '<br>😮‍💨 Burning out' : '') + '</div>' });
+        ((x.burn || 0) >= 3 ? '<br>😮‍💨 Burning out' : '') + (giftKnown(id) ? '<br>🎁 A natural: ' + U.esc(TL.talents.get(giftKnown(id)).name) : '') + '</div>' });
       items.push({ section: 'Work' });
       items.push({ icon: '💪', label: c.train[0], sub: c.skillName + ' ' + x.skill, onClick: function () { train(id); } });
       c.gigs().forEach(function (g) {
@@ -920,12 +928,12 @@ TL.specials = (function () {
   function fameItems() {
     return Object.keys(C).map(function (id) {
       var c = C[id];
-      return { icon: c.icon, label: c.name, sub: summary(id), disabled: me().age < c.minAge, onClick: function () { menu(id); } };
+      return { icon: c.icon, label: c.name, sub: summary(id) + (giftKnown(id) ? ' · 🎁 suits my gift' : ''), disabled: me().age < c.minAge, onClick: function () { menu(id); } };
     });
   }
   function aboutRow() {
     var j = S().job; if (!j || !j.special || !st(j.special)) return null;
     return [C[j.special].icon, C[j.special].name, title(j) + ' · reputation ' + Math.round(st(j.special).rep)];
   }
-  return { C: C, year: year, title: title, menu: menu, fameItems: fameItems, summary: summary, active: active, aboutRow: aboutRow, start: start, st: st };
+  return { C: C, gift: gift, year: year, title: title, menu: menu, fameItems: fameItems, summary: summary, active: active, aboutRow: aboutRow, start: start, st: st };
 })();

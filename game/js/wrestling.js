@@ -176,8 +176,9 @@ TL.wrestling = (function () {
     var w = x();
     if (count('wrtrain') >= 2) return done(nope('My body needs rest. Twice a year is enough at the training center.'));
     bump('wrtrain');
-    if (kind === 'ring') { var g = Math.max(1, Math.round((100 - w.ring) / 15 * U.randf(0.6, 1.2))); w.ring = cl(w.ring + g); w.wear = cl(w.wear + 1); return done(good('I drilled in the ring all week (+' + g + ' in-ring).')); }
-    var g2 = Math.max(1, Math.round((100 - w.mic) / 15 * U.randf(0.6, 1.2))); w.mic = cl(w.mic + g2);
+    var gifted = function (t) { return TL.talents && TL.talents.has(t); };
+    if (kind === 'ring') { var g = Math.max(1, Math.round((100 - w.ring) / 15 * U.randf(0.6, 1.2) * (gifted('athlete') ? 1.4 : 1))); w.ring = cl(w.ring + g); w.wear = cl(w.wear + 1); return done(good('I drilled in the ring all week (+' + g + ' in-ring).')); }
+    var g2 = Math.max(1, Math.round((100 - w.mic) / 15 * U.randf(0.6, 1.2) * (gifted('charm') || gifted('acting') ? 1.4 : 1))); w.mic = cl(w.mic + g2);
     done(good('I worked on my promos with a coach (+' + g2 + ' mic skills).'));
   }
   function promo() {

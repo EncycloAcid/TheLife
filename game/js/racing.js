@@ -127,7 +127,7 @@ TL.racing = (function () {
     var w = x();
     if (count('rctrain') >= 2) return done(nope('That\'s enough training for this season.'));
     bump('rctrain');
-    if (kind === 'sim') { var g = Math.max(1, Math.round((95 - w.skill) / 22 * U.randf(0.6, 1.2))); w.skill = cl(w.skill + g); return done(good((yr() >= 1990 ? 'I spent days in the simulator' : 'I walked the tracks and studied every corner') + ' (+' + g + ' racecraft).')); }
+    if (kind === 'sim') { var g = Math.max(1, Math.round((95 - w.skill) / 22 * U.randf(0.6, 1.2) * (TL.talents && TL.talents.has('athlete') ? 1.3 : 1))); w.skill = cl(w.skill + g); return done(good((yr() >= 1990 ? 'I spent days in the simulator' : 'I walked the tracks and studied every corner') + ' (+' + g + ' racecraft).')); }
     me().athl = cl(me().athl + U.rand(1, 3)); E.stat('health', 2);
     done(good('I trained my neck and core for the g-forces.'));
   }
