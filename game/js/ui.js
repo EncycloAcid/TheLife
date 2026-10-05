@@ -354,10 +354,11 @@ TL.ui = (function () {
   }
   // Four ring gauges. Built once, then updated in place so changes animate.
   var RING_R = 20, RING_C = 2 * Math.PI * RING_R;
-  // Material 3 Expressive wavy progress: the filled arc ripples around the ring.
-  var WAVE = (function () { var d = '', n = 180; for (var i = 0; i <= n; i++) { var t = i / n * 2 * Math.PI, r = RING_R + 1.4 * Math.sin(t * 11); d += (i ? 'L' : 'M') + (25 + r * Math.cos(t)).toFixed(2) + ' ' + (25 + r * Math.sin(t)).toFixed(2); } return d; })();
+  // Activity-style rings (like Apple Fitness): a smooth arc drawn as a path
+  // so the fill can be set as a percentage (pathLength 100).
+  var WAVE = (function () { var d = '', n = 180; for (var i = 0; i <= n; i++) { var t = i / n * 2 * Math.PI, r = RING_R; d += (i ? 'L' : 'M') + (25 + r * Math.cos(t)).toFixed(2) + ' ' + (25 + r * Math.sin(t)).toFixed(2); } return d; })();
   var lastMoney = null, lastAge = null, prevStats = null, logSeen = null;
-  var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--tint)'], ['looks', '✨', 'Looks', 'var(--purple)']];
+  var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--teal)'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
     var m = S().me, box = $('#stats');
     var built = !box.querySelector('.ring');
