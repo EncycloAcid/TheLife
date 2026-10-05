@@ -599,3 +599,5 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .mk-spark.down polyline { stroke: var(--red); }
 .bz-ico.mk-logo { background: none; }
 .gh #h-phone[hidden] { display: none; }
+/* Design layers (css/ios26.css) switch these on. */
+.y-node, .sheet-large { display: none; }

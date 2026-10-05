@@ -150,7 +150,17 @@ TL.ui = (function () {
     var t = document.documentElement.getAttribute('data-theme');
     return t === 'dark' || (!t && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
   }
+  // Designs are stylesheet layers you can switch in Settings.
+  var DESIGNS = [['compact', 'Compact', 'Slim header, more room for your story', '📱'], ['ios26', 'iOS 26', 'Activity rings, large titles, timeline', '⭕'], ['expressive', 'Expressive', 'Material color and shapes', '🎨'], ['classic', 'Classic iOS', 'The original look', '🍎']];
+  var LAYERS = { compact: ['css-exp', 'css-compact'], ios26: ['css-exp', 'css-ios26'], expressive: ['css-exp'], classic: [] };
+  function applyDesign(st) {
+    var d = LAYERS[st.design] ? st.design : 'compact', on = LAYERS[d];
+    ['css-exp', 'css-ios26', 'css-compact'].forEach(function (id) { var l = document.getElementById(id); if (l) l.disabled = on.indexOf(id) < 0; });
+    document.documentElement.setAttribute('data-design', d);
+    return d;
+  }
   function applyColor(st) {
+    if (applyDesign(st) === 'classic') { ['--primary', '--on-primary', '--primary-c', '--on-primary-c', '--secondary-c', '--on-secondary-c', '--tertiary', '--tertiary-c', '--on-tertiary-c', '--bg', '--cell', '--cell-2', '--surface-low', '--surface-high', '--surface-top', '--text', '--muted', '--faint', '--sep', '--outline', '--tint', '--tint-bg', '--material', '--glass'].forEach(function (k) { document.documentElement.style.removeProperty(k); }); return; }
     var seed = SEEDS.filter(function (x) { return x[0] === (st.color || 'violet'); })[0] || SEEDS[0], root = document.documentElement.style, pal = palette(seed[2], isDark());
     Object.keys(pal).forEach(function (k) { root.setProperty(k, pal[k]); });
   }
@@ -182,6 +192,8 @@ TL.ui = (function () {
       function set(key, val) { g.settings = g.settings || {}; g.settings[key] = val; E.saveGlobal(g); applySettings(); renderSheet(); }
       return [{ section: 'Theme' }].concat(THEMES.map(function (t) {
         return { icon: t[2], label: t[1], radio: t[0] === theme, onClick: function () { set('theme', t[0]); } };
+      }), [{ section: 'Design' }], DESIGNS.map(function (d) {
+        return { icon: d[3], label: d[1], sub: d[2], radio: d[0] === (LAYERS[st.design] ? st.design : 'compact'), onClick: function () { set('design', d[0]); } };
       }), [{ section: 'Color' }], SEEDS.map(function (c) {
         return { icon: '<i class="swatch" style="background:' + tone(c[2], 0.15, isDark() ? 80 : 40) + '"></i>', label: c[1], radio: c[0] === (st.color || 'violet'), onClick: function () { set('color', c[0]); } };
       }), [{ section: 'Text size' }], TEXT_SIZES.map(function (t) {
