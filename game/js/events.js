@@ -91,6 +91,30 @@ TL.events = (function () {
       };
     }
   });
+  // Halfway through a long sentence: a yearly parole hearing.
+  def('parole_hearing', {
+    scripted: true,
+    build: function () {
+      var pr = S().prison;
+      if (!pr || pr.remaining <= 0) return null;
+      var odds = E.paroleOdds(), cond = pr.conduct || 0;
+      var hear = function (bonus, karma, line) {
+        pr.hearings = (pr.hearings || 0) + 1;
+        if (karma) E.karma(karma);
+        if (U.chance(U.clamp(odds + bonus, 0.03, 0.9))) { E.parole(); return good(line + ' The board granted me parole!'); }
+        E.stat('happy', -4);
+        return bad(line + ' Parole denied. I can try again next year.');
+      };
+      return {
+        icon: '⚖️', title: 'Parole hearing', text: 'I\'ve served ' + U.plural(pr.served, 'year') + ' of my ' + U.plural(pr.total, 'year') + ' for ' + pr.crime.toLowerCase() + '. The parole board will hear my case. ' + (cond >= 3 ? 'My record inside is spotless.' : cond < 0 ? 'The guards have written me up more than once.' : 'My record inside is unremarkable.'),
+        choices: [
+          { label: 'Show remorse', run: function () { return hear(0.05, 1, 'I told the board I was sorry for what I did.'); } },
+          { label: 'Maintain my innocence', run: function () { return hear(-0.12, 0, 'I told the board I didn\'t do it.'); } },
+          { label: 'Skip the hearing', run: function () { return 'I didn\'t bother going before the board this year.'; } }
+        ]
+      };
+    }
+  });
   def('crime_caught', {
     scripted: true,
     build: function (d) {

@@ -1598,6 +1598,15 @@ TL.actions = (function () {
   function crimeMenu() {
     ui().menu('Crime 🦹', function () {
       var items = [{ info: true, html: '<p class="muted">Crime pays... until it doesn\'t. Getting caught means a trial and possibly prison.</p>' }];
+      if (S().parole) items.push({ info: true, html: '<p class="small">⚖️ On parole until ' + S().parole.until + '. Getting caught for anything sends me back to finish my old sentence.</p>' });
+      if (E.expungeable()) items.push({ icon: '⚖️', label: 'Get my record expunged', sub: 'Seven clean years · lawyer ' + E.fmt(E.$(3000)), onClick: function () {
+        if (S().money < E.$(3000)) return done(noMoney(E.$(3000)));
+        if (used('expunge')) return done(nope('My petition is still with the court. I can try again next year.'));
+        use('expunge'); E.addMoney(-E.$(3000));
+        var hard = S().record.filter(function (r) { return r.years >= 5; }).length;
+        if (U.chance(0.75 - hard * 0.2)) { S().flags.expunged = (S().flags.expunged || 0) + S().record.length; S().record = []; E.stat('happy', 10); return done(good('The judge sealed my record. Employers won\'t see it anymore.')); }
+        done(bad('The judge denied my petition.'));
+      } });
       if (me().age >= 16) items.push({ icon: '🕴️', label: 'Organized crime', sub: S().mob ? TL.features.mobTitle() : 'Join a crime family', onClick: TL.features.mobMenu });
       D.CRIMES.forEach(function (c) {
         var dis = me().age < c.minAge || (c.needsJob && !(S().job && !S().job.partTime && !S().job.fame));
@@ -1623,7 +1632,7 @@ TL.actions = (function () {
     var years = U.rand(c.jail[0], c.jail[1]);
     if (m.age < 18) years = Math.min(years, Math.max(0, 18 - m.age + 1));
     if (c.id === 'embezzle' && s.job) E.fire('The company discovered the embezzlement.');
-    if (years === 0) { E.jail(0, c.name); return done(bad('I was caught (' + c.name.toLowerCase() + ') and let off with a fine.')); }
+    if (years === 0) { E.jail(0, c.name); if (S().prison) { ui().closeAll(); return done(bad('I was caught (' + c.name.toLowerCase() + ') while on parole. I\'m going back to prison.')); } return done(bad('I was caught (' + c.name.toLowerCase() + ') and let off with a fine.')); }
     E.queue('crime_caught', { crime: c.name, years: years });
     done(bad('🚨 I was caught by the police!'));
   }
@@ -1633,7 +1642,7 @@ TL.actions = (function () {
     ui().menu('Prison ⛓️', function () {
       var pr = S().prison;
       return [
-        { info: true, html: '<div class="kv"><b>' + U.esc(pr.name) + '</b><br>Crime: ' + pr.crime + '<br>Sentence: ' + U.plural(pr.total, 'year') + ' · ' + U.plural(pr.remaining, 'year') + ' left</div>' },
+        { info: true, html: '<div class="kv"><b>' + U.esc(pr.name) + '</b><br>Crime: ' + pr.crime + '<br>Sentence: ' + U.plural(pr.total, 'year') + ' · ' + U.plural(pr.remaining, 'year') + ' left' + (pr.total >= 3 && !(TL.ancient && TL.ancient.on()) ? '<br>Parole: ' + (pr.served >= Math.ceil(pr.total / 2) ? 'a hearing every year · ' : 'eligible after ' + U.plural(Math.ceil(pr.total / 2), 'year') + ' · ') + 'conduct ' + ((pr.conduct || 0) >= 3 ? 'excellent' : (pr.conduct || 0) >= 1 ? 'good' : (pr.conduct || 0) < 0 ? 'poor' : 'average') : '') + '</div>' },
         { icon: '⚖️', label: 'Appeal my sentence', sub: pr.appealed ? 'Already appealed' : 'Costs ' + E.fmt(E.$(10000)), disabled: pr.appealed, onClick: function () {
           pr.appealed = true;
           var cost = E.$(10000); E.addMoney(-cost);
@@ -1644,14 +1653,14 @@ TL.actions = (function () {
           if (used('escape')) return done(nope('The guards are watching me too closely this year.'));
           use('escape');
           if (U.chance(0.12 + me().athl / 600 + me().smarts / 800)) { S().prison = null; S().flags.fugitive = true; E.achieve('escape'); E.stat('happy', 20); ui().closeAll(); return done(good('I escaped from prison! I\'m on the run! 🏃')); }
-          pr.remaining += 2; pr.total += 2; E.stat('health', -10);
+          pr.remaining += 2; pr.total += 2; pr.conduct = (pr.conduct || 0) - 3; E.stat('health', -10);
           done(bad('I was caught trying to escape. 2 years were added to my sentence.'));
         } },
         { icon: '🏋️', label: 'Work out in the yard', onClick: function () { var f = diminish('pgym'); me().athl = U.clamp(me().athl + Math.round(4 * f), 0, 100); E.stat('health', 2 * f); done('I pumped iron in the yard.'); } },
         { icon: '📖', label: 'Prison library', onClick: function () { var f = diminish('plib'); E.stat('smarts', 3 * f); done('I read in the prison library.'); } },
         { icon: '🎓', label: 'Earn a GED', disabled: E.hasDegree('hs') || used('pged'), onClick: function () { use('pged'); if (U.chance(me().smarts / 110 + 0.1)) { S().degrees.push({ type: 'hs' }); return done(good('I earned my GED in prison!')); } done('I failed the GED exam.'); } },
-        { icon: '🙏', label: 'Good behavior', onClick: function () { var f = diminish('behave'); E.karma(1); if (U.chance(0.12 * f) && pr.remaining > 1) { pr.remaining--; return done(good('The parole board noticed my good behavior. A year was cut from my sentence!')); } done('I kept my head down and followed the rules.'); } },
-        { icon: '🔥', label: 'Start a riot', danger: true, onClick: function () { E.karma(-3); if (U.chance(0.3)) { E.stat('happy', 10); return done('The riot was chaos. Nobody knew I started it. 😈'); } pr.remaining += 1; pr.total += 1; E.stat('health', -12); done(bad('The guards caught me. +1 year and solitary confinement.')); } },
+        { icon: '🙏', label: 'Good behavior', onClick: function () { var f = diminish('behave'); E.karma(1); if (f >= 0.5) pr.conduct = Math.min(8, (pr.conduct || 0) + 1); if (U.chance(0.12 * f) && pr.remaining > 1) { pr.remaining--; return done(good('The parole board noticed my good behavior. A year was cut from my sentence!')); } done('I kept my head down and followed the rules.'); } },
+        { icon: '🔥', label: 'Start a riot', danger: true, onClick: function () { E.karma(-3); pr.conduct = (pr.conduct || 0) - 2; if (U.chance(0.3)) { E.stat('happy', 10); return done('The riot was chaos. Nobody knew I started it. 😈'); } pr.remaining += 1; pr.total += 1; E.stat('health', -12); done(bad('The guards caught me. +1 year and solitary confinement.')); } },
         { icon: '🤝', label: 'Befriend an inmate', onClick: function () { if (used('inmate') > 1) return done(nope('Nobody else wants to talk.')); use('inmate'); var p = E.addPerson({ role: 'friend', age: me().age + U.rand(-10, 15), rel: 50, gender: me().gender, job: 'Inmate' }); done('I befriended ' + E.fullName(p) + ' in the cafeteria.'); } }
       ];
     });
@@ -1671,7 +1680,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu,
     achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

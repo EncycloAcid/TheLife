@@ -1283,18 +1283,47 @@ TL.engine = (function () {
       log('🔓 I was released from ' + s.prison.name + ' after serving ' + U.plural(s.prison.served, 'year') + '.', 'good');
       s.prison = null;
       stat('happy', 20);
-    } else if (U.chance(0.1)) {
-      log('I got into a fight with another inmate.', 'bad'); stat('health', -U.rand(5, 20));
+    } else {
+      if (U.chance(0.1)) { log('I got into a fight with another inmate.', 'bad'); stat('health', -U.rand(5, 20)); }
+      // Halfway through a long sentence I can go before the parole board every year.
+      if (!ancient() && s.prison.total >= 3 && s.prison.served >= Math.ceil(s.prison.total / 2)) queue('parole_hearing');
     }
+  }
+  // My chance of parole: how I've behaved inside and the kind of person I am.
+  function paroleOdds() {
+    var pr = S().prison;
+    return pr ? U.clamp(0.12 + (pr.conduct || 0) * 0.07 + (S().karma - 50) / 250 + (pr.hearings || 0) * 0.02, 0.03, 0.8) : 0;
+  }
+  function parole() {
+    var s = S(), pr = s.prison;
+    s.parole = { until: s.year + pr.remaining, from: pr.name };
+    log('🔓 I was released on parole from ' + pr.name + ' after serving ' + U.plural(pr.served, 'year') + '. I have to stay out of trouble until ' + s.parole.until + '.', 'good');
+    s.prison = null; stat('happy', 18);
+  }
+  // Seven clean years after my last conviction, a court can seal my record.
+  function expungeable() {
+    var s = S(), last = s.record.reduce(function (a, r) { return Math.max(a, r.year + (r.years || 0)); }, 0);
+    return s.record.length && !s.prison && !s.parole && !ancient() && s.year - last >= 7 && me().age >= 18;
+  }
+  function yearlyParole() {
+    var s = S();
+    if (s.parole && s.year >= s.parole.until) { delete s.parole; log('✅ I completed my parole. I\'m truly free.', 'good'); stat('happy', 5); }
   }
   function jail(years, crime) {
     var s = S();
+    if (years <= 0 && s.parole && s.parole.until > s.year) years = 0.5; // even a small offense breaks parole
     if (years <= 0) {
       log('I got off with a warning and a fine.', 'bad');
       addMoney(-$(U.rand(200, 1500)));
       s.record.push({ crime: crime, year: s.year, years: 0 });
       return;
     }
+    if (s.parole && s.parole.until > s.year) {
+      // Breaking parole sends me back for the rest of my old sentence too.
+      years = Math.round(years) + s.parole.until - s.year;
+      log('🚨 I broke my parole, so the rest of my old sentence was added on.', 'bad');
+    }
+    delete s.parole;
     s.record.push({ crime: crime, year: s.year, years: years });
     s.prison = { remaining: years, total: years, served: 0, crime: crime, name: U.pick(['Blackrock', 'Ironwood', 'Stonegate', 'Redfield', 'Graymoor', 'Kingsbridge']) + (me().age < 18 ? ' Juvenile Detention Center' : ' State Penitentiary'), appealed: false };
     if (s.job) fire('Being sent to prison cost me my job.');
@@ -1345,6 +1374,7 @@ TL.engine = (function () {
     s.log.push({ age: m.age, year: s.year, entries: [] });
 
     yearlyPrison();
+    yearlyParole();
     progressSchool();
     var earned = progressJob();
     fameProgress();
@@ -1663,7 +1693,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, RET_PLANS: RET_PLANS, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
+    achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
