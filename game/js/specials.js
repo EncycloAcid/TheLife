@@ -404,7 +404,7 @@ TL.specials = (function () {
       decline: 50
     },
     gamedev: {
-      gain: 0.5, name: 'Game developer', icon: '🕹️', minAge: 14, minYear: 1977, skillName: 'Game design', blurb: 'Game jams, indie hits, your own studio · 1977+',
+      gain: 0.5, name: 'Game developer', icon: '🕹️', minAge: 10, minYear: 1977, skillName: 'Game design', blurb: 'Hobby games, indie hits, real studios, your own studio · 1977+',
       need: function () { return yr() < 1977 ? 'There\'s no home video game industry yet.' : null; },
       power: function (x) { return x.skill * 0.65 + me().smarts * 0.3 + me().happy * 0.05; },
       ladder: [[0, 'Hobbyist', 0], [20, 'Indie Developer', 20000], [40, 'Studio Developer', 90000], [65, 'Lead Designer', 250000], [85, 'Legendary Designer', 1000000]],
@@ -435,6 +435,7 @@ TL.specials = (function () {
     var j = job || S().job, x = j && st(j.special);
     if (j && j.special === 'wrestler' && TL.wrestling && S().wr) return TL.wrestling.title();
     if (j && j.special === 'racer' && TL.racing && S().rc) return TL.racing.title();
+    if (j && j.special === 'gamedev' && TL.gamedev) return TL.gamedev.title();
     if (!x) return 'Freelancer';
     var t = rung(j.special, x.rep)[1];
     return j.special === 'chef' && x.rest ? 'Chef-Owner' : j.special === 'model' && me().gender === 'M' && t === 'Supermodel' ? 'Supermodel' : t;
@@ -442,6 +443,7 @@ TL.specials = (function () {
   function summary(id) {
     if (id === 'wrestler' && TL.wrestling) return TL.wrestling.summary();
     if (id === 'racer' && TL.racing) return TL.racing.summary();
+    if (id === 'gamedev' && TL.gamedev) return TL.gamedev.summary();
     var x = st(id);
     if (x && x.youth && !x.retired) return 'Junior · reputation ' + Math.round(x.rep) + (me().age >= 14 ? ' · ready to turn pro' : '');
     if (!x) return C[id].blurb || { model: 'Agencies, castings, Fashion Week · looks 55+', chef: 'Kitchens, cookbooks, your own restaurant', gamer: 'Tournaments, teams, streaming · 1997+' }[id];
@@ -644,6 +646,7 @@ TL.specials = (function () {
     var s = S(), j = s.job, id = j.special, x = st(id), c = C[id], m = me();
     if (id === 'wrestler' && TL.wrestling && s.wr && !s.wr.retired) return TL.wrestling.year();
     if (id === 'racer' && TL.racing && s.rc && !s.rc.retired) return TL.racing.season();
+    if (id === 'gamedev' && TL.gamedev) return TL.gamedev.year();
     if (!x) return 0;
     var r = rung(id, x.rep), earn = E.$(r[2]) + (x.earn || 0); x.earn = 0;
     // Workload: three gigs, two trainings and a big swing every year wears anyone down.
@@ -877,6 +880,7 @@ TL.specials = (function () {
   function menu(id) {
     if (id === 'wrestler' && TL.wrestling) return TL.wrestling.menu(); // pro wrestling has its own module (js/wrestling.js)
     if (id === 'racer' && TL.racing) return TL.racing.menu(); // so does racing (js/racing.js)
+    if (id === 'gamedev' && TL.gamedev) return TL.gamedev.menu(); // and game development (js/gamedev.js)
     ui().menu(C[id].icon + ' ' + C[id].name, function () {
       var x = st(id), c = C[id], j = S().job, on = j && j.special === id, items = [];
       if (!x || !on) {

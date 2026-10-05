@@ -432,9 +432,9 @@ TL.events = (function () {
     if (homeless) choices.shift(); // no home to bring them to
     if (sib) choices.push({ label: 'Ask my ' + E.relWord(sib) + ' ' + sib.first + ' to take ' + nm + ' in', run: function () {
       if (U.chance(sib.rel / 120)) { E.rel(sib, -8); E.rel(p, -3); return sib.first + ' agreed to take ' + nm + ' in, but made it clear I owe them one.'; }
-      E.rel(sib, -12); E.rel(p, -10); p.health = U.clamp(p.health - 8, 0, 100); return bad(sib.first + ' said it was my turn. In the end nobody took ' + nm + ' in.');
+      E.rel(sib, -12); E.rel(p, -10); p.health = U.clamp(p.health - 8, Math.min(1, p.health), 100); return bad(sib.first + ' said it was my turn. In the end nobody took ' + nm + ' in.');
     } });
-    else choices.push({ label: 'Let ' + nm + ' manage alone', run: function () { E.rel(p, -15); E.karma(-4); p.health = U.clamp(p.health - 10, 0, 100); return bad(nm + ' insists on staying alone. The house is getting harder to manage.'); } });
+    else choices.push({ label: 'Let ' + nm + ' manage alone', run: function () { E.rel(p, -15); E.karma(-4); p.health = U.clamp(p.health - 10, Math.min(1, p.health), 100); return bad(nm + ' insists on staying alone. The house is getting harder to manage.'); } });
     return { icon: '🫶', title: 'Caring for my ' + w, text: 'My ' + w + ' ' + nm + ' is ' + p.age + ' and struggling to manage alone. The doctor says ' + (p.gender === 'M' ? 'he' : 'she') + ' needs someone around every day.', choices: choices };
   } });
   def('npc_wedding', {

@@ -598,11 +598,13 @@ TL.engine = (function () {
     if (!s.job) return;
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, company: s.job.company });
     if (!silent) log('I quit my job as ' + an(jobTitle(s.job)) + '.');
+    if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.job = null;
   }
   function fire(reason) {
     var s = S();
     log('I was fired from my job as ' + an(jobTitle(s.job)) + '. ' + (reason || ''), 'bad');
+    if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, fired: true });
     s.job = null;
     stat('happy', -20);
@@ -1449,6 +1451,7 @@ TL.engine = (function () {
     progressSchool();
     var earned = progressJob();
     if (TL.racing) TL.racing.youthYear(); // kids in karts race without a job
+    if (TL.gamedev) TL.gamedev.youthYear(); // and kids make games after school
     fameProgress();
     if (m.age >= 16 || s.money !== 0 || s.assets.length) yearlyFinances(earned);
     yearlyHome();

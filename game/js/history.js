@@ -115,18 +115,20 @@ TL.history = (function () {
       h.flu = true; E.stat('health', -U.rand(10, 25)); E.log('🤒 I caught the Spanish flu. Millions died that year.', 'bad');
       if (me().health < 25 && U.chance(0.35)) E.die('the Spanish flu');
     } else if (y === 1918 && a >= 5 && !h.flu) see('The Spanish flu', '🦠');
+    // Only employees get laid off: the self-employed, stars and office-holders have their own troubles.
+    var employee = function (j) { return j && !j.mil && !j.fame && !j.special && !j.politics && !j.hoops && !j.acting && !j.music && !j.pro && !j.ancient; };
     // The Great Depression.
     if (y >= 1930 && y <= 1939 && a >= 16) {
       if (y === 1930) { E.log('🏚️ The Great Depression has begun. Breadlines stretch around the block.', 'bad'); see('The Great Depression', '🏚️'); }
-      if (s.job && !s.job.partTime && !s.job.mil && U.chance(0.12)) E.fire('The company went under in the Depression.');
+      if (employee(s.job) && !s.job.partTime && U.chance(0.12)) E.fire('The company went under in the Depression.');
       E.stat('happy', -2);
     }
     // 2008 and COVID hit jobs too.
-    if (y === 2009 && s.job && !s.job.mil && U.chance(0.08)) E.fire('I was laid off in the recession.');
+    if (y === 2009 && employee(s.job) && U.chance(0.08)) E.fire('I was laid off in the recession.');
     if (y === 2020 && a >= 3) {
       E.stat('happy', -5);
       if (U.chance(0.25)) { E.stat('health', -U.rand(5, 15)); E.log('🤒 I caught COVID-19.', 'bad'); if (me().age > 75 && me().health < 30 && U.chance(0.3)) E.die('COVID-19'); }
-      if (s.job && !s.job.mil && U.chance(0.1)) E.fire('I lost my job in the COVID lockdowns.');
+      if (employee(s.job) && U.chance(0.1)) E.fire('I lost my job in the COVID lockdowns.');
     }
     if (h.seen.length >= 10) E.achieve('history_buff');
   }
