@@ -208,3 +208,11 @@ h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -.035em; }
 /* Quiet years match the year chips above and below them. */
 .quiet-row { padding: 0 4px; }
 .quiet-row b { text-transform: none; letter-spacing: 0; font-size: .75rem; padding: 3px 10px; border-radius: var(--r-full); background: var(--surface-high); color: var(--muted); }
+
+/* "Expressive" design = the original iOS × Material 3 Expressive layout
+   (v2.4.1): header on top, the story, then the stat tiles and tab bar. */
+html[data-design="expressive"] .hero { display: contents; }
+html[data-design="expressive"] .gh { order: 0; }
+html[data-design="expressive"] .log { order: 1; }
+html[data-design="expressive"] .stats { order: 2; }
+html[data-design="expressive"] .nav { order: 3; }

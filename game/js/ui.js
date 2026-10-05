@@ -151,10 +151,10 @@ TL.ui = (function () {
     return t === 'dark' || (!t && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
   }
   // Designs are stylesheet layers you can switch in Settings.
-  var DESIGNS = [['compact', 'Compact', 'Slim header, more room for your story', '📱'], ['ios26', 'iOS 26', 'Activity rings, large titles, timeline', '⭕'], ['expressive', 'Expressive', 'Material color and shapes', '🎨'], ['classic', 'Classic iOS', 'The original look', '🍎']];
+  var DESIGNS = [['expressive', 'Expressive', 'iOS × Material 3 Expressive (the original redesign)', '🎨'], ['compact', 'Compact', 'Slim header, more room for your story', '📱'], ['ios26', 'iOS 26', 'Activity rings, large titles, timeline', '⭕'], ['classic', 'Classic iOS', 'The original look', '🍎']];
   var LAYERS = { compact: ['css-exp', 'css-compact'], ios26: ['css-exp', 'css-ios26'], expressive: ['css-exp'], classic: [] };
   function applyDesign(st) {
-    var d = LAYERS[st.design] ? st.design : 'compact', on = LAYERS[d];
+    var d = LAYERS[st.design] ? st.design : 'expressive', on = LAYERS[d];
     ['css-exp', 'css-ios26', 'css-compact'].forEach(function (id) { var l = document.getElementById(id); if (l) l.disabled = on.indexOf(id) < 0; });
     document.documentElement.setAttribute('data-design', d);
     return d;
@@ -193,7 +193,7 @@ TL.ui = (function () {
       return [{ section: 'Theme' }].concat(THEMES.map(function (t) {
         return { icon: t[2], label: t[1], radio: t[0] === theme, onClick: function () { set('theme', t[0]); } };
       }), [{ section: 'Design' }], DESIGNS.map(function (d) {
-        return { icon: d[3], label: d[1], sub: d[2], radio: d[0] === (LAYERS[st.design] ? st.design : 'compact'), onClick: function () { set('design', d[0]); } };
+        return { icon: d[3], label: d[1], sub: d[2], radio: d[0] === (LAYERS[st.design] ? st.design : 'expressive'), onClick: function () { set('design', d[0]); } };
       }), [{ section: 'Color' }], SEEDS.map(function (c) {
         return { icon: '<i class="swatch" style="background:' + tone(c[2], 0.15, isDark() ? 80 : 40) + '"></i>', label: c[1], radio: c[0] === (st.color || 'violet'), onClick: function () { set('color', c[0]); } };
       }), [{ section: 'Text size' }], TEXT_SIZES.map(function (t) {
@@ -370,7 +370,7 @@ TL.ui = (function () {
   // so the fill can be set as a percentage (pathLength 100).
   var WAVE = (function () { var d = '', n = 180; for (var i = 0; i <= n; i++) { var t = i / n * 2 * Math.PI, r = RING_R; d += (i ? 'L' : 'M') + (25 + r * Math.cos(t)).toFixed(2) + ' ' + (25 + r * Math.sin(t)).toFixed(2); } return d; })();
   var lastMoney = null, lastAge = null, prevStats = null, logSeen = null;
-  var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--teal)'], ['looks', '✨', 'Looks', 'var(--purple)']];
+  var STAT_DEFS = [['happy', '😊', 'Happy', 'var(--orange)'], ['health', '❤️', 'Health', 'var(--pink)'], ['smarts', '🧠', 'Smarts', 'var(--ring-smarts, var(--tint))'], ['looks', '✨', 'Looks', 'var(--purple)']];
   function renderStats() {
     var m = S().me, box = $('#stats');
     var built = !box.querySelector('.ring');
