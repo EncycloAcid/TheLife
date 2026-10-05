@@ -39,7 +39,8 @@ TL.engine = (function () {
     return (/^[aeiou]/.test(j) ? 'an ' : 'a ') + j;
   }
   function an(w) { return (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w; }
-  function fullName(p) { return p.first + ' ' + p.last; }
+  // A Roman woman's name was her family's (Caecilia of the Caecilii), so it's said once.
+  function fullName(p) { return p.first === p.last ? p.first : p.first + ' ' + p.last; }
   // "my grandmother", not "my grandparent": the role in everyday words.
   function relWord(p) {
     var r = p.role, M = p.gender === 'M';
@@ -74,7 +75,21 @@ TL.engine = (function () {
     // Outside the year-end death check, health bottoms out at 1 (critical): nobody
     // walks around for a year at zero health.
     m[name] = U.clamp(lo + (Math.random() < v - lo ? 1 : 0), name === 'health' && !aging ? Math.min(1, m[name]) : 0, 100);
+    // Looks you work for (gym, diet, surgery, a glow-up) partly stick: a quarter
+    // of the gain moves your natural baseline (see looksYear).
+    if (name === 'looks' && delta > 0 && !aging) m.looksBase = Math.min(98, looksBase(m) + delta / 4);
     return m[name];
+  }
+  // Natural looks: genetics set at birth (never below 20), reshaped a little in
+  // the teen years and fading slowly after 35.
+  function looksBase(m) { if (m.looksBase == null) m.looksBase = U.clamp(m.looks, 20, 95); return m.looksBase; }
+  function looksYear(m, a) {
+    var b = looksBase(m);
+    if (a >= 12 && a <= 18 && U.chance(0.35)) b += U.rand(-2, 3);
+    if (a > 35) b -= U.chance(0.5) ? (a > 60 ? U.rand(1, 2) : 1) : 0;
+    m.looksBase = U.clamp(b, a > 70 ? 8 : 20, 98);
+    // Looks drift a quarter of the way back toward that baseline each year.
+    stat('looks', (m.looksBase - m.looks) / 4);
   }
   // Where happiness settles over time, and why (shown in About me). People adapt:
   // a good life, good people and good habits set the baseline.
@@ -947,13 +962,11 @@ TL.engine = (function () {
     if (m.athl > 60) base += 4;
     if (m.health < base) stat('health', (base - m.health) / 3);
     else stat('health', -U.rand(0, a > 60 ? 3 : 1));
-    if (a > 35 && U.chance(0.5)) stat('looks', -U.rand(0, a > 60 ? 3 : 1));
+    looksYear(m, a);
     if (a > 30 && U.chance(0.5)) m.athl = U.clamp(m.athl - U.rand(0, a > 55 ? 3 : 1), 0, 100);
     if (a >= 22 && a < 65 && s.job && !s.job.partTime && D.career(s.job.career) && D.career(s.job.career).stat === 'smarts' && U.chance(0.3)) stat('smarts', 1);
     if (a > 70 && U.chance(0.4)) stat('smarts', -U.rand(0, a > 82 ? 3 : 1));
     if (a < 18 && U.chance(0.5)) m.athl = U.clamp(m.athl + U.rand(0, 2), 0, 100);
-    if (a < 16 && U.chance(0.3)) stat('looks', U.rand(-3, 4));
-    if (a >= 12 && a <= 18 && U.chance(0.25)) stat('looks', U.rand(-4, 6));
     // existing conditions (js/health.js handles hidden illnesses, cancer stages and medication)
     if (TL.health) TL.health.year();
     s.conditions.slice().forEach(function (n) {

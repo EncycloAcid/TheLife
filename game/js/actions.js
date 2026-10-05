@@ -1524,6 +1524,8 @@ TL.actions = (function () {
     else done(bad('I failed my driving test.'));
   }
   function adopt() {
+    // Every route here (Activities, Fertility options) shares the agency's age limit.
+    if (me().age > 55) return done(nope('Agencies won\'t place a child with me at my age.'));
     var cost = E.$(25000);
     if (!afford(cost)) return done(noMoney(cost));
     ui().choose('Adoption', 'Adopting a child costs ' + E.fmt(cost) + (TL.ancient && TL.ancient.on() ? TL.ancient.txt('adoptFee') : ' in agency fees.'), [
