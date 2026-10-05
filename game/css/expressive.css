@@ -274,3 +274,46 @@ h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -.035em; }
 .hero .floater { top: 4px; left: auto; right: 8px; font-size: .75rem; }
 .hero .gh-sub { display: block; font-size: .8125rem; margin-top: 1px; }
 .hero .gh-right { margin-top: 2px; }
+
+/* ============================================================ v2.5.1 balance
+ * An even mix: iOS glass, grouped lists, semibold type and compact alerts,
+ * with Material 3 Expressive color, wavy rings, pills and morphing shapes. */
+/* Hero: iOS frosted glass, lightly tinted with the seed color. */
+.hero { background: color-mix(in srgb, var(--primary-c) 55%, var(--glass)); -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8); border-radius: 26px; box-shadow: 0 8px 28px -14px rgba(0, 0, 0, .25), inset 0 0 0 1px color-mix(in srgb, var(--outline) 16%, transparent); color: var(--text); }
+.hero .icon-btn { color: var(--primary); }
+.hero .gh-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -.015em; }
+.hero .gh .money { font-size: 1.125rem; font-weight: 700; color: var(--money); }
+.hero .gh .money.neg { color: var(--red); }
+.hero .gh-sub, .hero .gh-age { color: var(--muted); }
+.hero .stat { background: color-mix(in srgb, var(--cell) 70%, transparent); border-radius: 18px; }
+/* Type: iOS semibold weights instead of the heaviest display weights. */
+h1 { font-weight: 700; }
+.sheet-large { font-size: 1.875rem; font-weight: 700; letter-spacing: -.025em; }
+.dialog-card h3 { font-size: 1.1875rem; font-weight: 700; }
+.death-wrap h2 { font-weight: 700; }
+/* Year headers: an iOS large-title feel, a step smaller. */
+.year-h b { font-size: 1.1875rem; font-weight: 700; letter-spacing: -.02em; }
+/* Lists: one rounded card per group with hairline dividers (iOS grouped),
+   Material's larger radius and tonal icon tiles. */
+.group { background: var(--cell); border-radius: 22px; overflow: hidden; gap: 0; }
+.group .item { background: transparent; border-radius: 0 !important; min-height: 52px; }
+.group .item + .item::before { display: block; left: 64px; right: 0; background: var(--sep); transform: scaleY(.5); }
+.item:active:not(.disabled):not(.static) { background: var(--fill); }
+.group .item:active:not(.disabled):not(.static) { transform: none; }
+.i-ico { width: 32px; height: 32px; border-radius: 10px; }
+.tiles { background: var(--cell); border-radius: 22px; overflow: hidden; gap: 0; }
+.tile, .tile:first-child, .tile:last-child { border-radius: 0; background: transparent; }
+.tile + .tile::before { display: block; left: 64px; }
+.t-ico { width: 32px; height: 32px; border-radius: 10px; }
+/* Alerts: compact and centered like iOS, with Material pill choices. */
+.dialog-card { max-width: 312px; border-radius: 26px; -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); background: color-mix(in srgb, var(--material) 88%, transparent); }
+.d-icon { width: 54px; height: 54px; font-size: 1.7rem; }
+#d-buttons .btn { min-height: 44px; font-size: .9375rem; }
+/* Tab bar: iOS liquid glass with the Material pill indicator. */
+.nav { background: color-mix(in srgb, var(--glass) 80%, transparent); -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8); }
+/* Age button: Material's shape-shifting button, a touch smaller. */
+.ageup { width: 62px; height: 62px; border-radius: 22px; }
+.ageup.pop::after { border-radius: 22px; }
+@keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.84); } 100% { border-radius: 22px; } }
+/* Section labels: iOS small caps-free footnote style in the seed color. */
+.section { font-size: .8125rem; font-weight: 600; }
