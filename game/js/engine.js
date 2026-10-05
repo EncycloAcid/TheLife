@@ -510,7 +510,7 @@ TL.engine = (function () {
   // ---------- jobs ----------
   function jobSalary(job) {
     if (job.ancient && TL.ancient) return TL.ancient.salary(job);
-    if (job.acting || job.music || job.pro) return job.salary || 0;
+    if (job.acting || job.music || job.pro || job.special) return job.salary || 0;
     if ((job.hoops || job.mil) && job.salary) return job.salary;
     if (job.partTime) return $(D.PART_TIME.filter(function (p) { return p.id === job.career; })[0].salary);
     var c = D.career(job.career);
@@ -520,6 +520,7 @@ TL.engine = (function () {
     if (!job) return 'Unemployed';
     if (job.ancient && TL.ancient) return TL.ancient.title(job);
     if (job.mil) return job.title || 'Soldier';
+    if (job.special) return TL.specials ? TL.specials.title(job) : 'Freelancer';
     if (job.acting) return TL.acting ? TL.acting.title() : job.title || 'Actor';
     if (job.music) return TL.music ? TL.music.title() : job.title || 'Musician';
     if (job.pro) return TL.pro ? TL.pro.title() : job.title || 'Athlete';
@@ -667,6 +668,7 @@ TL.engine = (function () {
     if (j.mil && TL.military) return TL.military.year();
     if (j.career === 'actor' && !j.acting && TL.acting) TL.acting.st(); // pre-v1.14 actors
     if (j.acting && TL.acting) return TL.acting.year();
+    if (j.special && TL.specials) return TL.specials.year();
     if (j.career === 'musician' && !j.music && TL.music) TL.music.st(); // pre-v1.16 musicians
     if (j.music && TL.music) return TL.music.year();
     if (j.career === 'athlete' && !j.pro && !j.hoops && TL.pro) TL.pro.migrate(j); // pre-v1.17 athletes
@@ -777,7 +779,7 @@ TL.engine = (function () {
   // ---------- fame careers ----------
   function fameProgress() {
     var s = S(), j = s.job;
-    if (j && (j.hoops || j.acting || j.music || j.pro)) return; // these careers handle their own fame
+    if (j && (j.hoops || j.acting || j.music || j.pro || j.special)) return; // these careers handle their own fame
     if (!j || !j.fame || s.prison) { if (s.fame > 0 && U.chance(0.6)) fame(-U.rand(1, 4)); return; }
     var c = D.career(j.career);
     var drive = (statValue(c.stat) - 50) / 10 + (j.workHard || 0) * 3 + U.rand(-6, 9);

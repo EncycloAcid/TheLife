@@ -651,6 +651,7 @@ TL.actions = (function () {
       items.push({ section: 'Career' });
       if (s.hoops) items.push({ icon: '🏀', label: 'Basketball', sub: TL.hoops.summary(), onClick: TL.hoops.menu });
       if (s.mil) items.push({ icon: '🎖️', label: 'Military', sub: TL.military.summary(), onClick: TL.military.menu });
+      if (s.job && s.job.special && TL.specials) items.push({ icon: TL.specials.C[s.job.special].icon, label: TL.specials.C[s.job.special].name, sub: TL.specials.summary(s.job.special), onClick: function () { TL.specials.menu(s.job.special); } });
       if ((s.acting || (s.job && s.job.career === 'actor')) && m.age >= 8) items.push({ icon: '🎬', label: 'Acting', sub: TL.acting.summary(), onClick: TL.acting.menu });
       if (s.pro || (s.job && s.job.career === 'athlete' && !s.job.hoops)) items.push({ icon: '🏆', label: 'Pro sports', sub: TL.pro.summary(), onClick: TL.pro.menu });
       if ((s.music || (s.job && s.job.career === 'musician')) && m.age >= 10) items.push({ icon: '🎵', label: 'Music', sub: TL.music.summary(), onClick: TL.music.menu });
@@ -658,13 +659,13 @@ TL.actions = (function () {
       if (s.job) {
         var j = s.job;
         items.push({ info: true, html: '<div class="kv">' + (TL.logos && j.company ? '<div class="job-head">' + TL.logos.badge(j.company, { size: 'md' }) + '<div><b>' + U.esc(E.jobTitle(j)) + '</b><br><span class="muted">' + U.esc(String(j.company).replace(/^the /, '')) + '</span></div></div>' : '<b>' + U.esc(E.jobTitle(j)) + '</b> at ' + U.esc(j.company) + '<br>') + 'Salary: ' + E.fmt(E.jobSalary(j)) + '/yr · ' + U.plural(j.years, 'year') + (j.politics ? ' · ' + U.plural(j.term, 'year') + ' until election' : '') + '<div class="minibar"><span>' + (j.politics ? 'Approval' : 'Performance') + '</span><div class="track"><div class="fill ' + barClass(j.perf) + '" style="width:' + j.perf + '%"></div></div></div>' + (TL.work ? TL.work.card(j) : '') + (j.fame ? '<div class="minibar"><span>Fame</span><div class="track"><div class="fill hi" style="width:' + s.fame + '%"></div></div></div>' : '') + '</div>' });
-        if (!j.hoops && !j.mil && !j.acting && !j.music && !j.pro) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
+        if (!j.hoops && !j.mil && !j.acting && !j.music && !j.pro && !j.special) items.push({ icon: '💪', label: j.fame ? ({ actor: 'Practice acting', musician: 'Write & record music', athlete: 'Train hard' }[j.career]) : 'Work harder', onClick: workHarder });
         if (j.politics) (TL.politics ? TL.politics.items(j) : politicsItems(j)).forEach(function (it) { items.push(it); });
         if (TL.work && TL.work.regular(j)) TL.work.items(j).forEach(function (it) { items.push(it); });
         else if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
-        if (j.fame && !j.hoops && !j.acting && !j.music && !j.pro) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
+        if (j.fame && !j.hoops && !j.acting && !j.music && !j.pro && !j.special) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
         if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
-        if (me().age >= 55 && !j.partTime && !j.mil && !j.acting && !j.music && !j.pro) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
+        if (me().age >= 55 && !j.partTime && !j.mil && !j.acting && !j.music && !j.pro && !j.special) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
         if (!j.mil && !j.pro) items.push({ icon: '🚪', label: j.coach ? 'Step down as coach' : j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.coach ? 'Step down?' : j.hoops ? 'Retire?' : 'Quit?', j.coach ? 'Leave the bench for good?' : j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.coach) { E.quitJob(true); return done('I stepped down as ' + (j.title || 'coach').toLowerCase() + '. 📋'); } if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) {
         var sp = E.statePension();
@@ -681,7 +682,7 @@ TL.actions = (function () {
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
       if (!serving && m.age >= 17 && m.age <= 39) items.push({ icon: '🎖️', label: 'Join the military', sub: 'Talk to a recruiter', onClick: TL.military.recruiter });
-      items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Basketball · Pro Sports', onClick: fameMenu });
+      items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Sports · Modeling · Cooking · Esports', onClick: fameMenu });
       if (m.age >= D.POLITICS.minAge && !(s.job && s.job.politics)) items.push({ icon: '🗳️', label: 'Run for office', sub: 'Start a political career', onClick: function () { if (TL.politics) TL.politics.campaign(0); else campaignMenu(0); } });
       if (TL.politics) TL.politics.formerItems().forEach(function (it) { items.push(it); });
       if (m.age >= 8 && m.age < 18) items.push({ icon: '🧃', label: 'Odd jobs', sub: 'Lemonade stands, mowing lawns', onClick: oddJobs });
@@ -870,7 +871,7 @@ TL.actions = (function () {
     });
   }
   function fameMenu() {
-    ui().menu('Special careers', function () {
+    ui().menu('Special careers', function () { var out = (function () {
       var hb = S().hoops, pro = hb && hb.stage === 'pro';
       return [{ icon: '🎬', label: 'Acting', sub: S().acting ? TL.acting.summary() : 'Casting calls, agents, classes · age 8+', disabled: me().age < 8, onClick: TL.acting.menu }, { icon: '🎵', label: 'Music', sub: S().music ? TL.music.summary() : 'Write songs, play shows, get signed · age 10+', disabled: me().age < 10, onClick: TL.music.menu }, { icon: '🏆', label: 'Pro Sports', sub: TL.pro.active() ? TL.pro.summary() : 'Football, soccer, baseball, hockey, tennis · tryouts 17–32', onClick: TL.pro.tryoutMenu }, { icon: '🏀', label: 'Basketball', sub: pro ? 'Already a pro' : me().age < 18 ? 'Make your high school team to get recruited' : 'Open tryouts · age 18–30', disabled: pro || me().age < 18 || me().age > 30, onClick: TL.hoops.tryout }].concat(D.FAME_CAREERS.filter(function (c) { return c.id !== 'actor' && c.id !== 'musician' && c.id !== 'athlete'; }).map(function (c) {
         var bonus = c.id === 'actor' ? (S().flags.acting || 0) : c.id === 'musician' ? (S().flags.music || 0) : 0;
@@ -883,6 +884,9 @@ TL.actions = (function () {
           done(r.ok ? good(r.msg) : bad(r.msg));
         } };
       }));
+      })();
+      // Modeling, cooking and esports (js/specials.js) go after the big four.
+      return out.slice(0, 4).concat(TL.specials ? TL.specials.fameItems() : [], out.slice(4));
     });
   }
   function politicsItems(j) {
@@ -1680,7 +1684,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu, fameMenu: fameMenu,
     achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();
