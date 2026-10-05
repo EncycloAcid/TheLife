@@ -387,6 +387,29 @@ TL.events = (function () {
     ] };
   } });
   // A neglected car gives out: fix it, junk it or keep limping along.
+  def('npc_wedding', {
+    scripted: true,
+    build: function (d) {
+      var p = E.person(d.pid);
+      if (!p || !p.alive) return null;
+      var me = E.me(), close = p.rel >= 65 && (p.role === 'sibling' || p.role === 'best friend'), gift = E.$(me.age < 18 ? 20 : 150), who = p.first;
+      var single = !E.partner() && me.age >= 18 && me.age < 60 && !S().royal;
+      var meet = function () {
+        if (!single || !U.chance(0.25)) return '';
+        var q = E.addPerson({ role: 'partner', age: U.clamp(me.age + U.rand(-4, 4), 18, 99), gender: me.interest === 'A' ? undefined : me.interest, rel: 60 });
+        return ' I also met ' + q.first + ' on the dance floor, and we\'ve been seeing each other since. 💕';
+      };
+      var choices = [];
+      if (close) choices.push({ label: (me.gender === 'F' ? 'Be the maid of honor' : 'Be the best man') + ' and give a toast', run: function () {
+        E.addMoney(-gift);
+        if (U.chance(U.clamp(0.4 + (me.smarts - 50) / 200 + (me.looks - 50) / 400, 0.15, 0.85))) { E.rel(p, 15); E.stat('happy', 6); return good('My toast was the highlight of the night. ' + who + ' hugged me for a full minute.' + meet()); }
+        E.rel(p, -6); E.stat('happy', -4); return bad('I told the story I swore I\'d never tell. The room went silent. ' + who + ' is still a little mad.');
+      } });
+      choices.push({ label: 'Go and bring a gift (' + E.fmt(gift) + ')', run: function () { E.addMoney(-gift); E.rel(p, 10); E.stat('happy', 4); return good('It was a beautiful day. ' + who + ' loved the gift.' + meet()); } });
+      choices.push({ label: 'Make an excuse and skip it', run: function () { E.rel(p, close ? -20 : -12); return who + ' noticed my empty seat. ' + (close ? 'That one is going to sting for a while.' : 'Things are a little awkward now.'); } });
+      return { icon: '💒', title: who + '\'s wedding', text: 'My ' + E.relWord(p) + ' ' + who + ' is getting married' + (p.role === 'sibling' ? '' : ' and invited me') + '.' + (close ? ' ' + who + ' asked me to stand up front and give a toast.' : ''), choices: choices };
+    }
+  });
   def('estate_dispute', {
     scripted: true,
     build: function (d) {

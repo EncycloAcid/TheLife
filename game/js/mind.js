@@ -109,7 +109,12 @@ TL.mind = (function () {
     if (emp && a >= 22 && a < 65 && !(p.promoY && s.year - p.promoY < 4)) opts.push([has(p, 'Ambitious') ? 2.5 : 1, function () { p.promoY = s.year; p.money = Math.round(p.money * 1.2 + E.$(U.rand(3000, 15000))); p.happy = U.clamp(p.happy + 10, 0, 100); return ['📣 ' + My(p) + ' got promoted at work.', '']; }]);
     if (emp && a >= 20 && a < 64 && !anc() && !(p.promoY && s.year - p.promoY < 2)) opts.push([has(p, 'Lazy') ? 1 : 0.35, function () { p.job = 'Unemployed'; p.happy = U.clamp(p.happy - 15, 0, 100); return ['📣 ' + My(p) + ' lost ' + their(p) + ' job.', '']; }]);
     if (p.job === 'Unemployed' && a < 60) opts.push([2, function () { var nj = 'Clerk'; for (var t = 0; t < 12 && E.npcJob; t++) { var j = E.npcJob(Math.max(a, 23)); if (['Unemployed', 'Student', 'University Student', 'Retired', 'Toddler', 'Child'].indexOf(j) < 0) { nj = j; break; } } p.job = nj; p.happy = U.clamp(p.happy + 10, 0, 100); return ['📣 ' + My(p) + ' found a new job as ' + (/^[AEIOU]/.test(p.job) ? 'an ' : 'a ') + p.job.toLowerCase() + '.', '']; }]);
-    if (['friend', 'best friend', 'sibling'].indexOf(p.role) >= 0 && !p.married && a >= 22 && a <= 50) opts.push([0.8, function () { p.married = true; p.happy = U.clamp(p.happy + 15, 0, 100); return ['💒 ' + My(p) + ' got married. ' + (p.rel >= 60 ? 'I was there to celebrate.' : 'I found out afterward.'), p.rel >= 60 ? 'good' : '']; }]);
+    if (['friend', 'best friend', 'sibling'].indexOf(p.role) >= 0 && !p.married && a >= 22 && a <= 50) opts.push([0.8, function () {
+      p.married = true; p.happy = U.clamp(p.happy + 15, 0, 100);
+      // Close enough to be invited: the wedding is a choice, not a log line (js/events.js).
+      if (p.rel >= 40 && !s.prison && E.me().age >= 14 && !s.pending.some(function (q) { return q.id === 'npc_wedding'; })) { s.pending.push({ id: 'npc_wedding', data: { pid: p.id } }); return ['💌 ' + My(p) + ' is getting married, and I\'m invited.', '']; }
+      return ['💒 ' + My(p) + ' got married. ' + (s.prison ? 'I couldn\'t be there.' : 'I found out afterward.'), ''];
+    }]);
     if (['friend', 'best friend', 'sibling'].indexOf(p.role) >= 0 && p.married && a >= 22 && a <= 42 && (p.kids || 0) < 3) opts.push([0.8, function () { p.kids = (p.kids || 0) + 1; return ['👶 ' + My(p) + ' had a baby' + (p.kids > 1 ? ', number ' + p.kids : '') + '.', 'good']; }]);
     if (['friend', 'best friend'].indexOf(p.role) >= 0 && a >= 20 && !p.away) opts.push([0.5, function () { p.away = s.year; E.rel(p, -6); return ['🧳 ' + My(p) + ' moved away. We promised to stay in touch.', '']; }]);
     if (a >= 50) opts.push([0.5 + (a - 50) / 30, function () { p.health = U.clamp(p.health - U.rand(10, 25), Math.min(1, p.health), 100); return ['🏥 ' + My(p) + ' had a health scare. ' + (p.rel >= 60 ? 'I was worried sick.' : ''), p.rel >= 60 ? 'bad' : '']; }]);
@@ -118,7 +123,7 @@ TL.mind = (function () {
   }
 
   // Their news, kept so they can bring it up when we talk.
-  var NEWS = [[/promoted/, 'promo'], [/lost \w+ job/, 'laidoff'], [/new job/, 'newjob'], [/got married/, 'married'], [/had a baby/, 'baby'], [/moved away/, 'moved'], [/health scare/, 'health'], [/retired/, 'retired']];
+  var NEWS = [[/promoted/, 'promo'], [/lost \w+ job/, 'laidoff'], [/new job/, 'newjob'], [/got married|getting married/, 'married'], [/had a baby/, 'baby'], [/moved away/, 'moved'], [/health scare/, 'health'], [/retired/, 'retired']];
   function remember(p, text) { NEWS.forEach(function (n) { if (n[0].test(text)) { p.news = [S().year, n[1]]; } }); }
 
   // ------------------------------------------------------------ dialogue

@@ -411,7 +411,7 @@ TL.ui = (function () {
   // Confetti for life's big moments, once each, as they appear in the log.
   // Bad news waiting in a dialog means no party, even in a year with good news.
   var SOMBER = /^(funeral|crime_caught|parole_hearing|hoops_injury|workplace_injury|car_accident|debt_collectors|spouse_leaves|pet_sick|market_crash|m_blackdeath|r_insula_fire)$/;
-  var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
+  var CELEBRATE = /Challenge complete|Achievement unlocked|I graduated|I earned my|married|(my|our) wedding|gave birth|baby (boy|girl)|promoted|crowned|won the election|jackpot|kept my New Year|Bucket list:/i;
   var GRIEF = /\b(died|passed away|killed|cancer|stage [34]|terminal)\b/i;
   function celebrate(y) {
     if (!y) return;
