@@ -17,6 +17,8 @@ TL.specials = (function () {
   function count(key) { var y = S().yearActs || (S().yearActs = {}); return y[key] || 0; }
   function bump(key) { var y = S().yearActs || (S().yearActs = {}); y[key] = (y[key] || 0) + 1; }
   function yr() { return S().year; }
+  // The year's actions, read during the yearly update (ageUp has already reset yearActs).
+  function lastCount(key) { var y = S().lastActs || {}; return y[key] || 0; }
   function era(list) { return list.filter(function (q) { return yr() >= q[1] && (!q[2] || yr() <= q[2]); }).map(function (q) { return q[0]; }); }
 
   // ------------------------------------------------------------ careers
@@ -38,7 +40,7 @@ TL.specials = (function () {
       decline: 30
     },
     chef: {
-      name: 'Chef', icon: '🧑‍🍳', minAge: 16, skillName: 'Cooking',
+      gain: 0.55, name: 'Chef', icon: '🧑‍🍳', minAge: 16, skillName: 'Cooking',
       need: function () { return null; },
       power: function (x) { return x.skill * 0.6 + me().smarts * 0.15 + me().happy * 0.1 + x.rep * 0.1; },
       ladder: [[0, 'Line Cook', 28000], [20, 'Sous Chef', 48000], [40, 'Head Chef', 72000], [60, 'Executive Chef', 110000], [80, 'Celebrity Chef', 300000]],
@@ -68,7 +70,7 @@ TL.specials = (function () {
     // 'contract' (pays every year), 'venture' (my own business) or 'final' (won round by round).
     // honor: [min rep, yearly chance, name]. Gigs may add [.., buy-in, injury risk].
     comic: {
-      name: 'Stand-up comedian', icon: '🎤', minAge: 16, skillName: 'Material', blurb: 'Open mics, clubs, late-night TV, your own special',
+      gain: 0.85, name: 'Stand-up comedian', icon: '🎤', minAge: 16, skillName: 'Material', blurb: 'Open mics, clubs, late-night TV, your own special',
       power: function (x) { return x.skill * 0.6 + me().smarts * 0.25 + me().happy * 0.15; },
       ladder: [[0, 'Open Micer', 0], [20, 'Club Comic', 15000], [40, 'Headliner', 60000], [65, 'Arena Comic', 250000], [85, 'Comedy Legend', 900000]],
       agencies: function () { return yr() < 1963 ? ['a Catskills resort', 'a nightclub circuit'] : era([['The Improv', 1963], ['The Comedy Store', 1972], ['Laugh Factory', 1979], ['Comedy Cellar', 1982]]); },
@@ -78,7 +80,7 @@ TL.specials = (function () {
       honor: [70, 0.12, function () { return yr() >= 1959 ? 'Grammy for Best Comedy Album' : 'Comedian of the Year'; }]
     },
     designer: {
-      name: 'Fashion designer', icon: '🧵', minAge: 18, skillName: 'Design', blurb: 'Boutiques, red carpets, Fashion Week, your own label',
+      gain: 0.65, name: 'Fashion designer', icon: '🧵', minAge: 18, skillName: 'Design', blurb: 'Boutiques, red carpets, Fashion Week, your own label',
       power: function (x) { return x.skill * 0.6 + me().smarts * 0.2 + me().looks * 0.2; },
       ladder: [[0, 'Design Assistant', 26000], [20, 'Junior Designer', 45000], [40, 'Lead Designer', 90000], [60, 'Creative Director', 250000], [85, 'Fashion Icon', 700000]],
       agencies: function () { return era([['Chanel', 1910], ['Ralph Lauren', 1967], ['Calvin Klein', 1968], ['Donna Karan', 1984], ['Marc Jacobs', 1984], ['Alexander McQueen', 1992]]).concat(['an independent atelier']); },
@@ -120,7 +122,7 @@ TL.specials = (function () {
       decline: 38
     },
     magician: {
-      name: 'Magician', icon: '🎩', minAge: 10, skillName: 'Sleight of hand', blurb: 'Birthday parties, TV specials, a Vegas residency',
+      gain: 0.8, name: 'Magician', icon: '🎩', minAge: 10, skillName: 'Sleight of hand', blurb: 'Birthday parties, TV specials, a Vegas residency',
       power: function (x) { return x.skill * 0.7 + me().looks * 0.15 + me().smarts * 0.15; },
       ladder: [[0, 'Party Magician', 0], [20, 'Club Magician', 15000], [40, 'Headliner', 70000], [65, 'Star Illusionist', 250000], [85, 'Legendary Illusionist', 1000000]],
       agencies: function () { return ['a talent agency', 'a variety booking agent']; },
@@ -130,7 +132,7 @@ TL.specials = (function () {
       honor: [70, 0.12, function () { return yr() >= 1968 ? 'Magician of the Year' : 'Top billing honor'; }]
     },
     dj: {
-      name: 'DJ', icon: '🎧', minAge: 16, minYear: 1975, skillName: 'Mixing', blurb: 'Clubs, festivals, hit singles, Vegas · 1975+',
+      gain: 0.85, name: 'DJ', icon: '🎧', minAge: 16, minYear: 1975, skillName: 'Mixing', blurb: 'Clubs, festivals, hit singles, Vegas · 1975+',
       need: function () { return yr() < 1975 ? 'Club DJs aren\'t a thing yet.' : null; },
       power: function (x) { return x.skill * 0.7 + me().happy * 0.15 + me().looks * 0.15; },
       ladder: [[0, 'Bedroom DJ', 0], [20, 'Club DJ', 20000], [40, 'Touring DJ', 120000], [65, 'Headliner', 400000], [85, 'Superstar DJ', 2000000]],
@@ -153,7 +155,7 @@ TL.specials = (function () {
       decline: 40
     },
     chess: {
-      name: 'Chess player', icon: '♟️', minAge: 6, skillName: 'Calculation', blurb: 'Opens, norms, Grandmaster, a World Championship match · smart',
+      gain: 0.8, name: 'Chess player', icon: '♟️', minAge: 6, skillName: 'Calculation', blurb: 'Opens, norms, Grandmaster, a World Championship match · smart',
       need: function () { return me().smarts < 60 ? 'I need sharper calculation first (60+ smarts).' : null; },
       power: function (x) { return x.skill * 0.6 + me().smarts * 0.4; },
       ladder: [[0, 'Club Player', 0], [20, 'FIDE Master', 6000], [40, 'International Master', 25000], [60, 'Grandmaster', 120000], [80, 'Elite Grandmaster', 600000]],
@@ -175,6 +177,117 @@ TL.specials = (function () {
       big: ['🏆', function () { return yr() >= 1985 ? 'Main event WrestleMania' : 'Main event a supercard'; }, 65, 'final', { rounds: ['the feud', 'the build-up', 'the match', 'the finish'], prize: [500000, 3000000], honor: 'World Champion', base: 0.38, risk: 1 }],
       honor: [70, 0.12, function () { return 'Wrestler of the Year'; }],
       decline: 38
+    },
+    director: {
+      gain: 0.6, name: 'Film director', icon: '🎬', minAge: 16, skillName: 'Directing', blurb: 'Short films, music videos, features, the Oscar',
+      power: function (x) { return x.skill * 0.6 + me().smarts * 0.3 + me().happy * 0.1; },
+      ladder: [[0, 'Film Student', 0], [20, 'Music Video Director', 20000], [40, 'Indie Director', 90000], [65, 'Studio Director', 400000], [85, 'Auteur', 1500000]],
+      agencies: function () { return era([['William Morris', 1898], ['CAA', 1975], ['ICM', 1975], ['WME', 2009]]).concat(['a small production company']); },
+      train: ['Study the masters', 'I watched and broke down a hundred classic films.'],
+      gigs: function () { var mv = yr() >= 1981 ? 'Direct a music video' : 'Direct a commercial'; var fest = era([['Venice', 1932], ['Cannes', 1946], ['Sundance', 1985]]); return [[0, 'Shoot a short film', 0, 4, 30], [15, mv, 10000, 5, 44], [35, 'Premiere an indie at ' + fest[fest.length - 1], 80000, 7, 58], [55, 'Direct a studio film', 600000, 8, 68]]; },
+      big: ['🏆', function () { return yr() >= 1929 ? 'Oscar race for Best Director' : 'A prestige picture'; }, 70, 'final', { rounds: ['the festival circuit', 'the nominations', 'the awards campaign', 'the envelope'], prize: [500000, 2000000], honor: 'Academy Award for Best Director', base: 0.32, minYear: 1929 }],
+      honor: [65, 0.1, function () { return yr() >= 1955 ? 'Palme d\'Or' : 'Golden Lion'; }]
+    },
+    golfer: {
+      gain: 0.45, name: 'Pro golfer', icon: '⛳', minAge: 12, maxStart: 24, skillName: 'Short game', blurb: 'Mini-tours, the PGA or LPGA Tour, the Masters · start by 24',
+      need: function () { return me().athl < 35 ? 'I need a more athletic swing (35+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.65 + me().athl * 0.15 + me().smarts * 0.1 + me().happy * 0.1; },
+      ladder: [[0, 'Amateur', 0], [20, 'Mini-Tour Pro', 15000], [40, 'Tour Pro', 250000], [65, 'Tour Winner', 800000], [85, 'Major Champion', 2500000]],
+      agencies: function () { return [me().gender === 'F' ? (yr() >= 1950 ? 'the LPGA Tour' : 'the women\'s amateur circuit') : (yr() >= 1929 ? 'the PGA Tour' : 'the pro circuit')]; },
+      train: ['Hit balls on the range', 'I hit a thousand balls and grinded on my short game.'],
+      gigs: function () { var tour = me().gender === 'F' ? 'LPGA' : 'PGA Tour'; return [[0, 'Club tournament', 300, 4, 30], [20, 'Mini-tour event', 6000, 5, 46], [40, tour + ' event', 120000, 7, 60]]; },
+      big: ['🟢', function () { return yr() >= 1934 ? (me().gender === 'F' ? 'A women\'s major' : 'The Masters') : 'The U.S. Open'; }, 60, 'final', { rounds: ['Thursday', 'Friday', 'Saturday', 'Sunday'], prize: [800000, 3600000], honor: 'Major champion', base: 0.33 }],
+      honor: [72, 0.12, function () { return 'Player of the Year'; }],
+      decline: 42
+    },
+    fighter: {
+      gain: 0.9, name: 'Fighter', icon: '🥊', minAge: 16, maxStart: 26, skillName: 'Technique', blurb: 'Boxing, or MMA from 1993 · title fights · athletic',
+      need: function () { return me().athl < 55 ? 'I need to be in fighting shape (55+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.55 + me().athl * 0.35 + me().health * 0.1; },
+      ladder: [[0, 'Amateur', 0], [20, 'Prospect', 20000], [40, 'Contender', 200000], [65, 'Champion', 1000000], [85, 'All-Time Great', 3000000]],
+      agencies: function () { return yr() >= 1993 ? era([['the UFC', 1993], ['Bellator', 2008], ['the PFL', 2018]]) : ['a boxing promoter']; },
+      train: ['Train at the gym', 'I sparred and drilled until I could barely stand.'],
+      gigs: function () { return [[0, 'Amateur bout', 0, 4, 30, 0, 1], [20, 'Regional card', 8000, 5, 46, 0, 1], [40, 'Televised fight', 150000, 7, 60, 0, 1]]; },
+      big: ['🏆', function () { return 'Title fight'; }, 60, 'final', { rounds: ['round 1', 'round 2', 'round 3', 'the final round'], prize: [800000, 5000000], honor: 'World Champion', base: 0.38, risk: 1 }],
+      honor: [70, 0.12, function () { return 'Fighter of the Year'; }],
+      decline: 33
+    },
+    ballet: {
+      name: 'Ballet dancer', icon: '🩰', minAge: 8, maxStart: 16, skillName: 'Technique', blurb: 'Corps, soloist, principal, world tours · start by 16',
+      need: function () { return me().athl < 45 ? 'I need more strength and flexibility (45+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.25 + me().looks * 0.15; },
+      ladder: [[0, 'Ballet Student', 0], [20, 'Corps de Ballet', 30000], [40, 'Soloist', 60000], [65, 'Principal Dancer', 150000], [85, 'Ballet Legend', 500000]],
+      agencies: function () { return era([['the Paris Opera Ballet', 1669], ['the Bolshoi Ballet', 1776], ['the Royal Ballet', 1931], ['American Ballet Theatre', 1939], ['New York City Ballet', 1948]]); },
+      train: ['Take extra class', 'I took two classes a day and rehearsed every night.'],
+      gigs: function () { return [[0, 'Student recital', 0, 4, 30], [20, 'Dance in the corps', 3000, 5, 44], [40, 'Dance a solo', 12000, 7, 58], [55, 'Lead in ' + U.pick(['Swan Lake', 'Giselle', 'The Nutcracker', 'Romeo and Juliet']), 40000, 8, 66, 0, 1]]; },
+      big: ['🌍', 'Guest principal world tour', 70, 'contract', { brands: function () { return ['the Bolshoi', 'the Royal Ballet', 'the Paris Opera', 'La Scala']; }, pay: [200000, 800000], years: 2, verb: 'guest contract' }],
+      honor: [70, 0.12, function () { return yr() >= 1992 ? 'Benois de la Danse' : 'Dance Magazine Award'; }],
+      decline: 32
+    },
+    painter: {
+      gain: 0.7, name: 'Painter', icon: '🎨', minAge: 12, skillName: 'Craft', blurb: 'Street fairs, galleries, museums, blue-chip dealers',
+      power: function (x) { return x.skill * 0.7 + me().smarts * 0.15 + me().happy * 0.15; },
+      ladder: [[0, 'Unknown Artist', 0], [20, 'Emerging Artist', 10000], [40, 'Gallery Artist', 60000], [65, 'Celebrated Artist', 250000], [85, 'Art Icon', 1000000]],
+      agencies: function () { return ['my studio']; },
+      train: ['Paint every day', 'I painted every day, filling canvas after canvas.'],
+      gigs: function () { return [[0, 'Sell at a street fair', 200, 4, 30], [20, 'Group show', 3000, 5, 44], [40, 'Solo gallery show', 60000, 7, 60], [60, 'Museum acquisition', 120000, 8, 68]]; },
+      big: ['🖼️', 'Sign with a blue-chip gallery', 60, 'contract', { brands: function () { return yr() < 1960 ? ['a Paris dealer'] : era([['Pace Gallery', 1960], ['Gagosian', 1980], ['David Zwirner', 1993], ['Hauser & Wirth', 1992]]); }, pay: [300000, 2500000], years: 3, verb: 'representation deal' }],
+      honor: [72, 0.1, function () { return yr() >= 1984 && S().country === 'United Kingdom' ? 'Turner Prize' : yr() >= 1981 ? 'MacArthur Fellowship' : 'Venice Biennale prize'; }]
+    },
+    tattoo: {
+      gain: 0.5, name: 'Tattoo artist', icon: '🖋️', minAge: 18, skillName: 'Linework', blurb: 'Apprenticeship, conventions, celebrity clients, your own shop',
+      power: function (x) { return x.skill * 0.75 + me().smarts * 0.1 + me().happy * 0.15; },
+      ladder: [[0, 'Apprentice', 12000], [20, 'Tattoo Artist', 35000], [40, 'In-Demand Artist', 90000], [65, 'Celebrity Tattoo Artist', 300000], [85, 'Tattoo Legend', 700000]],
+      agencies: function () { return ['a street shop', 'a custom studio']; },
+      train: ['Practice on fake skin', 'I practiced linework and shading for hours.'],
+      gigs: function () { var tv = yr() >= 2012 ? 'Compete on Ink Master' : yr() >= 2005 ? 'Appear on Miami Ink' : 'Get featured in a tattoo magazine'; return [[0, 'Walk-in flash', 400, 4, 28], [15, 'Custom piece', 2500, 5, 42], [35, 'Work a tattoo convention', 10000, 6, 54], [50, tv, 30000, 7, 60], [65, 'Tattoo a celebrity', 50000, 8, 66]]; },
+      big: ['🏪', 'Open my own shop', 35, 'venture', { cost: 60000, noun: 'shop', names: ['Black Anchor ', 'Iron Rose ', 'Sacred Ink ', 'Lucky Needle '] }],
+      honor: [65, 0.15, function () { return 'Best of Show at a tattoo convention'; }]
+    },
+    surfer: {
+      name: 'Pro surfer', icon: '🏄', minAge: 10, maxStart: 22, skillName: 'Wave riding', blurb: 'Local contests, the tour, Pipeline · start by 22',
+      need: function () { return me().athl < 50 ? 'I need to be a stronger swimmer (50+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.3 + me().happy * 0.1; },
+      ladder: [[0, 'Local Ripper', 0], [20, 'Sponsored Surfer', 15000], [40, 'Tour Surfer', 120000], [65, 'Title Contender', 500000], [85, 'Surf Legend', 1500000]],
+      agencies: function () { return yr() >= 1969 ? era([['O\'Neill', 1952], ['Quiksilver', 1969], ['Billabong', 1973], ['Rip Curl', 1969], ['Hurley', 1999]]) : ['a surf shop']; },
+      train: ['Surf every swell', 'I surfed dawn to dusk every day the waves were good.'],
+      gigs: function () { var tour = yr() >= 2015 ? 'WSL' : yr() >= 1983 ? 'ASP' : 'pro'; return [[0, 'Local contest', 200, 4, 30], [20, 'Qualifying Series event', 5000, 5, 46], [40, tour + ' Championship Tour event', 60000, 7, 60], [50, 'Surf a big-wave swell', 20000, 7, 64, 0, 1]]; },
+      big: ['🌊', function () { return yr() >= 1971 ? 'Pipe Masters' : 'The Makaha International'; }, 60, 'final', { rounds: ['round 1', 'the quarterfinals', 'the semifinals', 'the final'], prize: [100000, 500000], honor: 'Pipe Masters champion', base: 0.35, risk: 1 }],
+      honor: [72, 0.12, function () { return 'World surfing title'; }],
+      decline: 34
+    },
+    photographer: {
+      gain: 0.38, name: 'Photographer', icon: '📷', minAge: 14, skillName: 'Eye', blurb: 'Weddings, magazines, National Geographic, your own studio',
+      power: function (x) { return x.skill * 0.7 + me().smarts * 0.2 + me().happy * 0.1; },
+      ladder: [[0, 'Hobbyist', 0], [20, 'Freelancer', 25000], [40, 'Staff Photographer', 70000], [65, 'Renowned Photographer', 250000], [85, 'Master Photographer', 800000]],
+      agencies: function () { return yr() >= 1947 ? ['Magnum Photos', 'a freelance agency'] : ['a newspaper photo desk']; },
+      train: ['Shoot every day', 'I shot thousands of frames and studied every one.'],
+      gigs: function () { return [[0, 'Shoot a wedding', 1500, 4, 30], [15, 'Magazine assignment', 5000, 5, 44], [35, yr() >= 1888 ? 'National Geographic assignment' : 'Expedition assignment', 25000, 7, 58], [55, 'Celebrity cover shoot', 60000, 7, 64]]; },
+      big: ['🏢', 'Open my own studio', 40, 'venture', { cost: 80000, noun: 'studio', names: ['Studio ', 'Lightbox ', 'Frame & '] }],
+      honor: [70, 0.1, function () { return yr() >= 1955 ? 'World Press Photo of the Year' : 'Photographer of the Year'; }]
+    },
+    skater: {
+      gain: 0.85, name: 'Pro skateboarder', icon: '🛹', minAge: 8, maxStart: 20, minYear: 1975, skillName: 'Tricks', blurb: 'Skateparks, video parts, X Games, a signature shoe · 1975+',
+      need: function () { return yr() < 1975 ? 'Pro skating isn\'t a thing yet.' : me().athl < 45 ? 'I need more balance and strength (45+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.65 + me().athl * 0.25 + me().happy * 0.1; },
+      ladder: [[0, 'Park Rat', 0], [20, 'Flow Rider', 3000], [40, 'Sponsored Am', 30000], [65, 'Pro', 250000], [85, 'Skate Legend', 1000000]],
+      agencies: function () { return era([['Powell Peralta', 1978], ['Zero', 1996], ['Girl', 1993], ['Element', 1992], ['Baker', 2000]]).concat(['a local skate shop']); },
+      train: ['Skate the park all day', 'I skated until I landed the trick a hundred times.'],
+      gigs: function () { var big = yr() >= 2010 ? 'Street League contest' : yr() >= 1995 ? 'X Games contest' : 'pro contest'; return [[0, 'Skatepark jam', 100, 4, 28, 0, 1], [20, 'Film a video part', 5000, 6, 46], [40, big, 50000, 7, 60, 0, 1]]; },
+      big: ['👟', 'Signature shoe deal', 70, 'contract', { brands: function () { return era([['Vans', 1966], ['Etnies', 1986], ['DC Shoes', 1994], ['Nike SB', 2002], ['adidas Skateboarding', 2005]]); }, pay: [200000, 1500000], years: 3, verb: 'shoe deal' }],
+      honor: [72, 0.12, function () { return yr() >= 1990 ? 'Thrasher Skater of the Year' : 'Skater of the Year'; }],
+      decline: 32
+    },
+    opera: {
+      gain: 0.6, name: 'Opera singer', icon: '🎼', minAge: 16, skillName: 'Voice', blurb: 'Chorus, supporting roles, the Met, recordings',
+      power: function (x) { return x.skill * 0.7 + me().smarts * 0.15 + me().health * 0.15; },
+      ladder: [[0, 'Chorus Member', 15000], [20, 'Young Artist', 30000], [40, 'Soloist', 80000], [65, 'Principal Singer', 300000], [85, 'Opera Star', 1000000]],
+      agencies: function () { return era([['La Scala', 1778], ['the Royal Opera House', 1858], ['the Vienna State Opera', 1869], ['the Metropolitan Opera', 1883]]); },
+      train: ['Work with my voice teacher', 'I worked on my breath and my high notes every day.'],
+      gigs: function () { return [[0, 'Church recital', 300, 4, 30], [20, 'Supporting role', 6000, 5, 46], [40, 'Lead in ' + U.pick(['La Bohème', 'Carmen', 'La Traviata', 'Tosca', 'The Magic Flute']), 40000, 7, 60], [60, 'Concert tour', 150000, 7, 66]]; },
+      big: ['💿', 'Recording contract', 65, 'contract', { brands: function () { return era([['Deutsche Grammophon', 1898], ['Decca', 1929], ['EMI Classics', 1931], ['Sony Classical', 1990]]); }, pay: [150000, 800000], years: 3, verb: 'recording contract' }],
+      honor: [72, 0.1, function () { return yr() >= 1959 ? 'Grammy for Best Opera Recording' : 'Opera Singer of the Year'; }],
+      decline: 55
     }
   };
   var GAMES = [['StarCraft', 1998], ['Counter-Strike', 2000], ['Halo 2', 2004], ['League of Legends', 2009], ['Dota 2', 2013], ['Fortnite', 2017], ['Valorant', 2020]];
@@ -193,6 +306,7 @@ TL.specials = (function () {
   }
   function summary(id) {
     var x = st(id);
+    if (x && x.youth && !x.retired) return 'Junior · reputation ' + Math.round(x.rep) + (me().age >= 14 ? ' · ready to turn pro' : '');
     if (!x) return C[id].blurb || { model: 'Agencies, castings, Fashion Week · looks 55+', chef: 'Kitchens, cookbooks, your own restaurant', gamer: 'Tournaments, teams, streaming · 1997+' }[id];
     return (x.retired ? 'Retired ' + C[id].name.toLowerCase() : rung(id, x.rep)[1]) + ' · reputation ' + Math.round(x.rep);
   }
@@ -207,12 +321,19 @@ TL.specials = (function () {
     if (s.job && s.job.special === id) return done(nope('I\'m already doing it.'));
     if (s.job) return done(nope('I\'d have to quit my current job first.'));
     var x = st(id);
+    // Kids train and enter junior events; the job (going pro) waits until 14.
+    if (m.age < 14) {
+      if (!x) { x = all()[id] = { rep: 3, skill: U.rand(8, 18), since: s.year, peak: 3, honors: [], earnTotal: 0 }; if (id === 'gamer') { var gy = era(GAMES); x.game = gy[gy.length - 1] || 'Quake'; } }
+      x.youth = true;
+      E.log(c.icon + ' I started training to be ' + (/^[AEIOU]/.test(c.name) ? 'an ' : 'a ') + c.name.toLowerCase() + '. I can turn pro at 14.', 'good');
+      ui().back(); return done(good('Training starts now. I can turn pro at 14.'));
+    }
     if (!x) {
       if (id === 'model' && !U.chance(0.25 + (m.looks - 55) / 50)) { bump('spjoin'); return done(bad('The agency passed on me. Maybe next year.')); }
       x = all()[id] = { rep: 5, skill: U.rand(10, 25), since: s.year, peak: 5, honors: [], earnTotal: 0 };
       if (id === 'gamer') { var gs = era(GAMES); x.game = gs[gs.length - 1] || 'Quake'; }
     }
-    x.retired = false;
+    x.retired = false; delete x.youth;
     var org = U.pick(c.agencies());
     s.job = { career: 'sp_' + id, special: id, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, salary: 0, company: id === 'gamer' && x.rep < 40 ? 'Free agent' : org };
     if (id === 'gamer' && x.rep >= 40) x.team = org;
@@ -223,15 +344,18 @@ TL.specials = (function () {
   // ------------------------------------------------------------ the year's work
   function gig(id, g) {
     var x = st(id), c = C[id], key = 'spgig';
+    if (count('spbreak')) return done(nope('I\'m taking this year off.'));
     if (count(key) >= 3) return done(nope('I\'ve taken on enough this year.'));
     var buy = g[5] ? E.$(g[5]) : 0;
     if (buy && S().money < buy) return done(nope('The buy-in is ' + E.fmt(buy) + '.'));
     bump(key);
     if (buy) E.addMoney(-buy);
-    var odds = U.clamp(0.25 + (c.power(x) - g[4]) / 60 + (x.rep - g[0]) / 200, 0.08, 0.92);
+    var ag = x.agent ? AGENTS[x.agent.kind] : null;
+    var odds = U.clamp(0.25 + (c.power(x) - g[4]) / 60 + (x.rep - g[0]) / 200 + (ag ? ag.odds : 0) - (x.burn || 0) * 0.04, 0.08, 0.92);
     if (U.chance(odds)) {
-      var pay = E.$(Math.round(g[2] * U.randf(0.7, 1.3) * (1 + x.rep / 100)));
-      x.earn = (x.earn || 0) + pay; x.rep = U.clamp(x.rep + g[3] * U.randf(0.6, 1.2) * (108 - x.rep) / 75, 0, 100); // the top is crowded
+      var pay = E.$(Math.round(g[2] * U.randf(0.7, 1.3) * (1 + x.rep / 100) * (ag ? 1 + ag.pay : 1)));
+      if (S().job && S().job.special === id) x.earn = (x.earn || 0) + pay; else E.addMoney(pay); // juniors get paid on the spot
+      x.rep = U.clamp(x.rep + g[3] * U.randf(0.6, 1.2) * (106 - x.rep) / 80 * (c.gain || 1), 0, 100); // the top is crowded; some fields are harder to rise in
       E.stat('happy', 3); E.fame(g[3] / 3);
       if (/^Cover of/.test(g[1])) x.covers = (x.covers || 0) + 1;
       if (/^Major|^LAN|^Online/.test(g[1]) && U.chance(0.3 + (c.power(x) - g[4]) / 80)) {
@@ -246,6 +370,7 @@ TL.specials = (function () {
   }
   function train(id) {
     var x = st(id), c = C[id];
+    if (count('spbreak')) return done(nope('I\'m taking this year off.'));
     if (count('sptrain') >= 2) return done(nope('I\'ve trained as much as I can this year.'));
     bump('sptrain');
     var gain = Math.max(1, Math.round((100 - x.skill) / 12 * U.randf(0.6, 1.2)));
@@ -256,6 +381,7 @@ TL.specials = (function () {
   // Signature moves: a luxury contract, my own restaurant, the World Championship.
   function bigMove(id) {
     var x = st(id), s = S();
+    if (count('spbreak')) return done(nope('I\'m taking this year off.'));
     if (id === 'model') {
       if (x.contract) return done(nope('I already have a contract with ' + x.contract.brand + '.'));
       if (count('spbig')) return done(nope('My agent is still negotiating. Try next year.'));
@@ -295,7 +421,7 @@ TL.specials = (function () {
       if (!U.chance(U.clamp(0.3 + (x.rep - b[2]) / 40, 0.1, 0.85))) return done(bad('They passed for now.'));
       var pay = Math.round(E.$(U.rand(o.pay[0], o.pay[1])) * (0.6 + x.rep / 100));
       if (o.years <= 1) { x.earn = (x.earn || 0) + pay; E.fame(5); E.stat('happy', 10); return done(good(b[0] + ' ' + (o.verb === 'rights' ? 'I sold the movie rights to ' + U.pick(o.brands()) : 'I recorded a special for ' + U.pick(o.brands())) + ' for ' + E.fmt(pay) + '!')); }
-      x.contract = { brand: U.pick(o.brands()), years: o.years, pay: pay };
+      x.contract = { brand: U.pick(o.brands()), years: o.years, pay: pay, verb: o.verb };
       E.fame(6); E.stat('happy', 10);
       return done(good(b[0] + ' I signed a ' + o.years + '-year ' + o.verb + ' at ' + x.contract.brand + ': ' + E.fmt(pay) + ' a year!'));
     }
@@ -362,7 +488,8 @@ TL.specials = (function () {
   }
   function retire(id) {
     var x = st(id);
-    x.retired = S().year; x.contract = null;
+    x.retired = S().year; x.contract = null; x.agent = null;
+    legacy(id, x);
     if (x.rest) { E.addMoney(E.$(Math.round(150000 + x.rest.stars * 400000 + Math.max(0, x.rest.q - 60) * 5000))); E.log((x.rest.noun ? '🏷️ ' : '🍽️ ') + 'I sold ' + x.rest.name + '.'); x.rest = null; }
     E.quitJob(true);
     ui().closeAll(); done('I stepped away from my career as ' + C[id].name.toLowerCase() + '.');
@@ -373,11 +500,17 @@ TL.specials = (function () {
     var s = S(), j = s.job, id = j.special, x = st(id), c = C[id], m = me();
     if (!x) return 0;
     var r = rung(id, x.rep), earn = E.$(r[2]) + (x.earn || 0); x.earn = 0;
+    // Workload: three gigs, two trainings and a big swing every year wears anyone down.
+    var load = lastCount('spgig') + lastCount('sptrain') + lastCount('spbig') + lastCount('spduel'), rested = lastCount('spbreak');
+    if (rested) { x.burn = 0; E.stat('happy', 8); E.stat('health', 4); x.rep = Math.max(0, x.rep - 1); earn = Math.round(earn * 0.5); }
+    else if (load >= 7) x.burn = (x.burn || 0) + 1;
+    else if (load <= 4) x.burn = Math.max(0, (x.burn || 0) - 1);
+    if ((x.burn || 0) >= 3) { E.stat('happy', -3); E.stat('health', -2); if (x.burn === 3) E.log('😮‍💨 I\'m burning out. I need to slow down.', 'bad'); }
     // Age catches up with models and gamers.
     if (c.decline && m.age > c.decline) { var d = (m.age - c.decline) * (x.rep >= 85 ? 0.25 : 0.5); x.rep = Math.max(0, x.rep - d); if (id === 'gamer') x.skill = Math.max(0, x.skill - 1); }
     // Out of sight, out of mind; working steadily keeps you relevant.
-    x.rep = Math.max(0, x.rep - (count('spgig') ? 0.5 : 2.5) - x.rep * 0.02); // fame fades unless I keep earning it
-    if (id === 'chef') if (x.rep < 60) x.rep = Math.min(60, x.rep + 0.5 + x.skill / 100); // a good kitchen builds a name slowly, but fame takes more
+    x.rep = Math.max(0, x.rep - (lastCount('spgig') || rested ? 0.5 : 2.5) - x.rep * 0.03); // fame fades unless I keep earning it
+    if (id === 'chef') if (x.rep < 60) x.rep = Math.min(60, x.rep + 0.3 + x.skill / 150); // a good kitchen builds a name slowly, but fame takes more
     if (x.contract) {
       earn += x.contract.pay; x.contract.years--;
       if (x.contract.years <= 0) { E.log((id === 'model' ? '💎 My contract with ' : '📝 My deal with ') + x.contract.brand + ' ended.'); x.contract = null; }
@@ -410,30 +543,201 @@ TL.specials = (function () {
     if (r2[0] > r[0]) E.log(c.icon + ' I\'m now a' + (/^[AEIOU]/.test(r2[1]) ? 'n ' : ' ') + r2[1] + '.', 'good');
     x.peak = Math.max(x.peak || 0, x.rep);
     earn = Math.max(0, Math.round(earn));
+    if (x.agent && earn > 0) earn -= Math.round(earn * x.agent.cut); // my agent's commission
+    rivalYear(x, c);
+    (x.hist = x.hist || []).push({ y: s.year, age: m.age, title: title(j), rep: Math.round(x.rep), earn: earn, note: rested ? 'took the year off' : x.burn >= 3 ? 'burned out' : '' });
+    if (x.hist.length > 70) x.hist.shift();
+    // Something happens most years.
+    if (!rested && U.chance(0.55) && !s.pending.some(function (q) { return q.id === 'sp_event'; })) { var k = pickEvent(x, id); if (k) s.pending.push({ id: 'sp_event', data: { id: id, k: k } }); }
     x.earnTotal = (x.earnTotal || 0) + earn; j.salary = earn;
     return earn;
   }
+
+  // ------------------------------------------------------------ depth: agents, rivals, burnout, events
+  var AGENTS = { big: { name: 'a big talent agency', cut: 0.2, odds: 0.06, pay: 0.35 }, small: { name: 'a boutique manager', cut: 0.1, odds: 0.03, pay: 0.15 } };
+  function hireAgent(kind) {
+    var x = active(); if (!x) return;
+    if (x.agent) return done(nope('I already have representation.'));
+    if (kind === 'big' && x.rep < 45) return done(nope('The big agencies only sign established names (reputation 45+).'));
+    x.agent = { kind: kind, name: AGENTS[kind].name, cut: AGENTS[kind].cut, since: yr() };
+    done(good('🤝 I signed with ' + AGENTS[kind].name + '. They take ' + Math.round(AGENTS[kind].cut * 100) + '% but open a lot of doors.'));
+  }
+  function fireAgent() { var x = active(); if (!x || !x.agent) return; x.agent = null; done('I parted ways with my representation.'); }
+  function rivalName() { var n = E.randomName(U.chance(0.5) ? 'M' : 'F'); return n.first + ' ' + n.last; }
+  // A named rival in my field: they rise and fall, and we can go head to head.
+  function rivalYear(x, c) {
+    if (!x.rival && x.rep >= 20 && U.chance(0.5)) {
+      x.rival = { name: rivalName(), rep: Math.round(U.clamp(x.rep + U.rand(-5, 12), 10, 95)), w: 0, l: 0 };
+      E.log('😤 ' + x.rival.name + ' is making a name in my field. Everyone compares us.');
+      return;
+    }
+    var r = x.rival; if (!r) return;
+    r.rep = U.clamp(r.rep + U.rand(-4, 5) + (r.rep < x.rep ? 1 : -1), 0, 100);
+    if (r.rep > x.rep + 15 && U.chance(0.5)) { E.log('😤 ' + r.name + ' is overshadowing me right now.', 'bad'); E.stat('happy', -2); }
+    if (x.rep > r.rep + 20) { E.log('👑 I\'ve left ' + r.name + ' behind. Nobody compares us anymore.', 'good'); (x.pastRivals = x.pastRivals || []).push({ name: r.name, w: r.w, l: r.l }); x.rival = null; x.beaten = (x.beaten || 0) + 1; }
+  }
+  function duel() {
+    var x = active(), j = S().job, c = C[j.special], r = x && x.rival;
+    if (!r) return;
+    if (count('spduel')) return done(nope('We already went at it this year.'));
+    bump('spduel');
+    var p = U.clamp(0.5 + (c.power(x) - r.rep) / 60 + (x.rep - r.rep) / 150, 0.1, 0.9);
+    if (U.chance(p)) { r.w++; x.rep = U.clamp(x.rep + 2.5, 0, 100); r.rep = Math.max(0, r.rep - 4); E.fame(2); E.stat('happy', 5); return done(good('⚔️ I beat ' + r.name + ' head to head. (' + r.w + '-' + r.l + ' all time)')); }
+    r.l++; x.rep = Math.max(0, x.rep - 3); r.rep = Math.min(100, r.rep + 3); E.stat('happy', -4);
+    done(bad('⚔️ ' + r.name + ' got the better of me this time. (' + r.w + '-' + r.l + ' all time)'));
+  }
+  function takeBreak() {
+    if (count('spgig') || count('spbig')) return done(nope('I\'ve already committed to work this year.'));
+    bump('spbreak');
+    done(good('🌴 I\'m taking the rest of the year off to recharge.'));
+  }
+  var HOF = { comic: 'a Kennedy Center Mark Twain Prize', poker: 'the Poker Hall of Fame', racer: 'the Motorsports Hall of Fame', wrestler: 'the WWE Hall of Fame', golfer: 'the World Golf Hall of Fame', fighter: 'the International Boxing Hall of Fame', chess: 'the World Chess Hall of Fame', surfer: 'the Surfers\' Hall of Fame', skater: 'the Skateboarding Hall of Fame', gamer: 'the Esports Hall of Fame', model: 'a lifetime achievement award from the fashion world', chef: 'a James Beard Lifetime Achievement Award', director: 'an honorary Oscar' };
+  function legacy(id, x) {
+    if (x.hof || (x.peak || 0) < 85) return;
+    x.hof = yr(); var h = HOF[id] || 'a lifetime achievement award';
+    x.honors.push((/^(a|an) /.test(h) ? U.cap(h.replace(/^an? /, '')) : 'Inducted into ' + h) + ' ' + yr());
+    E.log('🏛️ ' + (/^(a|an) /.test(h) ? 'I received ' + h + '.' : 'I was inducted into ' + h + '.'), 'good'); E.fame(5);
+  }
+  function history(id) {
+    ui().menu('Career history', function () {
+      var x = st(id), H = x.hist || [], best = H.reduce(function (b, q) { return !b || q.earn > b.earn ? q : b; }, null), items = [];
+      items.push({ info: true, html: '<div class="kv"><b>' + U.esc(C[id].name) + '</b> since ' + x.since + '<br>Peak reputation ' + Math.round(x.peak || 0) + ' · career earnings ' + E.fmt(x.earnTotal || 0) +
+        (best ? '<br>Best year: ' + best.y + ' (' + E.fmt(best.earn) + ')' : '') + (x.beaten ? '<br>Rivals left behind: ' + x.beaten : '') + (x.rival ? '<br>Current rival: ' + U.esc(x.rival.name) + ' (' + x.rival.w + '-' + x.rival.l + ')' : '') + '</div>' });
+      if (x.honors.length) { items.push({ section: 'Honors' }); x.honors.slice().reverse().forEach(function (h) { items.push({ icon: '🏅', label: h }); }); }
+      if (H.length) { items.push({ section: 'Year by year' }); H.slice().reverse().forEach(function (q) { items.push({ icon: C[id].icon, label: q.y + ' · ' + q.title, sub: 'Age ' + q.age + ' · reputation ' + q.rep + (q.note ? ' · ' + q.note : ''), right: E.fmt(q.earn) }); }); }
+      return items;
+    });
+  }
+
+  // Yearly career events: shared ones plus two for each career. Effects use a small
+  // vocabulary: rep, skill, happy, health, fame, karma, pay (scaled by reputation),
+  // cost (paid now), rv (rival's reputation), reset ('burn'), p/pw (chance, power-adjusted) with ok/no.
+  var GEN = [
+    { cond: function (x) { return (x.burn || 0) >= 3; }, t: 'I\'m exhausted. I\'ve been working nonstop for too long.', c: [['Push through', { happy: -6, health: -5, rep: 1, say: 'I kept going. Something has to give eventually.' }], ['Take a few months off', { rep: -3, happy: 8, health: 5, reset: 'burn', say: 'I disappeared for a while and came back recharged.' }], ['See a therapist', { cost: 2000, happy: 6, reset: 'burn', say: 'Talking it through helped a lot.' }]] },
+    { cond: function (x) { return !!x.rival; }, t: '{rival} took shots at me in an interview.', c: [['Clap back', { p: 0.5, ok: { rep: 3, fame: 2, rv: -3, say: 'My response went viral. Round to me.' }, no: { rep: -3, rv: 2, say: 'It came off as petty. {rival} won that one.' } }], ['Take the high road', { karma: 2, say: 'I said I wished them well. Classy.' }], ['Challenge them to settle it', { p: 0.45, pw: 1, ok: { rep: 5, rv: -5, say: 'We settled it, and I won.' }, no: { rep: -4, rv: 4, say: '{rival} beat me, and everyone saw it.' } }]] },
+    { cond: function (x) { return x.rep >= 40; }, t: 'A tabloid dug up an embarrassing story about me.', c: [['Apologize', { rep: -2, karma: 1, say: 'I owned it. It blew over.' }], ['Deny everything', { p: 0.6, ok: { say: 'Nobody could prove it. It blew over.' }, no: { rep: -7, say: 'More evidence came out. It got worse.' } }], ['Ignore it', { rep: -3, say: 'It faded, slowly.' }]] },
+    { cond: function (x) { return x.rep < 50; }, t: 'A legend in my field offered to mentor me.', c: [['Accept', { skill: 5, rep: 2, happy: 2, say: 'I learned more in a year than in the last five.' }], ['Politely decline', { say: 'I want to find my own way.' }]] },
+    { cond: function (x) { return x.rep >= 30; }, t: 'A brand wants me in an ad campaign.', c: [['Take the money', { pay: 8000, rep: -1, say: 'Easy money, though some fans called it a sellout move.' }], ['Only if I believe in it', { p: 0.5, ok: { pay: 5000, rep: 2, say: 'It was a perfect fit. Fans loved it.' }, no: { say: 'It wasn\'t a fit. I passed.' } }], ['Turn it down', { karma: 1, say: 'I passed.' }]] },
+    { cond: function (x) { return x.rep >= 30; }, t: 'I was asked to headline a charity event.', c: [['Do it for free', { karma: 3, rep: 2, happy: 3, say: 'We raised a lot of money. It felt great.' }], ['Ask for a fee', { pay: 4000, karma: -2, say: 'They paid, but people talked.' }], ['Decline', { say: 'I didn\'t have time.' }]] },
+    { cond: function (x) { return !x.agent && x.rep >= 25; }, t: 'A talent agency wants to represent me.', c: [['Sign with them', { agent: 'small', say: 'I signed. They take 10%, but the gigs are better.' }], ['Stay independent', { say: 'I\'ll keep doing it myself.' }]] },
+    { cond: function (x) { return x.rep >= 50; }, t: 'A young fan told me I\'m the reason they started.', c: [['Spend time with them', { happy: 5, karma: 2, say: 'We talked for an hour. That kid is going places.' }], ['Sign something and move on', { happy: 1, say: 'I signed their poster.' }]] }
+  ];
+  var EV = {
+    model: [{ t: 'A photographer is pressuring me into a shoot I\'m not comfortable with.', c: [['Walk out', { rep: -2, karma: 2, happy: 2, say: 'I walked out. My agency backed me.' }], ['Go along with it', { pay: 3000, happy: -8, say: 'I did it and felt awful afterward.' }], ['Report him', { p: 0.6, ok: { rep: 3, karma: 3, say: 'Other models came forward too. He was blacklisted.' }, no: { rep: -4, say: 'Nobody believed me, and some clients stopped calling.' } }]] },
+      { t: 'A designer wants me to lose weight before their show.', c: [['Refuse', { rep: -2, health: 2, say: 'I refused. There will be other shows.' }], ['Crash diet', { health: -10, rep: 4, say: 'I made the show, but I felt terrible.' }], ['Speak out publicly', { p: 0.5, ok: { rep: 4, fame: 3, karma: 3, say: 'My post went viral and the brand apologized.' }, no: { rep: -3, say: 'Some designers quietly stopped booking me.' } }]] }],
+    chef: [{ t: 'A famous food critic is in the dining room tonight.', c: [['Cook the classics perfectly', { p: 0.55, pw: 1, ok: { rep: 5, say: 'A glowing review!' }, no: { rep: -3, say: '"Competent but forgettable," the review said.' } }], ['Send out a bold new dish', { p: 0.4, pw: 1, ok: { rep: 9, fame: 2, say: 'The critic called it the dish of the year.' }, no: { rep: -6, say: 'The critic hated it. The review was brutal.' } }]] },
+      { t: 'A line cook walked out in the middle of Saturday service.', c: [['Jump on the line myself', { health: -3, rep: 2, say: 'I worked two stations. We didn\'t miss a plate.' }], ['Comp the delayed tables', { cost: 2000, rep: 1, say: 'Free desserts kept everyone happy.' }], ['Yell at the staff', { rep: -2, karma: -2, say: 'Service survived, but the kitchen hates me now.' }]] }],
+    gamer: [{ t: 'A rival team offered me more money mid-season.', c: [['Stay loyal', { rep: 2, karma: 1, say: 'The fans loved that I stayed.' }], ['Take the offer', { pay: 30000, rep: -1, say: 'I switched teams. Some fans called me a sellout.' }]] },
+      { t: 'My wrists ache after months of grinding.', c: [['See a physio', { cost: 1500, health: 4, say: 'Physio and rest fixed it.' }], ['Play through it', { health: -6, skill: 2, say: 'I kept grinding. The pain is getting worse.' }]] }],
+    comic: [{ t: 'A heckler won\'t stop interrupting my set.', c: [['Roast them', { p: 0.6, pw: 1, ok: { rep: 4, fame: 2, say: 'The clip of me destroying the heckler went viral.' }, no: { rep: -2, say: 'I lost the room.' } }], ['Ignore it', { say: 'I powered through. The set was fine.' }], ['Have them thrown out', { rep: -1, say: 'Security removed them, but the energy was gone.' }]] },
+      { t: 'One of my jokes got clipped out of context online.', c: [['Apologize', { rep: -2, karma: 1, say: 'I apologized. It blew over.' }], ['Double down', { p: 0.4, ok: { rep: 5, fame: 3, say: 'My fans rallied. The tour sold out.' }, no: { rep: -8, say: 'Venues started canceling my shows.' } }], ['Write a bit about it', { p: 0.55, pw: 1, ok: { rep: 6, say: 'The new bit about the controversy killed.' }, no: { rep: -3, say: 'Nobody found it funny.' } }]] }],
+    designer: [{ t: 'A fast-fashion brand copied my design.', c: [['Sue them', { cost: 15000, p: 0.5, ok: { pay: 40000, rep: 3, say: 'I won the lawsuit.' }, no: { rep: -1, say: 'I lost the case and the legal fees.' } }], ['Call them out online', { p: 0.6, ok: { rep: 4, fame: 2, say: 'People rallied behind me.' }, no: { say: 'Nobody cared.' } }], ['Let it go', { happy: -3, say: 'I let it go. It still stings.' }]] },
+      { t: 'A celebrity wants to wear my design to a huge gala.', c: [['Make something daring', { p: 0.5, pw: 1, ok: { rep: 8, fame: 4, say: 'My look topped every best-dressed list.' }, no: { rep: -4, say: 'The look landed on the worst-dressed lists.' } }], ['Play it safe', { rep: 3, say: 'Elegant and safe. Solid reviews.' }]] }],
+    author: [{ t: 'My editor wants me to cut 100 pages.', c: [['Make the cuts', { skill: 2, rep: 1, say: 'The book is tighter now.' }], ['Fight for my vision', { p: 0.45, pw: 1, ok: { rep: 5, say: 'Critics praised the ambition.' }, no: { rep: -3, say: 'Reviewers called it bloated.' } }]] },
+      { t: 'I have writer\'s block.', c: [['Push through', { happy: -4, skill: 1, say: 'I forced out a few chapters.' }], ['Travel for inspiration', { cost: 5000, happy: 5, skill: 2, say: 'The trip gave me a whole new idea.' }], ['Take a break', { happy: 4, rep: -2, say: 'I rested. The words came back.' }]] }],
+    poker: [{ t: 'I\'m on a brutal downswing.', c: [['Move down in stakes', { rep: -2, happy: 2, say: 'I rebuilt my bankroll at smaller games.' }], ['Keep playing high', { p: 0.45, pw: 1, ok: { pay: 20000, rep: 3, say: 'I ran good and won it all back.' }, no: { cost: 20000, happy: -6, say: 'I lost even more.' } }]] },
+      { t: 'A wealthy amateur invited me to a private game.', c: [['Play', { p: 0.6, pw: 1, ok: { pay: 30000, say: 'I won a fortune.' }, no: { cost: 10000, say: 'They were better than they looked.' } }], ['Decline', { say: 'I passed.' }]] }],
+    racer: [{ t: 'My team asked me to let my teammate win.', c: [['Follow orders', { rep: -1, karma: 1, say: 'I let my teammate by. The team appreciated it.' }], ['Race for the win', { p: 0.5, ok: { rep: 5, fame: 2, say: 'I won. The fans loved it, even if the team didn\'t.' }, no: { rep: -3, say: 'We collided. The team is furious.' } }]] },
+      { t: 'The car feels unsafe in practice.', c: [['Refuse to race', { rep: -2, say: 'I sat it out. Better safe.' }], ['Race anyway', { p: 0.6, ok: { rep: 3, say: 'It held together.' }, no: { health: -15, rep: -1, say: 'The car failed and I crashed hard.' } }]] }],
+    magician: [{ t: 'Someone posted an exposé of my signature trick.', c: [['Invent a new one', { skill: 3, rep: 2, happy: -2, say: 'My new illusion is even better.' }], ['Sue', { cost: 10000, p: 0.5, ok: { rep: 2, say: 'The video came down.' }, no: { rep: -1, say: 'The video stayed up.' } }]] },
+      { t: 'A stunt went wrong on stage.', c: [['Keep going like it was planned', { p: 0.5, pw: 1, ok: { rep: 5, fame: 2, say: 'The audience thought it was part of the act.' }, no: { health: -8, rep: -3, say: 'I got hurt and the show stopped.' } }], ['Stop the show', { rep: -2, say: 'I stopped the show safely.' }]] }],
+    dj: [{ t: 'The sound system died in the middle of my set.', c: [['Hype the crowd until it\'s fixed', { p: 0.6, pw: 1, ok: { rep: 4, say: 'The crowd chanted my name.' }, no: { rep: -3, say: 'Half the crowd left.' } }], ['Wait it out', { rep: -1, say: 'We waited. It was awkward.' }]] },
+      { t: 'A producer offered me a track to release as my own.', c: [['Release it', { p: 0.5, ok: { rep: 5, pay: 20000, say: 'It became a hit.' }, no: { rep: -8, karma: -3, say: 'Everyone found out it was ghost-produced.' } }], ['Release it as a collab', { rep: 2, karma: 2, say: 'We released it together.' }], ['Decline', { say: 'I passed.' }]] }],
+    lifter: [{ t: 'Someone at the gym offered me steroids.', c: [['Say no', { karma: 2, say: 'I stayed natural.' }], ['Take them', { p: 0.6, ok: { rep: 5, health: -8, say: 'I got huge, but my health is suffering.' }, no: { rep: -10, health: -8, say: 'I failed a drug test.' } }]] },
+      { t: 'My shoulder is screaming before a show.', c: [['Compete anyway', { p: 0.5, ok: { rep: 3, say: 'I pushed through and placed well.' }, no: { health: -10, rep: -2, say: 'I tore something.' } }], ['Skip the show', { rep: -1, say: 'I rested up.' }]] }],
+    chess: [{ t: 'My opponent accused me of cheating.', c: [['Demand an investigation', { p: 0.75, ok: { rep: 3, say: 'I was cleared, and my opponent apologized.' }, no: { rep: -6, say: 'The suspicion still hangs over me.' } }], ['Ignore it', { rep: -2, say: 'The rumors linger.' }]] },
+      { t: 'I was offered the chance to coach a rising prodigy.', c: [['Coach them', { pay: 15000, skill: 1, karma: 2, say: 'Teaching sharpened my own game.' }], ['Decline', { say: 'I focused on my own chess.' }]] }],
+    wrestler: [{ t: 'Creative wants me to turn heel.', c: [['Embrace it', { p: 0.55, pw: 1, ok: { rep: 6, fame: 3, say: 'The crowd loves to hate me.' }, no: { rep: -3, say: 'The turn fell flat.' } }], ['Refuse', { rep: -2, say: 'Creative buried me in the midcard.' }]] },
+      { t: 'A botched move left my neck hurting.', c: [['See a doctor and sit out', { rep: -2, health: 4, say: 'I took time off to heal.' }], ['Work through it', { p: 0.6, ok: { rep: 2, say: 'I got through it.' }, no: { health: -15, say: 'It got much worse.' } }]] }],
+    director: [{ t: 'The studio wants to recut my film.', c: [['Fight them', { p: 0.4, ok: { rep: 6, say: 'My cut was released and critics loved it.' }, no: { rep: -3, say: 'They recut it anyway and it flopped.' } }], ['Let them', { rep: -1, pay: 20000, say: 'It\'s not my film anymore, but the check cleared.' }]] },
+      { t: 'My lead actor walked off set.', c: [['Rewrite around them', { p: 0.5, pw: 1, ok: { rep: 3, say: 'The rewrite made the film better.' }, no: { rep: -3, say: 'The film is a mess.' } }], ['Recast', { cost: 30000, say: 'We reshot with a new lead.' }]] }],
+    golfer: [{ t: 'I\'m tied for the lead on the final hole.', c: [['Go for the green', { p: 0.45, pw: 1, ok: { rep: 6, pay: 30000, say: 'Birdie! I won.' }, no: { rep: -2, say: 'Water. I lost.' } }], ['Lay up', { p: 0.6, ok: { rep: 3, pay: 15000, say: 'A par was enough in the playoff.' }, no: { say: 'I lost in a playoff.' } }]] },
+      { t: 'I\'ve got the yips with my putter.', c: [['Switch putters', { skill: 1, say: 'It helped a little.' }], ['See a sports psychologist', { cost: 5000, happy: 3, skill: 2, say: 'My head cleared.' }]] }],
+    fighter: [{ t: 'My opponent trash-talked my family at the press conference.', c: [['Fire back', { fame: 3, rep: 2, say: 'The fight sold huge.' }], ['Stay composed', { karma: 2, say: 'I kept it professional.' }]] },
+      { t: 'I\'m cutting too much weight.', c: [['Make weight anyway', { health: -8, rep: 2, say: 'I made weight, but I felt drained.' }], ['Move up a weight class', { rep: -2, health: 3, say: 'I moved up a division.' }]] }],
+    ballet: [{ t: 'The director gave the role I wanted to my rival.', c: [['Train harder', { skill: 3, happy: -2, say: 'I\'ll be ready next time.' }], ['Ask why', { p: 0.5, ok: { rep: 3, say: 'They gave me the second cast.' }, no: { rep: -2, say: 'The director didn\'t appreciate it.' } }]] },
+      { t: 'My feet are bleeding after weeks of rehearsals.', c: [['Dance through it', { health: -6, rep: 2, say: 'The show must go on.' }], ['Rest', { rep: -1, health: 4, say: 'I rested and healed.' }]] }],
+    painter: [{ t: 'A collector wants to buy my whole show at a discount.', c: [['Accept', { pay: 30000, rep: -1, say: 'Sold out, at a discount.' }], ['Hold my prices', { p: 0.5, ok: { pay: 50000, rep: 3, say: 'The work sold at full price.' }, no: { rep: -1, say: 'Half the work didn\'t sell.' } }]] },
+      { t: 'Someone painted over my mural.', c: [['Make peace', { karma: 2, say: 'We collaborated on a new wall.' }], ['Paint something bigger', { p: 0.5, pw: 1, ok: { rep: 5, fame: 2, say: 'The new mural became a landmark.' }, no: { rep: -1, say: 'It got covered again.' } }]] }],
+    tattoo: [{ t: 'A client wants their ex\'s name tattooed.', c: [['Talk them out of it', { karma: 2, say: 'They thanked me later.' }], ['Do it', { pay: 500, say: 'Their call.' }]] },
+      { t: 'A client\'s tattoo got infected because they ignored aftercare.', c: [['Help them anyway', { cost: 500, karma: 2, rep: 1, say: 'They left a glowing review.' }], ['Blame the client', { rep: -2, say: 'They posted a one-star review.' }]] }],
+    surfer: [{ t: 'A massive swell is coming.', c: [['Paddle out', { p: 0.55, pw: 1, ok: { rep: 6, fame: 2, say: 'I caught the wave of my life.' }, no: { health: -12, say: 'I got held under and hurt.' } }], ['Watch from the beach', { say: 'Better to live to surf another day.' }]] },
+      { t: 'A sponsor wants me on a reality show.', c: [['Do it', { pay: 20000, fame: 3, rep: -1, say: 'It was fun, if a little cringey.' }], ['Decline', { say: 'I just want to surf.' }]] }],
+    photographer: [{ t: 'I captured a breaking news moment.', c: [['Sell to the highest bidder', { pay: 15000, rep: 2, say: 'It ran on every front page.' }], ['Give it to a newspaper for the credit', { rep: 5, say: 'My byline ran everywhere.' }]] },
+      { t: 'A celebrity smashed my camera.', c: [['Press charges', { p: 0.6, ok: { pay: 10000, say: 'I won a settlement.' }, no: { say: 'The case went nowhere.' } }], ['Sell the photos of it', { pay: 20000, rep: -1, karma: -1, say: 'The photos sold for a fortune.' }]] }],
+    skater: [{ t: 'A rival skater challenged me to a game of S.K.A.T.E.', c: [['Accept', { p: 0.5, pw: 1, ok: { rep: 4, say: 'I won.' }, no: { rep: -2, say: 'I lost on camera.' } }], ['Pass', { say: 'Not today.' }]] },
+      { t: 'I want to try a huge gap for my video part.', c: [['Go for it', { p: 0.45, pw: 1, ok: { rep: 7, fame: 3, say: 'I landed it. The clip went viral.' }, no: { health: -12, say: 'I slammed hard.' } }], ['Film something safer', { rep: 1, say: 'Solid footage.' }]] }],
+    opera: [{ t: 'I have a cold on opening night.', c: [['Sing anyway', { p: 0.5, pw: 1, ok: { rep: 5, say: 'I nailed it anyway.' }, no: { rep: -4, say: 'My voice cracked on the high note.' } }], ['Let the understudy go on', { rep: -1, say: 'The understudy got great reviews.' }]] },
+      { t: 'A conductor wants me for a famously difficult role.', c: [['Take it', { p: 0.45, pw: 1, ok: { rep: 7, say: 'A triumph!' }, no: { rep: -4, say: 'It was beyond me.' } }], ['Decline', { say: 'I know my voice.' }]] }]
+  };
+  function fill(t, x) { return String(t).replace(/\{rival\}/g, x.rival ? x.rival.name : 'My rival'); }
+  function apply(x, c, e) {
+    if (e.p != null) {
+      var p = U.clamp(e.p + (e.pw ? (c.power(x) - 60) / 100 : 0), 0.05, 0.95);
+      if (e.cost) { var pre = E.$(e.cost); if (S().money < pre) return bad('I couldn\'t afford it.'); E.addMoney(-pre); }
+      return apply(x, c, U.chance(p) ? e.ok : e.no);
+    }
+    var gain = 0;
+    if (e.cost) { var cc = E.$(e.cost); if (S().money < cc) return bad('I couldn\'t afford it.'); E.addMoney(-cc); }
+    if (e.rep) { x.rep = U.clamp(x.rep + e.rep, 0, 100); gain += e.rep; }
+    if (e.skill) x.skill = U.clamp(x.skill + e.skill, 0, 100);
+    if (e.happy) E.stat('happy', e.happy);
+    if (e.health) E.stat('health', e.health);
+    if (e.fame) E.fame(e.fame);
+    if (e.karma) E.karma(e.karma);
+    if (e.pay) { var pay = Math.round(E.$(e.pay) * (1 + x.rep / 25)); x.earn = (x.earn || 0) + pay; gain += 1; }
+    if (e.rv && x.rival) x.rival.rep = U.clamp(x.rival.rep + e.rv, 0, 100);
+    if (e.reset === 'burn') x.burn = 0;
+    if (e.agent && !x.agent) x.agent = { kind: e.agent, name: AGENTS[e.agent].name, cut: AGENTS[e.agent].cut, since: yr() };
+    var t = fill(e.say || 'OK.', x) + (e.pay ? ' (+' + E.fmt(Math.round(E.$(e.pay) * (1 + x.rep / 25))) + ')' : '');
+    return gain > 0 ? good(t) : (e.rep < 0 || e.health < 0) ? bad(t) : t;
+  }
+  function pickEvent(x, id) {
+    var pool = [];
+    GEN.forEach(function (ev, i) { if (ev.cond(x)) pool.push('g' + i); });
+    (EV[id] || []).forEach(function (ev, i) { pool.push('c' + i); pool.push('c' + i); }); // career events come up more often
+    return pool.length ? U.pick(pool) : null;
+  }
+  TL.events.defs.sp_event = { id: 'sp_event', scripted: true, build: function (d) {
+    var j = S().job, id = j && j.special, x = id && st(id), c = id && C[id];
+    if (!x || x.retired) return null;
+    var k = d && d.k && d.id === id ? d.k : pickEvent(x, id); if (!k) return null;
+    var ev = k[0] === 'g' ? GEN[+k.slice(1)] : (EV[id] || [])[+k.slice(1)];
+    if (!ev) return null;
+    return { icon: c.icon, title: c.name, text: fill(ev.t, x), choices: ev.c.map(function (ch) { return { label: fill(ch[0], x), run: function () { return apply(x, c, ch[1]); } }; }) };
+  } };
 
   // ------------------------------------------------------------ menus
   function menu(id) {
     ui().menu(C[id].icon + ' ' + C[id].name, function () {
       var x = st(id), c = C[id], j = S().job, on = j && j.special === id, items = [];
       if (!x || !on) {
+        if (x && x.youth && !x.retired) {
+          items.push({ info: true, html: '<div class="kv"><b>Junior ' + U.esc(c.name.toLowerCase()) + '</b><br>Reputation ' + Math.round(x.rep) + ' · ' + c.skillName + ' ' + x.skill + '<br>' + (me().age < 14 ? 'I can turn pro at 14.' : 'I\'m old enough to turn pro.') + '</div>' });
+          items.push({ icon: '💪', label: c.train[0], sub: c.skillName + ' ' + x.skill, onClick: function () { train(id); } });
+          var jg = c.gigs().filter(function (g) { return g[0] === 0; })[0];
+          if (jg) items.push({ icon: '📅', label: 'Junior: ' + jg[1].charAt(0).toLowerCase() + jg[1].slice(1), sub: 'Small stakes, real experience', disabled: count('spgig') >= 3, onClick: function () { gig(id, [0, jg[1], Math.round(jg[2] / 4), Math.max(2, jg[3] - 1), jg[4] - 5, 0, jg[6]]); } });
+          if (me().age >= 14) items.push({ icon: c.icon, label: 'Turn pro', sub: 'Make it my job', onClick: function () { start(id); } });
+          return items;
+        }
         items.push({ info: true, html: '<p class="muted">' + summary(id) + '</p>' });
         items.push({ icon: c.icon, label: x ? 'Make a comeback' : 'Start my career', sub: x ? summary(id) : 'Age ' + c.minAge + '+', onClick: function () { start(id); } });
         return items;
       }
       var r = rung(id, x.rep), nxt = c.ladder.filter(function (q) { return q[0] > x.rep; })[0];
       items.push({ info: true, html: '<div class="kv"><b>' + U.esc(title(j)) + '</b> · ' + U.esc(j.company) + '<br>Reputation ' + Math.round(x.rep) + (nxt ? ' (' + nxt[1] + ' at ' + nxt[0] + ')' : '') + ' · ' + c.skillName + ' ' + x.skill +
-        (x.game ? '<br>Main game: ' + U.esc(x.game) : '') + (x.contract ? '<br>' + (id === 'model' ? '💎 Face of ' : '🎰 Residency at ') + U.esc(x.contract.brand) + ' · ' + U.plural(x.contract.years, 'year') + ' left' : '') +
+        (x.game ? '<br>Main game: ' + U.esc(x.game) : '') + (x.contract ? '<br>' + (id === 'model' ? '💎 Face of ' : '📝 ' + U.cap(x.contract.verb || 'deal') + ' with ') + U.esc(x.contract.brand) + ' · ' + U.plural(x.contract.years, 'year') + ' left' : '') +
         (x.rest ? '<br>' + (x.rest.noun ? '🏷️ ' : '🍽️ ') + U.esc(x.rest.name) + ' · quality ' + x.rest.q + (x.rest.stars ? ' · ' + '⭐'.repeat(x.rest.stars) : '') : '') +
         (x.subs ? '<br>📺 ' + x.subs.toLocaleString() + ' followers' : '') + (x.covers ? '<br>📰 ' + U.plural(x.covers, 'magazine cover') : '') + (x.titles ? '<br>🏆 ' + U.plural(x.titles, 'tournament win') : '') + (x.wins ? '<br>🏆 ' + U.plural(x.wins, 'title') : '') +
-        (x.honors.length ? '<br>🏅 ' + U.esc(x.honors.slice(-3).join(' · ')) : '') + '</div>' });
+        (x.honors.length ? '<br>🏅 ' + U.esc(x.honors.slice(-3).join(' · ')) : '') +
+        (x.agent ? '<br>🤝 Represented by ' + x.agent.name + ' (' + Math.round(x.agent.cut * 100) + '%)' : '') +
+        (x.rival ? '<br>😤 Rival: ' + U.esc(x.rival.name) + ' · reputation ' + Math.round(x.rival.rep) + ' · ' + x.rival.w + '-' + x.rival.l : '') +
+        ((x.burn || 0) >= 3 ? '<br>😮‍💨 Burning out' : '') + '</div>' });
       items.push({ section: 'Work' });
       items.push({ icon: '💪', label: c.train[0], sub: c.skillName + ' ' + x.skill, onClick: function () { train(id); } });
       c.gigs().forEach(function (g) {
-        if (x.rep + 10 < g[0]) return;
-        items.push({ icon: '📅', label: g[1], sub: 'Pays about ' + E.fmt(E.$(g[2])) + (g[5] ? ' · buy-in ' + E.fmt(E.$(g[5])) : '') + (g[6] ? ' · risky' : '') + (x.rep < g[0] ? ' · a long shot' : ''), disabled: count('spgig') >= 3, onClick: function () { gig(id, g); } });
+        if (x.rep + 10 < g[0] || g[0] + 40 < x.rep) return; // nothing out of reach, nothing beneath me
+        items.push({ icon: '📅', label: g[1], sub: (g[2] ? 'Pays about ' + E.fmt(E.$(g[2])) : 'Unpaid') + (g[5] ? ' · buy-in ' + E.fmt(E.$(g[5])) : '') + (g[6] ? ' · risky' : '') + (x.rep < g[0] ? ' · a long shot' : ''), disabled: count('spgig') >= 3, onClick: function () { gig(id, g); } });
       });
       var b = c.big;
       if (x.rep >= b[2] - 10) items.push({ icon: b[0], label: bigName(c), sub: x.rep < b[2] ? 'Needs reputation ' + b[2] : id === 'chef' ? 'About ' + E.fmt(E.$(250000)) : b[3] === 'venture' ? 'About ' + E.fmt(E.$(b[4].cost)) : b[3] === 'final' ? 'Once a year' + (b[4].buyIn ? ' · buy-in ' + E.fmt(E.$(b[4].buyIn)) : '') : '', disabled: x.rep < b[2], onClick: function () { bigMove(id); } });
@@ -441,7 +745,14 @@ TL.specials = (function () {
         if (!x.team) items.push({ icon: '🤝', label: 'Try out for a team', sub: 'Reputation 30+', disabled: x.rep < 30, onClick: joinTeam });
         items.push({ icon: '📺', label: 'Stream', sub: yr() >= 2011 ? 'Twitch' : 'YouTube videos', onClick: stream });
       }
+      if (x.rival) items.push({ icon: '⚔️', label: 'Go head to head with ' + x.rival.name, sub: 'Reputation ' + Math.round(x.rival.rep) + ' · ' + x.rival.w + '-' + x.rival.l + ' so far', disabled: count('spduel') > 0, onClick: duel });
+      items.push({ icon: '🌴', label: 'Take the year off', sub: (x.burn || 0) >= 3 ? 'I really need it' : 'Recharge; costs some reputation and half my pay', disabled: count('spbreak') > 0 || count('spgig') > 0 || count('spbig') > 0, onClick: takeBreak });
       items.push({ section: 'Career' });
+      if (!x.agent) {
+        items.push({ icon: '🤝', label: 'Sign with a big agency', sub: '20% cut · much better gigs · reputation 45+', disabled: x.rep < 45, onClick: function () { hireAgent('big'); } });
+        items.push({ icon: '🤝', label: 'Hire a boutique manager', sub: '10% cut · better gigs', onClick: function () { hireAgent('small'); } });
+      } else items.push({ icon: '🤝', label: 'Part ways with ' + x.agent.name, sub: 'Keep 100% of my pay', onClick: fireAgent });
+      items.push({ icon: '📜', label: 'Career history', sub: U.plural((x.hist || []).length, 'season') + ' · ' + U.plural(x.honors.length, 'honor'), onClick: function () { history(id); } });
       items.push({ icon: '🚪', label: 'Retire', danger: true, onClick: function () { ui().confirm('Retire?', 'Step away from your career as ' + c.name.toLowerCase() + '?', function () { retire(id); }); } });
       return items;
     });
