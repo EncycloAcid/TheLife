@@ -19,6 +19,14 @@ TL.specials = (function () {
   function yr() { return S().year; }
   // The year's actions, read during the yearly update (ageUp has already reset yearActs).
   function lastCount(key) { var y = S().lastActs || {}; return y[key] || 0; }
+  // Real Olympic years: Summer from 1896 (none in 1916, 1940, 1944; Tokyo in 2021),
+  // Winter from 1924 (none in 1940, 1944; moved to the in-between years from 1994).
+  function olympic(type, y) {
+    if (type === 'winter') return y >= 1924 && y !== 1940 && y !== 1944 && (y <= 1992 ? y % 4 === 0 : (y - 1994) % 4 === 0 && y >= 1994);
+    if (y === 2020) return false; if (y === 2021) return true;
+    return y >= 1896 && y % 4 === 0 && [1916, 1940, 1944].indexOf(y) < 0;
+  }
+  function nextOlympics(type) { for (var y = yr(); y < yr() + 8; y++) if (olympic(type, y)) return y; return yr() + 4; }
   function era(list) { return list.filter(function (q) { return yr() >= q[1] && (!q[2] || yr() <= q[2]); }).map(function (q) { return q[0]; }); }
 
   // ------------------------------------------------------------ careers
@@ -288,6 +296,123 @@ TL.specials = (function () {
       big: ['💿', 'Recording contract', 65, 'contract', { brands: function () { return era([['Deutsche Grammophon', 1898], ['Decca', 1929], ['EMI Classics', 1931], ['Sony Classical', 1990]]); }, pay: [150000, 800000], years: 3, verb: 'recording contract' }],
       honor: [72, 0.1, function () { return yr() >= 1959 ? 'Grammy for Best Opera Recording' : 'Opera Singer of the Year'; }],
       decline: 55
+    },
+    host: {
+      gain: 0.75, name: 'Talk show host', icon: '📺', minAge: 18, skillName: 'Timing', blurb: 'Radio, cable, late night, hosting the Oscars',
+      power: function (x) { return x.skill * 0.55 + me().smarts * 0.25 + me().looks * 0.1 + me().happy * 0.1; },
+      ladder: [[0, 'Radio Host', 25000], [20, 'Cable Host', 60000], [40, 'Daytime Host', 250000], [65, 'Late-Night Host', 900000], [85, 'Television Icon', 3500000]],
+      agencies: function () { return yr() < 1940 ? ['a local radio station'] : ['a local station', 'a cable network']; },
+      train: ['Work on my monologue', 'I rewrote my monologue until every joke landed.'],
+      gigs: function () { var big = yr() >= 1954 ? 'Guest-host The Tonight Show' : 'Guest-host a network radio hour'; return [[0, 'Host a local radio show', 500, 4, 30], [20, 'Cable TV segment', 6000, 5, 46], [40, big, 60000, 7, 60]].concat(yr() >= 1953 ? [[60, 'Host the Oscars', 150000, 8, 70]] : []); },
+      big: ['🌙', 'Get my own late-night show', 65, 'contract', { brands: function () { return yr() < 1954 ? ['a radio network'] : era([['NBC', 1954], ['CBS', 1993], ['ABC', 2003], ['Comedy Central', 1996], ['Netflix', 2018]]); }, pay: [800000, 6000000], years: 3, verb: 'show' }],
+      honor: [72, 0.1, function () { return yr() >= 1949 ? 'Emmy for Outstanding Talk Series' : 'Peabody Award'; }]
+    },
+    stunt: {
+      gain: 0.8, name: 'Stunt performer', icon: '🔥', minAge: 18, maxStart: 30, skillName: 'Stunt craft', blurb: 'Falls, fights, car hits, action franchises · athletic',
+      need: function () { return me().athl < 55 ? 'I need to be in top shape for this (55+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.3 + me().health * 0.1; },
+      ladder: [[0, 'Stunt Trainee', 8000], [20, 'Stunt Performer', 45000], [40, 'Stunt Double', 110000], [65, 'Stunt Coordinator', 300000], [85, 'Action Legend', 900000]],
+      agencies: function () { return ['a stunt team', 'a film studio stunt department']; },
+      train: ['Train falls and fights', 'I trained high falls, fight choreography and car work.'],
+      gigs: function () { return [[0, 'Commercial stunt', 1500, 4, 30, 0, 1], [20, 'TV show stunt', 8000, 5, 46, 0, 1], [40, 'Film stunt double', 40000, 7, 60, 0, 1], [60, 'Action franchise set piece', 120000, 8, 68, 0, 1]]; },
+      big: ['🎬', 'Coordinate stunts on a blockbuster', 65, 'contract', { brands: function () { return era([['Universal', 1912], ['Warner Bros.', 1923], ['Paramount', 1912], ['Lucasfilm', 1971], ['Marvel Studios', 2008]]); }, pay: [300000, 1500000], years: 2, verb: 'coordinator deal' }],
+      honor: [70, 0.12, function () { return yr() >= 2001 ? 'Taurus World Stunt Award' : 'Stunt of the Year'; }],
+      decline: 40
+    },
+    rodeo: {
+      gain: 0.8, name: 'Bull rider', icon: '🐂', minAge: 16, maxStart: 24, skillName: 'Balance', blurb: 'County rodeos, the pro tour, the world finals · athletic',
+      need: function () { return me().athl < 50 ? 'Eight seconds on a bull takes a strong body (50+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.3 + me().happy * 0.1; },
+      ladder: [[0, 'Amateur Rider', 0], [20, 'Circuit Cowboy', 20000], [40, 'Pro Bull Rider', 120000], [65, 'Top Contender', 400000], [85, 'Rodeo Legend', 1000000]],
+      agencies: function () { return yr() >= 1992 ? ['the PBR', 'the PRCA'] : yr() >= 1936 ? ['the rodeo circuit'] : ['traveling rodeos']; },
+      train: ['Ride practice bulls', 'I rode practice bulls every morning.'],
+      gigs: function () { return [[0, 'County rodeo', 300, 4, 30, 0, 1], [20, 'Pro rodeo', 5000, 5, 46, 0, 1], [40, yr() >= 1992 ? 'PBR event' : 'Big-city rodeo', 40000, 7, 60, 0, 1]]; },
+      big: ['🏆', function () { return yr() >= 1994 ? 'PBR World Finals' : 'National Finals Rodeo'; }, 60, 'final', { rounds: ['round 1', 'round 2', 'the short go', 'the championship ride'], prize: [200000, 1000000], honor: 'World champion bull rider', base: 0.33, risk: 1, minYear: 1959 }],
+      honor: [70, 0.12, function () { return 'Rider of the Year'; }],
+      decline: 33
+    },
+    jockey: {
+      gain: 0.6, name: 'Jockey', icon: '🏇', minAge: 16, maxStart: 25, skillName: 'Horsemanship', blurb: 'Claiming races to the Kentucky Derby',
+      need: function () { return me().athl < 40 ? 'Jockeys need strength and balance (40+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.7 + me().athl * 0.2 + me().smarts * 0.1; },
+      ladder: [[0, 'Apprentice Jockey', 10000], [20, 'Journeyman Jockey', 50000], [40, 'Stakes Jockey', 200000], [65, 'Leading Jockey', 800000], [85, 'Hall of Fame Jockey', 2000000]],
+      agencies: function () { return ['a racing stable', 'a horse trainer\'s barn']; },
+      train: ['Work horses at dawn', 'I worked horses at dawn every day.'],
+      gigs: function () { return [[0, 'Claiming race', 400, 4, 30, 0, 1], [20, 'Allowance race', 3000, 5, 45, 0, 1], [40, 'Stakes race', 30000, 7, 58, 0, 1], [60, 'Grade 1 race', 100000, 8, 66, 0, 1]]; },
+      big: ['🌹', function () { return 'The Kentucky Derby'; }, 60, 'final', { rounds: ['the break', 'the backstretch', 'the far turn', 'the stretch'], prize: [300000, 1800000], honor: 'Kentucky Derby winner', base: 0.3, risk: 1, minYear: 1875 }],
+      honor: [70, 0.12, function () { return yr() >= 1971 ? 'Eclipse Award' : 'Leading jockey in the nation'; }],
+      decline: 45
+    },
+    skating: {
+      gain: 1.2, name: 'Figure skater', icon: '⛸️', minAge: 6, maxStart: 14, skillName: 'Jumps & artistry', blurb: 'Competitions, nationals, the Winter Olympics · start by 14',
+      need: function () { return me().athl < 45 ? 'I need more strength and balance (45+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.25 + me().looks * 0.15; },
+      ladder: [[0, 'Novice', 0], [20, 'Junior Skater', 0], [40, 'National Team', 40000], [65, 'World Medalist', 150000], [85, 'Skating Legend', 600000]],
+      agencies: function () { return ['a skating club', 'an elite training center']; },
+      train: ['Train jumps on the ice', 'I landed the jump a hundred times in practice.'],
+      gigs: function () { return [[0, 'Club competition', 0, 4, 30], [20, 'Regional championships', 1000, 5, 44], [40, 'National championships', 10000, 7, 58], [55, yr() >= 1995 ? 'Grand Prix event' : 'International competition', 30000, 7, 64], [60, 'Ice show tour', 80000, 4, 50]]; },
+      big: ['🥇', function () { return 'Winter Olympics'; }, 55, 'final', { rounds: ['the short program', 'the free skate warm-up', 'the free skate', 'the final scores'], prize: [100000, 500000], honor: 'Olympic gold', base: 0.3, olympic: 'winter', medals: true }],
+      honor: [72, 0.12, function () { return 'World Figure Skating Champion'; }],
+      decline: 26
+    },
+    gymnast: {
+      gain: 1.2, name: 'Gymnast', icon: '🤸', minAge: 6, maxStart: 14, skillName: 'Difficulty', blurb: 'Club meets, nationals, the Summer Olympics · start by 14',
+      need: function () { return me().athl < 50 ? 'I need more strength and flexibility (50+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.3 + me().happy * 0.1; },
+      ladder: [[0, 'Club Gymnast', 0], [20, 'Junior Elite', 0], [40, 'Senior Elite', 30000], [65, 'World Medalist', 150000], [85, 'Gymnastics Legend', 700000]],
+      agencies: function () { return ['a gymnastics club', 'a national training center']; },
+      train: ['Train new skills', 'I trained a new skill until I could hit it in my sleep.'],
+      gigs: function () { return [[0, 'Club meet', 0, 4, 30, 0, 1], [20, 'Regional meet', 500, 5, 44, 0, 1], [40, 'National championships', 10000, 7, 58, 0, 1], [55, 'World Cup event', 25000, 7, 64, 0, 1]]; },
+      big: ['🥇', function () { return 'Summer Olympics'; }, 55, 'final', { rounds: ['qualifications', 'the team final', 'the all-around final', 'the event finals'], prize: [100000, 600000], honor: 'Olympic gold', base: 0.3, olympic: 'summer', medals: true }],
+      honor: [72, 0.12, function () { return 'World Championships gold'; }],
+      decline: 24
+    },
+    swimmer: {
+      gain: 1.15, name: 'Swimmer', icon: '🏊', minAge: 8, maxStart: 18, skillName: 'Stroke', blurb: 'Club meets, nationals, the Summer Olympics · start by 18',
+      need: function () { return me().athl < 45 ? 'I need a stronger engine (45+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.6 + me().athl * 0.35 + me().happy * 0.05; },
+      ladder: [[0, 'Club Swimmer', 0], [20, 'Age-Group Star', 0], [40, 'National Team', 40000], [65, 'World Medalist', 200000], [85, 'Swimming Legend', 1000000]],
+      agencies: function () { return ['a swim club', 'a university swim team']; },
+      train: ['Swim doubles', 'I swam two practices a day, twelve thousand meters.'],
+      gigs: function () { return [[0, 'Club meet', 0, 4, 30], [20, 'State championships', 0, 5, 44], [40, 'National championships', 10000, 7, 58], [55, yr() >= 2019 ? 'International Swimming League meet' : 'Major international meet', 30000, 7, 64]]; },
+      big: ['🥇', function () { return 'Summer Olympics'; }, 55, 'final', { rounds: ['the heats', 'the semifinal', 'the final', 'the touch'], prize: [100000, 800000], honor: 'Olympic gold', base: 0.32, olympic: 'summer', medals: true }],
+      honor: [72, 0.12, function () { return 'World record'; }],
+      decline: 29
+    },
+    sprinter: {
+      gain: 1.2, name: 'Sprinter', icon: '🏃', minAge: 12, maxStart: 20, skillName: 'Speed', blurb: 'School meets, nationals, the 100 meters at the Olympics',
+      need: function () { return me().athl < 55 ? 'Sprinting takes elite athleticism (55+).' : null; },
+      power: function (x) { return x.skill * 0.55 + me().athl * 0.4 + me().happy * 0.05; },
+      ladder: [[0, 'School Sprinter', 0], [20, 'Collegiate Sprinter', 0], [40, 'National Finalist', 50000], [65, 'World Medalist', 300000], [85, 'Fastest Alive', 1500000]],
+      agencies: function () { return ['a track club', 'a university track team']; },
+      train: ['Run sprint drills', 'I ran block starts and flying 30s until my legs gave out.'],
+      gigs: function () { return [[0, 'School meet', 0, 4, 30], [20, 'Collegiate meet', 0, 5, 44], [40, 'National championships', 15000, 7, 58], [55, yr() >= 2010 ? 'Diamond League meet' : 'International Grand Prix meet', 50000, 7, 64]]; },
+      big: ['🥇', function () { return 'Summer Olympics'; }, 55, 'final', { rounds: ['the heats', 'the semifinal', 'the final', 'the photo finish'], prize: [150000, 1000000], honor: 'Olympic gold', base: 0.3, olympic: 'summer', medals: true }],
+      honor: [72, 0.12, function () { return yr() >= 1983 ? 'World Championships gold' : 'World record'; }],
+      decline: 30
+    },
+    climber: {
+      gain: 0.6, name: 'Mountaineer', icon: '🏔️', minAge: 16, skillName: 'Climbing', blurb: 'Local peaks, the Alps, big walls, Everest · athletic',
+      need: function () { return me().athl < 50 ? 'High altitude needs a strong body (50+ athleticism).' : null; },
+      power: function (x) { return x.skill * 0.55 + me().athl * 0.3 + me().health * 0.15; },
+      ladder: [[0, 'Weekend Climber', 0], [20, 'Alpine Climber', 15000], [40, 'Expedition Climber', 50000], [65, 'Himalayan Veteran', 150000], [85, 'Mountaineering Legend', 400000]],
+      agencies: function () { return ['a guiding company', 'my own expeditions']; },
+      train: ['Train at altitude', 'I hauled a heavy pack up and down the mountain every week.'],
+      gigs: function () { return [[0, 'Climb a local peak', 0, 4, 30, 0, 1], [20, 'Guide clients in the Alps', 5000, 5, 44, 0, 1], [35, 'Climb a big wall', 10000, 7, 56, 0, 1], [50, 'Climb an 8,000-meter peak', 40000, 8, 66, 0, 1]]; },
+      big: ['🏔️', function () { return 'Summit Everest'; }, 55, 'final', { rounds: ['base camp', 'the Khumbu Icefall', 'the death zone', 'the summit'], prize: [50000, 300000], honor: 'Everest summit', base: 0.38, risk: 1, minYear: 1953 }],
+      honor: [72, 0.1, function () { return yr() >= 1991 ? 'Piolet d\'Or' : 'Explorer of the Year'; }],
+      decline: 50
+    },
+    gamedev: {
+      gain: 0.5, name: 'Game developer', icon: '🕹️', minAge: 14, minYear: 1977, skillName: 'Game design', blurb: 'Game jams, indie hits, your own studio · 1977+',
+      need: function () { return yr() < 1977 ? 'There\'s no home video game industry yet.' : null; },
+      power: function (x) { return x.skill * 0.65 + me().smarts * 0.3 + me().happy * 0.05; },
+      ladder: [[0, 'Hobbyist', 0], [20, 'Indie Developer', 20000], [40, 'Studio Developer', 90000], [65, 'Lead Designer', 250000], [85, 'Legendary Designer', 1000000]],
+      agencies: function () { return yr() < 1990 ? ['a home computer software company'] : ['an indie collective', 'a game studio']; },
+      train: ['Prototype new mechanics', 'I prototyped ten new mechanics and kept the best one.'],
+      gigs: function () { var store = yr() >= 2003 ? 'Steam' : yr() >= 1990 ? 'shareware' : 'mail-order'; return [[0, 'Enter a game jam', 0, 4, 30], [20, 'Release a small game on ' + store, 8000, 5, 46], [40, 'Release a console game', 80000, 7, 60], [60, 'Ship a big indie hit', 300000, 8, 70]]; },
+      big: ['🏢', 'Found my own game studio', 40, 'venture', { cost: 50000, noun: 'studio', names: ['Pixel ', 'Lantern ', 'Moonlight ', 'Brightside '] }],
+      honor: [72, 0.1, function () { return yr() >= 2014 ? 'The Game Awards Game of the Year' : 'Game of the Year'; }]
     }
   };
   var GAMES = [['StarCraft', 1998], ['Counter-Strike', 2000], ['Halo 2', 2004], ['League of Legends', 2009], ['Dota 2', 2013], ['Fortnite', 2017], ['Valorant', 2020]];
@@ -301,12 +426,14 @@ TL.specials = (function () {
   function title(job) {
     var j = job || S().job, x = j && st(j.special);
     if (j && j.special === 'wrestler' && TL.wrestling && S().wr) return TL.wrestling.title();
+    if (j && j.special === 'racer' && TL.racing && S().rc) return TL.racing.title();
     if (!x) return 'Freelancer';
     var t = rung(j.special, x.rep)[1];
     return j.special === 'chef' && x.rest ? 'Chef-Owner' : j.special === 'model' && me().gender === 'M' && t === 'Supermodel' ? 'Supermodel' : t;
   }
   function summary(id) {
     if (id === 'wrestler' && TL.wrestling) return TL.wrestling.summary();
+    if (id === 'racer' && TL.racing) return TL.racing.summary();
     var x = st(id);
     if (x && x.youth && !x.retired) return 'Junior · reputation ' + Math.round(x.rep) + (me().age >= 14 ? ' · ready to turn pro' : '');
     if (!x) return C[id].blurb || { model: 'Agencies, castings, Fashion Week · looks 55+', chef: 'Kitchens, cookbooks, your own restaurant', gamer: 'Tournaments, teams, streaming · 1997+' }[id];
@@ -438,6 +565,7 @@ TL.specials = (function () {
     }
     // 'final': once a year, won round by round.
     if (o.minYear && yr() < o.minYear) return done(nope(label + ' doesn\'t exist yet.'));
+    if (o.olympic && !olympic(o.olympic, yr())) return done(nope('The next ' + (o.olympic === 'winter' ? 'Winter' : 'Summer') + ' Olympics are in ' + nextOlympics(o.olympic) + '.'));
     if (count('spbig')) return done(nope(label + ' only comes once a year.'));
     var buy = o.buyIn ? E.$(o.buyIn) : 0;
     if (buy && s.money < buy) return done(nope('The buy-in is ' + E.fmt(buy) + '.'));
@@ -448,9 +576,15 @@ TL.specials = (function () {
       var prize = Math.round(E.$(U.rand(o.prize[0], o.prize[1])));
       x.earn = (x.earn || 0) + prize; x.rep = Math.min(100, x.rep + 8); x.wins = (x.wins || 0) + 1;
       x.honors.push(o.honor + ' ' + s.year); E.fame(8); E.stat('happy', 15);
+      if (o.medals) return done(good('🥇 OLYMPIC GOLD! I\'m an Olympic champion. (+' + E.fmt(prize) + ')'));
       var nm = label.replace(/^Main event /, '').replace(/^A /, 'a ');
       if (/^(WSOP|Indianapolis|World)/.test(nm)) nm = 'the ' + nm;
       return done(good('🏆 I won ' + nm + '! (+' + E.fmt(prize) + ')'));
+    }
+    if (o.medals && r >= 2) {
+      var med = r === 3 ? 'silver' : 'bronze', mp = Math.round(E.$(o.prize[0] * (r === 3 ? 0.4 : 0.2)));
+      x.earn = (x.earn || 0) + mp; x.rep = Math.min(100, x.rep + (r === 3 ? 5 : 3)); x.honors.push('Olympic ' + med + ' ' + s.year); E.fame(r === 3 ? 4 : 3); E.stat('happy', 8);
+      return done(good((r === 3 ? '🥈' : '🥉') + ' Olympic ' + med + '! I made it to ' + o.rounds[r - 1] + ' and stood on the podium.'));
     }
     x.rep = U.clamp(x.rep + r * 2 - 1, 0, 100);
     if (o.risk && U.chance(0.2)) { E.stat('health', -U.rand(8, 20)); return done(bad(label + ': I went out in ' + o.rounds[r] + ' and got hurt.')); }
@@ -501,6 +635,7 @@ TL.specials = (function () {
   function year() {
     var s = S(), j = s.job, id = j.special, x = st(id), c = C[id], m = me();
     if (id === 'wrestler' && TL.wrestling && s.wr && !s.wr.retired) return TL.wrestling.year();
+    if (id === 'racer' && TL.racing && s.rc && !s.rc.retired) return TL.racing.season();
     if (!x) return 0;
     var r = rung(id, x.rep), earn = E.$(r[2]) + (x.earn || 0); x.earn = 0;
     // Workload: three gigs, two trainings and a big swing every year wears anyone down.
@@ -594,7 +729,7 @@ TL.specials = (function () {
     bump('spbreak');
     done(good('🌴 I\'m taking the rest of the year off to recharge.'));
   }
-  var HOF = { comic: 'a Kennedy Center Mark Twain Prize', poker: 'the Poker Hall of Fame', racer: 'the Motorsports Hall of Fame', wrestler: 'the WWE Hall of Fame', golfer: 'the World Golf Hall of Fame', fighter: 'the International Boxing Hall of Fame', chess: 'the World Chess Hall of Fame', surfer: 'the Surfers\' Hall of Fame', skater: 'the Skateboarding Hall of Fame', gamer: 'the Esports Hall of Fame', model: 'a lifetime achievement award from the fashion world', chef: 'a James Beard Lifetime Achievement Award', director: 'an honorary Oscar' };
+  var HOF = { comic: 'a Kennedy Center Mark Twain Prize', poker: 'the Poker Hall of Fame', racer: 'the Motorsports Hall of Fame', wrestler: 'the WWE Hall of Fame', golfer: 'the World Golf Hall of Fame', fighter: 'the International Boxing Hall of Fame', chess: 'the World Chess Hall of Fame', surfer: 'the Surfers\' Hall of Fame', skater: 'the Skateboarding Hall of Fame', gamer: 'the Esports Hall of Fame', model: 'a lifetime achievement award from the fashion world', chef: 'a James Beard Lifetime Achievement Award', director: 'an honorary Oscar', host: 'the Television Academy Hall of Fame', rodeo: 'the ProRodeo Hall of Fame', jockey: 'the Racing Hall of Fame', skating: 'the World Figure Skating Hall of Fame', gymnast: 'the International Gymnastics Hall of Fame', swimmer: 'the International Swimming Hall of Fame', sprinter: 'the USATF Hall of Fame', gamedev: 'the AIAS Hall of Fame', climber: 'a Piolet d\'Or Lifetime Achievement award' };
   function legacy(id, x) {
     if (x.hof || (x.peak || 0) < 85) return;
     x.hof = yr(); var h = HOF[id] || 'a lifetime achievement award';
@@ -671,7 +806,27 @@ TL.specials = (function () {
     skater: [{ t: 'A rival skater challenged me to a game of S.K.A.T.E.', c: [['Accept', { p: 0.5, pw: 1, ok: { rep: 4, say: 'I won.' }, no: { rep: -2, say: 'I lost on camera.' } }], ['Pass', { say: 'Not today.' }]] },
       { t: 'I want to try a huge gap for my video part.', c: [['Go for it', { p: 0.45, pw: 1, ok: { rep: 7, fame: 3, say: 'I landed it. The clip went viral.' }, no: { health: -12, say: 'I slammed hard.' } }], ['Film something safer', { rep: 1, say: 'Solid footage.' }]] }],
     opera: [{ t: 'I have a cold on opening night.', c: [['Sing anyway', { p: 0.5, pw: 1, ok: { rep: 5, say: 'I nailed it anyway.' }, no: { rep: -4, say: 'My voice cracked on the high note.' } }], ['Let the understudy go on', { rep: -1, say: 'The understudy got great reviews.' }]] },
-      { t: 'A conductor wants me for a famously difficult role.', c: [['Take it', { p: 0.45, pw: 1, ok: { rep: 7, say: 'A triumph!' }, no: { rep: -4, say: 'It was beyond me.' } }], ['Decline', { say: 'I know my voice.' }]] }]
+      { t: 'A conductor wants me for a famously difficult role.', c: [['Take it', { p: 0.45, pw: 1, ok: { rep: 7, say: 'A triumph!' }, no: { rep: -4, say: 'It was beyond me.' } }], ['Decline', { say: 'I know my voice.' }]] }],
+    host: [{ t: 'A guest storms off my show live on air.', c: [['Make a joke of it', { p: 0.55, pw: 1, ok: { rep: 5, fame: 2, say: 'The clip went viral. Ratings jumped.' }, no: { rep: -3, say: 'It came off as cruel.' } }], ['Apologize on air', { karma: 2, rep: 1, say: 'Viewers respected it.' }]] },
+      { t: 'The network wants me to soften my political jokes.', c: [['Tone it down', { rep: -1, say: 'The network is happy. Some fans aren\'t.' }], ['Keep going', { p: 0.5, ok: { rep: 5, say: 'My ratings went up.' }, no: { rep: -5, say: 'Advertisers pulled out.' } }]] }],
+    stunt: [{ t: 'The director wants a stunt done without enough safety prep.', c: [['Refuse until it\'s safe', { rep: -1, karma: 2, say: 'We did it right the next day.' }], ['Do it anyway', { p: 0.6, pw: 1, ok: { rep: 5, say: 'It looked incredible on screen.' }, no: { health: -15, say: 'I got badly hurt.' } }]] },
+      { t: 'An A-list star wants me as their permanent double.', c: [['Accept', { pay: 30000, rep: 3, say: 'I\'m their double on every film now.' }], ['Stay freelance', { say: 'I want to build my own name.' }]] }],
+    rodeo: [{ t: 'I drew the meanest bull on the circuit.', c: [['Ride him', { p: 0.45, pw: 1, ok: { rep: 7, fame: 2, say: 'Eight seconds! The crowd went wild.' }, no: { health: -12, say: 'He threw me and stepped on me.' } }], ['Take a re-ride', { rep: -1, say: 'I took the re-ride on an easier bull.' }]] },
+      { t: 'My ribs are cracked before a big rodeo.', c: [['Tape them and ride', { p: 0.5, ok: { rep: 4, say: 'I rode through the pain.' }, no: { health: -10, say: 'It got worse.' } }], ['Sit it out', { rep: -1, say: 'I healed up.' }]] }],
+    jockey: [{ t: 'A trainer hints that I should hold my horse back.', c: [['Refuse and report it', { karma: 3, rep: 2, say: 'The stewards investigated. My name stayed clean.' }], ['Go along with it', { p: 0.7, ok: { pay: 10000, karma: -4, say: 'Nobody noticed. The envelope was thick.' }, no: { rep: -10, karma: -4, say: 'I was suspended for the season.' } }]] },
+      { t: 'I\'m struggling to make weight.', c: [['Sweat it off in the sauna', { health: -6, rep: 1, say: 'I made weight, barely.' }], ['Skip the race', { rep: -2, say: 'Another jockey took the mount.' }]] }],
+    skating: [{ t: 'I fell on my opening jump in front of the judges.', c: [['Fight back through the program', { p: 0.55, pw: 1, ok: { rep: 4, say: 'I skated the rest clean. The crowd stood up.' }, no: { rep: -3, say: 'It never recovered.' } }], ['Play it safe the rest of the way', { rep: -1, say: 'I stayed on my feet but lost points.' }]] },
+      { t: 'My coach wants me to add a quad jump.', c: [['Learn it', { p: 0.45, pw: 1, ok: { skill: 5, rep: 4, say: 'I landed the quad!' }, no: { health: -8, say: 'I hurt my ankle trying.' } }], ['Focus on artistry', { skill: 2, say: 'My programs are beautiful.' }]] }],
+    gymnast: [{ t: 'I\'m too scared to throw a new skill.', c: [['Work through it with a coach', { skill: 3, happy: -2, say: 'Slowly, the fear went away.' }], ['Talk to a sports psychologist', { cost: 2000, happy: 4, skill: 2, say: 'Talking it out helped a lot.' }]] },
+      { t: 'I\'m pressured to compete through an injury.', c: [['Speak up', { karma: 2, health: 3, rep: -1, say: 'I put my health first.' }], ['Compete', { p: 0.5, ok: { rep: 4, say: 'I hit my routine.' }, no: { health: -12, say: 'It made the injury worse.' } }]] }],
+    swimmer: [{ t: 'A new high-tech swimsuit is legal this year.', c: [['Buy one', { cost: 1000, skill: 2, say: 'I feel faster already.' }], ['Stick with my old suit', { say: 'It\'s about the swimmer, not the suit.' }]] },
+      { t: 'A rival accuses me of doping after I break a record.', c: [['Demand an extra test', { p: 0.9, ok: { rep: 4, say: 'The test was clean. I was cleared.' }, no: { rep: -6, say: 'The rumors stuck anyway.' } }], ['Ignore it', { rep: -1, say: 'The rumors linger.' }]] }],
+    sprinter: [{ t: 'I false-started in a big final.', c: [['Protest', { p: 0.3, ok: { rep: 2, say: 'The protest worked. I was reinstated.' }, no: { rep: -2, say: 'I was disqualified.' } }], ['Accept it', { karma: 1, rep: -1, say: 'There\'s always the next race.' }]] },
+      { t: 'A shoe company wants to sign me.', c: [['Sign', { pay: 20000, rep: 2, say: 'I have my first shoe deal!' }], ['Wait for a bigger offer', { p: 0.5, ok: { pay: 40000, say: 'A bigger offer came.' }, no: { say: 'No bigger offer came.' } }]] }],
+    climber: [{ t: 'A storm is rolling in near the summit.', c: [['Turn back', { rep: -1, karma: 1, say: 'The mountain will be there next year.' }], ['Push for the top', { p: 0.5, pw: 1, ok: { rep: 7, fame: 2, say: 'I summited just before the storm hit.' }, no: { health: -18, say: 'I got frostbite and barely made it down.' } }]] },
+      { t: 'A climber I don\'t know is stranded on the ridge.', c: [['Help them down', { karma: 4, rep: 2, health: -4, say: 'We both made it down alive.' }], ['Keep climbing', { karma: -4, rep: 2, say: 'I summited. I can\'t stop thinking about them.' }]] }],
+    gamedev: [{ t: 'My game is buggy and the release date is next week.', c: [['Delay it', { rep: 1, cost: 5000, say: 'The delay was worth it. It launched polished.' }], ['Ship it anyway', { p: 0.4, ok: { pay: 20000, say: 'Players didn\'t mind.' }, no: { rep: -6, say: 'Reviews tore it apart.' } }]] },
+      { t: 'A big publisher wants to buy my game\'s rights.', c: [['Sell', { pay: 60000, rep: -1, say: 'A big check, but it\'s not my game anymore.' }], ['Stay independent', { rep: 2, say: 'I kept creative control.' }]] }]
   };
   function fill(t, x) { return String(t).replace(/\{rival\}/g, x.rival ? x.rival.name : 'My rival'); }
   function apply(x, c, e) {
@@ -713,6 +868,7 @@ TL.specials = (function () {
   // ------------------------------------------------------------ menus
   function menu(id) {
     if (id === 'wrestler' && TL.wrestling) return TL.wrestling.menu(); // pro wrestling has its own module (js/wrestling.js)
+    if (id === 'racer' && TL.racing) return TL.racing.menu(); // so does racing (js/racing.js)
     ui().menu(C[id].icon + ' ' + C[id].name, function () {
       var x = st(id), c = C[id], j = S().job, on = j && j.special === id, items = [];
       if (!x || !on) {
@@ -744,7 +900,7 @@ TL.specials = (function () {
         items.push({ icon: '📅', label: g[1], sub: (g[2] ? 'Pays about ' + E.fmt(E.$(g[2])) : 'Unpaid') + (g[5] ? ' · buy-in ' + E.fmt(E.$(g[5])) : '') + (g[6] ? ' · risky' : '') + (x.rep < g[0] ? ' · a long shot' : ''), disabled: count('spgig') >= 3, onClick: function () { gig(id, g); } });
       });
       var b = c.big;
-      if (x.rep >= b[2] - 10) items.push({ icon: b[0], label: bigName(c), sub: x.rep < b[2] ? 'Needs reputation ' + b[2] : id === 'chef' ? 'About ' + E.fmt(E.$(250000)) : b[3] === 'venture' ? 'About ' + E.fmt(E.$(b[4].cost)) : b[3] === 'final' ? 'Once a year' + (b[4].buyIn ? ' · buy-in ' + E.fmt(E.$(b[4].buyIn)) : '') : '', disabled: x.rep < b[2], onClick: function () { bigMove(id); } });
+      if (x.rep >= b[2] - 10) items.push({ icon: b[0], label: bigName(c), sub: x.rep < b[2] ? 'Needs reputation ' + b[2] : id === 'chef' ? 'About ' + E.fmt(E.$(250000)) : b[3] === 'venture' ? 'About ' + E.fmt(E.$(b[4].cost)) : b[3] === 'final' ? (b[4].olympic ? (olympic(b[4].olympic, yr()) ? 'This is an Olympic year!' : 'Next Olympics: ' + nextOlympics(b[4].olympic)) : 'Once a year') + (b[4].buyIn ? ' · buy-in ' + E.fmt(E.$(b[4].buyIn)) : '') : '', disabled: x.rep < b[2], onClick: function () { bigMove(id); } });
       if (id === 'gamer') {
         if (!x.team) items.push({ icon: '🤝', label: 'Try out for a team', sub: 'Reputation 30+', disabled: x.rep < 30, onClick: joinTeam });
         items.push({ icon: '📺', label: 'Stream', sub: yr() >= 2011 ? 'Twitch' : 'YouTube videos', onClick: stream });

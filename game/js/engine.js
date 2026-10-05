@@ -1379,6 +1379,7 @@ TL.engine = (function () {
     yearlyParole();
     progressSchool();
     var earned = progressJob();
+    if (TL.racing) TL.racing.youthYear(); // kids in karts race without a job
     fameProgress();
     if (m.age >= 16 || s.money !== 0 || s.assets.length) yearlyFinances(earned);
     yearlyHome();

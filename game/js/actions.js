@@ -682,7 +682,7 @@ TL.actions = (function () {
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
       if (!serving && m.age >= 17 && m.age <= 39) items.push({ icon: '🎖️', label: 'Join the military', sub: 'Talk to a recruiter', onClick: TL.military.recruiter });
-      items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Sports · and 23 more', onClick: fameMenu });
+      items.push({ icon: '⭐', label: 'Special careers', sub: 'Acting · Music · Sports · and 33 more', onClick: fameMenu });
       if (m.age >= D.POLITICS.minAge && !(s.job && s.job.politics)) items.push({ icon: '🗳️', label: 'Run for office', sub: 'Start a political career', onClick: function () { if (TL.politics) TL.politics.campaign(0); else campaignMenu(0); } });
       if (TL.politics) TL.politics.formerItems().forEach(function (it) { items.push(it); });
       if (m.age >= 8 && m.age < 18) items.push({ icon: '🧃', label: 'Odd jobs', sub: 'Lemonade stands, mowing lawns', onClick: oddJobs });
