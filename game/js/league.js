@@ -51,12 +51,13 @@ TL.league = (function () {
     var tab = R.table(g), mv = R.mvps(g), count = {};
     Object.keys(mv).forEach(function (yr) { count[mv[yr]] = (count[mv[yr]] || 0) + 1; });
     Object.keys(tab).forEach(function (f) { var n = R.nameIn(tab[f], sy); if (n && !Object.keys(L.teams).some(function (k) { return L.teams[k].n === n; })) L.teams[f] = { n: n, c: EAST[g].indexOf(f) >= 0 ? 'East' : 'West', rec: {} }; });
-    // From 2025 on, the whole league is the real 2025-26 rosters (js/nbarosters.js).
-    var real = g === 'M' && sy >= 2025 && TL.nbaRosters ? TL.nbaRosters.all() : null;
+    // From 2025 on, the whole league is the real rosters (js/nbarosters.js):
+    // the 2025-26 NBA and the 2025 WNBA. Expansion teams with no real roster yet fill up below.
+    var real = sy >= 2025 && TL.nbaRosters ? TL.nbaRosters.all(g) : null;
     if (real) Object.keys(real).forEach(function (f) {
       if (!L.teams[f]) return;
       real[f].forEach(function (q) {
-        var a = q.a - (TL.nbaRosters.SEASON - sy), up = a < 23 ? U.rand(4, 10) : a < 26 ? U.rand(1, 5) : 0;
+        var a = q.a - (TL.nbaRosters.season(g) - sy), up = a < 23 ? U.rand(4, 10) : a < 26 ? U.rand(1, 5) : 0;
         player(L, { n: q.n, a: a, o: q.o, p: q.o + up, pos: q.pos, t: f, r: q.o >= 84 ? 1 : 0, c: U.rand(1, 4) });
       });
     });
@@ -71,7 +72,7 @@ TL.league = (function () {
     // Everyone else: role players around a team's own level.
     Object.keys(L.teams).forEach(function (f) {
       var base = U.rand(68, 75), have = roster(L, f).length;
-      for (var i = have; i < 13; i++) { var a = U.rand(20, 33), o = base + U.rand(-10, 5) - i * 0.6; player(L, { a: a, o: o, p: Math.max(o, o + (a < 25 ? U.rand(2, 10) : 0)), t: f }); }
+      for (var i = have; i < (real && g === 'F' ? 11 : 13); i++) { var a = U.rand(20, 33), o = base + U.rand(-10, 5) - i * 0.6; player(L, { a: a, o: o, p: Math.max(o, o + (a < 25 ? U.rand(2, 10) : 0)), t: f }); }
     });
     return L;
   }

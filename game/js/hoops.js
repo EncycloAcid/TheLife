@@ -565,6 +565,7 @@ TL.hoops = (function () {
   function coachPay(head, skill) { return Math.round((head ? (me().gender === 'F' ? 450000 : 3000000) * (1 + skill / 60) : (me().gender === 'F' ? 120000 : 600000)) * eraPay()); }
   function becomeCoach() {
     var x = h(), s = S();
+    if (S().prison) return done(nope('Nobody hires a coach who\'s behind bars.'));
     if (me().age > 68) return done(nope('I\'m a little old to start coaching.'));
     var iq = attr(x, 'pla'), fame = s.fame || 0, ch = U.clamp(0.35 + (iq - 60) / 80 + fame / 300 + (x.rings ? 0.1 : 0), 0.15, 0.95);
     if (!onceAYear('hoops_coachtry')) return done(nope('I already made my calls this year.'));

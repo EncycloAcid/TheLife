@@ -1,4 +1,5 @@
-/* TheLife — real NBA rosters for the 2025-26 season (as the season opened),
+/* TheLife — real NBA rosters for the 2025-26 season (as the season opened)
+ * and WNBA rosters for the 2025 season,
  * used by js/league.js to seed the live league when it starts in 2025 or
  * later. Each entry is "Name/position/age during the season/rating", on the
  * league's 40-99 scale (role players sit around 68-75, stars 88+). Rosters
@@ -37,15 +38,34 @@ TL.nbaRosters = (function () {
     uta: 'Lauri Markkanen/PF/28/84, Keyonte George/PG/22/77, Walker Kessler/C/24/79, Jusuf Nurkic/C/31/71, Isaiah Collier/PG/21/70, Ace Bailey/SF/19/74, Kyle Filipowski/C/22/70, Cody Williams/SF/21/67, Brice Sensabaugh/SF/22/69, Svi Mykhailiuk/SF/28/67, Georges Niang/PF/32/67, Walter Clayton Jr./PG/22/68',
     was: 'CJ McCollum/SG/34/77, Alex Sarr/C/20/76, Bilal Coulibaly/SF/21/75, Khris Middleton/SF/34/74, Kyshawn George/SF/22/72, Bub Carrington/PG/20/70, Marvin Bagley III/PF/26/70, Corey Kispert/SF/26/71, Tre Johnson/SG/19/72, Justin Champagnie/SF/24/66, Cam Whitmore/SF/21/69, Will Riley/SF/19/66'
   };
+  // WNBA rosters for the 2025 season (13 teams, with the new Valkyries).
+  var W = {
+    atl: 'Allisha Gray/SG/30/88, Rhyne Howard/SG/25/85, Brionna Jones/PF/29/82, Brittney Griner/C/34/78, Jordin Canada/PG/30/79, Naz Hillmon/PF/25/76, Maya Caldwell/SG/26/71, Te-Hina Paopao/PG/22/72, Nia Coffey/SF/30/70, Shatori Walker-Kimbrough/SG/30/68, Taylor Thierry/SF/23/66',
+    chi: 'Angel Reese/PF/23/85, Kamilla Cardoso/C/24/80, Ariel Atkins/SG/29/81, Courtney Vandersloot/PG/36/76, Rachel Banham/SG/31/72, Michaela Onyenwere/SF/26/70, Elizabeth Williams/C/32/71, Kia Nurse/SG/29/68, Hailey Van Lith/PG/23/68, Rebecca Allen/SF/32/68, Maddy Westbeld/PF/22/66',
+    con: 'Marina Mabrey/SG/29/80, Tina Charles/C/37/79, Bria Hartley/PG/32/73, Olivia Nelson-Ododa/C/25/74, Saniya Rivers/SG/21/72, Aneesah Morrow/PF/22/73, Aaliyah Edwards/PF/23/72, Leila Lacan/PG/21/70, Lindsay Allen/PG/30/68, Jacy Sheldon/SG/24/68, Rayah Marshall/C/22/65',
+    dal: 'Paige Bueckers/PG/23/89, Arike Ogunbowale/SG/28/85, Myisha Hines-Allen/PF/29/76, Li Yueru/C/26/75, Maddy Siegrist/SF/25/74, Teaira McCowan/C/29/74, Tyasha Harris/PG/27/70, Aziaha James/SG/21/70, Luisa Geiselsoder/C/25/69, Haley Jones/SG/24/67, JJ Quinerly/PG/23/66',
+    gsv: 'Kayla Thornton/SF/33/80, Veronica Burton/PG/25/80, Tiffany Hayes/SG/35/76, Janelle Salaun/SF/24/75, Temi Fagbenle/C/32/74, Iliana Rupert/C/24/73, Cecilia Zandalasini/SF/29/72, Carla Leite/PG/21/72, Kate Martin/SG/25/70, Monique Billings/PF/29/70, Laeticia Amihere/PF/24/68, Kaitlyn Chen/PG/23/66',
+    ind: 'Caitlin Clark/PG/23/93, Aliyah Boston/C/24/88, Kelsey Mitchell/SG/29/87, Natasha Howard/PF/34/80, Lexie Hull/SG/25/74, Sophie Cunningham/SG/29/73, Aari McDonald/PG/26/72, Odyssey Sims/PG/32/71, Damiris Dantas/PF/33/70, Brianna Turner/PF/29/69, Makayla Timpson/PF/22/67, Sydney Colson/PG/35/66',
+    lva: 'A\'ja Wilson/C/29/97, Jackie Young/SG/27/88, Chelsea Gray/PG/32/84, Jewell Loyd/SG/31/81, NaLyssa Smith/PF/25/76, Kiah Stokes/C/32/72, Dana Evans/PG/26/73, Cheyenne Parker-Tyus/PF/32/71, Megan Gustafson/C/28/69, Aaliyah Nye/SG/22/68, Kierstan Bell/SF/25/66',
+    las: 'Kelsey Plum/PG/30/88, Dearica Hamby/PF/31/86, Rickea Jackson/SF/24/80, Azura Stevens/PF/29/78, Cameron Brink/PF/23/77, Julie Allemand/PG/29/73, Rae Burrell/SG/25/70, Mercedes Russell/C/29/69, Emma Cannon/PF/36/66, Sania Feagin/PF/22/66, Shey Peddy/SG/36/64',
+    min: 'Napheesa Collier/PF/29/97, Kayla McBride/SG/33/85, Courtney Williams/PG/31/84, Alanna Smith/PF/29/81, DiJonai Carrington/SG/27/77, Bridget Carleton/SF/28/74, Natisha Hiedeman/PG/28/74, Jessica Shepard/PF/28/74, Diamond Miller/SG/24/70, Maria Kliundikova/C/28/68, Karlie Samuelson/SG/30/66',
+    nyl: 'Breanna Stewart/PF/31/93, Sabrina Ionescu/PG/27/91, Jonquel Jones/C/31/87, Natasha Cloud/PG/33/80, Leonie Fiebich/SF/25/76, Emma Meesseman/PF/32/80, Nyara Sabally/PF/25/72, Kennedy Burke/SG/28/71, Isabelle Harrison/PF/32/70, Marine Johannes/SG/30/72, Rebekah Gardner/SF/35/67, Jaylyn Sherrod/PG/24/65',
+    phx: 'Alyssa Thomas/PF/33/92, Kahleah Copper/SG/31/86, Satou Sabally/SF/27/86, DeWanna Bonner/SF/37/77, Sami Whitcomb/SG/37/73, Natasha Mack/PF/28/71, Kathryn Westbeld/PF/29/70, Monique Akoa Makani/PG/23/71, Kitija Laksa/SG/29/70, Lexi Held/SG/25/67, Kalani Brown/C/28/67',
+    sea: 'Nneka Ogwumike/PF/35/86, Skylar Diggins/PG/35/86, Gabby Williams/SF/28/84, Ezi Magbegor/C/26/82, Brittney Sykes/SG/31/82, Erica Wheeler/PG/34/74, Dominique Malonga/C/19/74, Lexie Brown/SG/30/69, Katie Lou Samuelson/SF/28/68, Zia Cooke/SG/24/66, Mackenzie Holmes/PF/24/65',
+    was: 'Kiki Iriafen/PF/22/81, Sonia Citron/SG/22/80, Shakira Austin/C/24/80, Jade Melbourne/PG/23/73, Stefanie Dolson/C/33/71, Emily Engstler/PF/25/70, Sug Sutton/PG/26/69, Georgia Amoore/PG/23/71, Lucy Olsen/SG/22/67, Alysha Clark/SF/38/66'
+  };
   // Parse once.
-  var cache = null;
-  function all() {
-    if (cache) return cache;
-    cache = {};
-    Object.keys(R).forEach(function (f) {
-      cache[f] = R[f].split(', ').map(function (e) { var q = e.split('/'); return { n: q[0], pos: q[1], a: +q[2], o: +q[3] }; });
+  var cache = {};
+  function all(g) {
+    g = g === 'F' ? 'F' : 'M';
+    if (cache[g]) return cache[g];
+    var src = g === 'F' ? W : R, out = cache[g] = {};
+    Object.keys(src).forEach(function (f) {
+      out[f] = src[f].split(', ').map(function (e) { var q = e.split('/'); return { n: q[0], pos: q[1], a: +q[2], o: +q[3] }; });
     });
-    return cache;
+    return out;
   }
-  return { all: all, SEASON: 2026 };
+  // The season each snapshot belongs to (NBA seasons are named by the year they end).
+  function season(g) { return g === 'F' ? 2025 : 2026; }
+  return { all: all, season: season, SEASON: 2026 };
 })();
