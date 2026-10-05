@@ -1047,6 +1047,28 @@ TL.engine = (function () {
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
     if ((p.role === 'mother' || p.role === 'father') && me().age >= 18) validateHome(); // no more living with parents who are gone
   }
+  // Friendships have a history: they count the years, mark the milestones,
+  // and a best friend shows up when life is hard. Neglected ones drift apart.
+  var FRIEND_MILES = { 10: 'ten', 25: 'twenty-five', 40: 'forty', 60: 'sixty' };
+  function friendYear(p) {
+    var m = me();
+    p.fyears = (p.fyears || 0) + 1;
+    var best = p.role === 'best friend';
+    if (FRIEND_MILES[p.fyears] && p.rel >= 40) {
+      stat('happy', best ? 4 : 2);
+      log((best ? '💛 ' : '🤝 ') + p.first + ' and I have been ' + (best ? 'best ' : '') + 'friends for ' + FRIEND_MILES[p.fyears] + ' years.');
+    }
+    if (best && p.rel < 35) {
+      p.role = 'friend';
+      log('💔 ' + p.first + ' and I aren\'t as close as we were. We\'re still friends, just not best friends.');
+    } else if (!best && p.rel <= 6 && p.fyears >= 3 && U.chance(0.5)) {
+      p.role = 'former friend';
+      log('🍂 ' + p.first + ' and I drifted apart. We haven\'t really talked in years.');
+    } else if (best && p.rel >= 55 && m.happy < 35 && m.age >= 8 && !(p.helped > S().year - 5) && U.chance(0.6)) {
+      p.helped = S().year; stat('happy', U.rand(5, 9)); rel(p, 3);
+      log('🫂 ' + p.first + ' could tell I was struggling and showed up for me. That\'s what best friends do.');
+    }
+  }
   function yearlyPeople() {
     var s = S(), m = me();
     s.people.forEach(function (p) {
@@ -1056,9 +1078,10 @@ TL.engine = (function () {
       if (['classmate', 'coworker', 'former classmate'].indexOf(p.role) < 0) {
         // Family bonds fade slowly and rarely to nothing; friendships fade faster.
         var family = ['mother', 'father', 'stepmother', 'stepfather', 'sibling', 'child', 'grandparent', 'grandchild'].indexOf(p.role) >= 0;
-        var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : family ? (p.rel > 40 ? U.rand(0, 2) : U.chance(0.4) ? 1 : 0) : U.rand(0, 4);
+        var decay = p.role === 'spouse' || p.role === 'partner' || p.role === 'fiance' ? U.rand(1, 6) : family ? (p.rel > 40 ? U.rand(0, 2) : U.chance(0.4) ? 1 : 0) : p.role === 'best friend' ? U.rand(0, 2) : U.rand(0, 4);
         rel(p, -decay);
       }
+      if (p.role === 'friend' || p.role === 'best friend') friendYear(p);
       if (p.age === 5 && p.job === 'Toddler') p.job = ancient() ? TL.ancient.txt('child') : 'Student';
       if (p.age === 15 && p.job === 'Child') p.job = npcJob(20);
       if (p.age === 18 && p.job === 'Student') p.job = U.chance(0.5) ? 'University Student' : npcJob(24);

@@ -154,6 +154,7 @@ TL.actions = (function () {
       }
       if (['friend', 'best friend'].indexOf(r) >= 0) {
         items.push({ section: 'Friendship' });
+        if (p.fyears) items.push({ info: true, html: '<p class="small muted">' + (r === 'best friend' ? '💛' : '🤝') + ' Friends for ' + p.fyears + (p.fyears === 1 ? ' year' : ' years') + '</p>' });
         if (me().age >= 14) items.push({ icon: '🎉', label: 'Go out partying', onClick: function () { party(p); } });
         if (r === 'friend' && p.rel >= 85) items.push({ icon: '🤞', label: 'Make best friend', onClick: function () { p.role = 'best friend'; done(good(p.first + ' is officially my best friend!')); } });
         if (canDate(p)) items.push({ icon: '💘', label: 'Ask out', onClick: function () { askOut(p); } });
@@ -1654,7 +1655,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu,
     achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();
