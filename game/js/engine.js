@@ -338,6 +338,22 @@ TL.engine = (function () {
   function gradeLetter(g) {
     return g >= 93 ? 'A+' : g >= 85 ? 'A' : g >= 78 ? 'B+' : g >= 70 ? 'B' : g >= 62 ? 'C+' : g >= 55 ? 'C' : g >= 45 ? 'D' : 'F';
   }
+  // The year's report card: a word on the trend, the honor roll (dean's list
+  // at college), and parents who notice either way while I live at home.
+  function reportCard(e) {
+    var before = e.card, g = e.grade; e.card = g;
+    var minor = me().age < 18, folks = minor ? people(['mother', 'father']) : [], a = before == null ? null : gradeLetter(before), b = gradeLetter(g);
+    if (e.stage !== 'elementary' && g >= 85) {
+      e.honors = (e.honors || 0) + 1;
+      var list = e.stage === 'uni' || e.stage === 'grad' ? 'the dean\'s list' : 'the honor roll';
+      log('🏅 Report card: ' + b + '. I made ' + list + (e.honors > 1 ? ' (' + e.honors + ' times now)' : '') + '!', 'good');
+      if (folks.length && U.chance(0.5)) { var gift = $(U.rand(2, 10) * 10); addMoney(gift); folks.forEach(function (p) { rel(p, 3); }); log('🎁 My parents were so proud they gave me ' + fmt(gift) + '.', 'good'); }
+      return;
+    }
+    if (a === null || a === b) return;
+    log('📋 Report card: ' + b + (g > before ? ' (up from ' : ' (down from ') + a + ').', g > before ? 'good' : 'bad');
+    if (folks.length && before - g >= 6) { folks.forEach(function (p) { rel(p, -6); }); stat('happy', -3); log('😠 My parents were furious about my report card. I\'m grounded.', 'bad'); }
+  }
   function progressSchool() {
     var s = S(), m = me(), e = s.edu;
     if (s.prison) return;
@@ -348,6 +364,7 @@ TL.engine = (function () {
     }
     // yearly grade change
     e.grade = U.clamp(Math.round(e.grade + (m.smarts - 50) / 12 + e.study * 3 + U.rand(-7, 7) - (m.happy < 25 ? 5 : 0)), 0, 100);
+    reportCard(e);
     // Learning gets harder near the top, so not every kid maxes out by 12.
     var room = U.clamp((115 - me().smarts) / 60, 0.25, 1);
     if (e.stage !== 'grad' && e.stage !== 'uni') stat('smarts', Math.round((U.rand(0, 3) + e.study) * room));

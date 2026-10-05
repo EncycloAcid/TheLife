@@ -181,6 +181,18 @@ TL.events = (function () {
       { label: 'Report the cheater', run: function () { E.karma(3); S().edu.popularity = Math.max(0, S().edu.popularity - 10); return 'I reported it. Some classmates are mad at me.'; } }
     ] };
   } });
+  // Finals week: how I prepare moves my grade (js/engine.js reports it at year's end).
+  def('finals', { min: 11, max: 30, w: 6, cond: function () { var e = S().edu; return e && /middle|high|uni|grad|trade/.test(e.stage); }, build: function () {
+    var e = S().edu, m = E.me(), kid = m.age < 18, folks = kid ? E.people(['mother', 'father']) : [], mate = E.people('classmate')[0], tutor = E.$(kid ? 250 : 400);
+    var bump = function (lo, hi) { var d = U.rand(lo, hi); e.grade = U.clamp(e.grade + d, 0, 100); return d; };
+    var ch = [
+      { label: 'Cram all night', run: function () { var d = bump(m.smarts >= 60 ? 4 : 1, m.smarts >= 60 ? 9 : 6); E.stat('health', -3); E.stat('happy', -2); E.stat('smarts', 1); return d >= 6 ? good('I crammed until sunrise and walked into every exam ready. ☕') : 'I crammed all night. I was so tired I blanked on half of one exam. 😵'; } },
+      { label: mate ? 'Study with ' + mate.first : 'Join a study group', run: function () { bump(3, 6); E.stat('happy', 3); if (mate) E.rel(mate, 8); return good((mate ? mate.first + ' and I' : 'My study group and I') + ' quizzed each other all week. It worked. 📚'); } },
+      { label: 'Get a tutor' + (folks.length ? ' (my parents pay)' : ' (' + E.fmt(tutor) + ')'), run: function () { if (!folks.length) { if (S().money < tutor) return 'I couldn\'t afford a tutor, so I studied on my own.'; E.addMoney(-tutor); } bump(5, 9); return good('My tutor found exactly what I was missing. 🎯'); } },
+      { label: 'Get a good night\'s sleep', run: function () { bump(1, 3); E.stat('happy', 3); E.stat('health', 2); return 'I slept eight hours before every exam and felt calm. 😴'; } }
+    ];
+    return { icon: '📝', title: 'Finals week', text: 'Final exams are next week' + (e.stage === 'uni' || e.stage === 'grad' ? ' at ' + e.school : '') + '. My grades right now: ' + E.gradeLetter(e.grade) + '.', choices: ch };
+  } });
   def('lost_tooth', { min: 5, max: 8, w: 4, once: true, build: function () {
     return { icon: '🦷', title: 'Loose tooth', text: 'My tooth fell out!', choices: [
       { label: 'Put it under my pillow', run: function () { var a = E.$(U.rand(1, 5)); E.addMoney(a); return good('The Tooth Fairy left me ' + E.fmt(a) + '!'); } },
