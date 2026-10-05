@@ -547,12 +547,14 @@ TL.actions = (function () {
   function petIcon(sp) { return { Dog: '🐕', Cat: '🐈', Rabbit: '🐇', Parrot: '🦜', Hamster: '🐹', Snake: '🐍', Horse: '🐎', Tortoise: '🐢' }[sp] || '🐾'; }
   function addPet(species, breed, age) {
     var sp = D.PETS.filter(function (x) { return x.species === species; })[0];
-    var pet = { id: U.uid(), name: U.pick(D.PET_NAMES), species: species, breed: breed || U.pick(sp.breeds), age: age || 0, life: sp.life + U.rand(-2, 3), rel: U.rand(60, 90) };
+    var pet = { id: U.uid(), name: U.pick(D.PET_NAMES), species: species, breed: breed || U.pick(sp.breeds), age: age || 0, life: sp.life + U.rand(-2, 3), rel: U.rand(60, 90), got: S().year };
     S().pets.push(pet);
     S().flags.hadPet = true;
     E.checkAchievements();
     return pet;
   }
+  // Bond tiers: best friends cheer me up and live a little longer; neglected pets wander off (js/engine.js).
+  function petBond(pet) { return pet.rel >= 80 ? '💛 Best friends' : pet.rel >= 50 ? 'Close' : pet.rel >= 20 ? 'Drifting apart' : '⚠️ Neglected: might run away'; }
   // Training: how much each species can learn (cats do it on their own terms).
   var PET_TRAIN = { Dog: 1, Horse: 0.9, Parrot: 0.8, Cat: 0.5 };
   var PET_LEVELS = ['Untrained', 'Knows a few tricks', 'Well trained', 'Show-ready'];
@@ -588,7 +590,7 @@ TL.actions = (function () {
   function petMenu(pet) {
     ui().menu(pet.name, function () {
       return [
-        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + pet.age + ' years old.</p>' },
+        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + pet.age + ' years old.</p><p class="muted">' + petBond(pet) + (S().year - (pet.got || S().year) >= 1 ? ' · together ' + U.plural(S().year - pet.got, 'year') : '') + (pet.hero ? ' · 🦸 saved my life' + (pet.hero > 1 ? ' ' + pet.hero + ' times' : '') : '') + '</p>' },
         { icon: '🎾', label: 'Play', onClick: function () { var f = diminish('pet' + pet.id); pet.rel = U.clamp(pet.rel + 10 * f, 0, 100); E.stat('happy', 4 * f); done('I played with ' + pet.name + '.'); } },
         { icon: '🦮', label: 'Go for a walk', onClick: function () { var f = diminish('walkpet' + pet.id); pet.rel = U.clamp(pet.rel + 8 * f, 0, 100); E.stat('health', 3 * f); done('I took ' + pet.name + ' for a walk.'); } },
         { icon: '🏥', label: pet.sick ? 'Get ' + pet.name + ' treated' : 'Take to the vet', sub: pet.sick ? 'Sick with ' + pet.sick : pet.vetYear === S().year ? 'Checked up this year' : 'Yearly checkup', disabled: !pet.sick && pet.vetYear === S().year, right: E.fmt(E.$(pet.sick ? 600 : 200)), onClick: function () { petVet(pet); } },

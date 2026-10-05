@@ -99,7 +99,7 @@ TL.engine = (function () {
     // Habits count: taking care of myself (exercise, meditation, reading, hobbies) lifts my baseline.
     var la = acts || {}, care = ['med', 'walk', 'gym', 'karate', 'diet', 'lib', 'vacation'].filter(function (k) { return la[k]; }).length + Object.keys(la).filter(function (k) { return /^skill/.test(k); }).length;
     function add(v, why) { if (v) parts.push([v, why]); return v; }
-    var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.reduce(function (t, n) { var il = D.illness(n); return t + (!il ? 3 : il.happy || il.selfHeal >= 0.5 ? 1 : 3); }, 0), 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
+    var t = 58 + add(s.money > $(100000) ? 5 : 0, 'money') + add(partner() ? 7 : 0, 'love') + add(s.job || s.edu || a < 22 || s.retired ? 3 : -6, s.job || s.edu || a < 22 || s.retired ? 'purpose' : 'no job') + add(s.prison ? -25 : 0, 'prison') + add(-s.conditions.reduce(function (t, n) { var il = D.illness(n); return t + (!il ? 3 : il.happy || il.selfHeal >= 0.5 ? 1 : 3); }, 0), 'health problems') + add(friends ? 3 : 0, 'friends') + add(s.pets.length && !s.prison ? 3 : 0, 'pets') + add(Math.min(8, care * 2), 'habits') + add(m.health < 35 ? -5 : 0, 'poor health');
     return { t: U.clamp(Math.round(t), 0, 100), parts: parts };
   }
   function addMoney(n) { if (isFinite(n)) S().money = Math.round(S().money + n); }
@@ -901,7 +901,7 @@ TL.engine = (function () {
     s.assets.filter(function (a) { return a.bankrupt; }).forEach(function (a) { log('💸 My business "' + a.name + '" went bankrupt and closed.', 'bad'); stat('happy', -20); });
     s.assets = s.assets.filter(function (a) { return !a.bankrupt; });
     // pets
-    expense += s.pets.length * $(700);
+    if (!s.prison) expense += s.pets.length * $(700);
     // health insurance premiums and prescriptions
     if (TL.health) expense += TL.health.costs();
 
@@ -1226,11 +1226,13 @@ TL.engine = (function () {
       haveBaby(other, { surrogate: viaSurrogate });
     }
     // Pets
+    petsToShelter();
     s.pets.forEach(function (pet) {
       pet.age++;
-      pet.rel = U.clamp(pet.rel - U.rand(0, 5), 0, 100);
-      // Trained pets are a joy; sick ones need the vet (js/actions.js).
-      if (pet.trained) stat('happy', pet.trained);
+      // While I'm locked up, family looks after them and we drift apart.
+      pet.rel = U.clamp(pet.rel - U.rand(3, 8) - (s.prison ? 6 : 0), 0, 100);
+      // Trained pets are a joy; a best friend even more so (js/actions.js).
+      if (!s.prison) { if (pet.trained) stat('happy', pet.trained); if (pet.rel >= 80) stat('happy', 2); }
       if (pet.sick) {
         if (U.chance(0.35)) { log('🐾 ' + pet.name + ' got over ' + pet.sick + ' without the vet.'); pet.sick = null; }
         else { pet.life -= 1; pet.rel = U.clamp(pet.rel - 5, 0, 100); log('🐾 ' + pet.name + ' is still suffering from ' + pet.sick + '.', 'bad'); }
@@ -1238,10 +1240,15 @@ TL.engine = (function () {
         pet.sick = U.pick(['an ear infection', 'a stomach bug', 'an injured leg', 'a parasite', 'a skin infection']);
         log('🤒 ' + pet.name + ' seems unwell. It looks like ' + pet.sick + '.', 'bad');
       }
-      if (pet.age > pet.life - 2 && U.chance(0.35 + (pet.age - pet.life) * 0.2 + (pet.sick ? 0.15 : 0))) {
+      if (pet.age > pet.life - 2 && U.chance(0.35 + (pet.age - pet.life) * 0.2 + (pet.sick ? 0.15 : 0) - (pet.rel >= 80 ? 0.12 : 0))) {
         pet.dead = true;
-        log('🐾 My ' + pet.species.toLowerCase() + ' ' + pet.name + ' passed away.', 'bad');
-        stat('happy', -10);
+        var together = s.year - (pet.got || s.year);
+        log('🐾 My ' + pet.species.toLowerCase() + ' ' + pet.name + ' passed away' + (together >= 2 ? ' after ' + together + ' years together' : '') + '.', 'bad');
+        // Grief scales with the bond.
+        stat('happy', -Math.round(4 + pet.rel / 8));
+      } else if (!s.prison && pet.rel < 20 && /^(Dog|Cat|Horse|Parrot)$/.test(pet.species) && U.chance(0.3) && !s.pending.some(function (q) { return q.id === 'pet_lost'; })) {
+        // Neglected pets wander off.
+        queue('pet_lost', { id: pet.id });
       }
     });
     s.pets = s.pets.filter(function (p) { return !p.dead; });
@@ -1346,9 +1353,17 @@ TL.engine = (function () {
     achieve('jailbird');
     var pt = partner();
     if (pt && U.chance(0.4)) { log(pt.first + ' left me after hearing I was going to prison.', 'bad'); pt.role = 'ex'; s.counts.exes++; }
+    petsToShelter();
   }
 
   // ---------- event queue ----------
+  // In prison, my pets need someone on the outside, or they go to a shelter.
+  function petsToShelter() {
+    var s = S();
+    if (!s.prison || !s.pets.length || partner() || people(['mother', 'father', 'sibling', 'child']).some(function (p) { return p.age >= 18; })) return;
+    log('🐾 With nobody to look after them, ' + (s.pets.length > 1 ? 'my pets were' : s.pets[0].name + ' was') + ' taken to a shelter.', 'bad');
+    s.pets = [];
+  }
   function queue(id, data) { S().pending.push({ id: id, data: data || {} }); }
 
   // ---------- achievements ----------

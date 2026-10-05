@@ -387,6 +387,31 @@ TL.events = (function () {
     ] };
   } });
   // A neglected car gives out: fix it, junk it or keep limping along.
+  def('pet_lost', {
+    scripted: true,
+    build: function (d) {
+      var pet = S().pets.filter(function (q) { return q.id === (d && d.id); })[0];
+      if (!pet) return null;
+      var flyers = E.$(80), home = function (bonus) { return U.chance(U.clamp(0.25 + pet.rel / 200 + bonus, 0.05, 0.9)); };
+      var lose = function (why) { S().pets = S().pets.filter(function (q) { return q !== pet; }); E.stat('happy', -Math.round(4 + pet.rel / 10)); return bad(why); };
+      return {
+        icon: '🐾', title: 'Missing', text: pet.name + ' has been gone for two days. I haven\'t been around much lately, and ' + (pet.species === 'Cat' ? 'cats notice that.' : 'it shows.'),
+        choices: [
+          { label: 'Search and put up flyers (' + E.fmt(flyers) + ')', run: function () { E.addMoney(-flyers); if (home(0.25)) { pet.rel = Math.min(100, pet.rel + 25); E.stat('happy', 6); return good('A neighbor called. ' + pet.name + ' was hiding under their porch. I\'m never letting that happen again.'); } return lose('I searched for weeks. ' + pet.name + ' never came home.'); } },
+          { label: 'Call the shelters', run: function () { if (home(0.1)) { pet.rel = Math.min(100, pet.rel + 15); return good(pet.name + ' was at the county shelter. We\'re home together again.'); } return lose('No shelter had ' + pet.name + '. I hope someone kind found them.'); } },
+          { label: 'Wait for them to come back', run: function () { if (home(-0.15)) { pet.rel = Math.min(100, pet.rel + 10); return pet.name + ' wandered back a week later, filthy and hungry.'; } return lose(pet.name + ' never came back.'); } }
+        ]
+      };
+    }
+  });
+  def('pet_hero', { min: 5, max: 100, w: 2, cond: function () { return !S().prison && S().pets.some(function (p) { return p.rel >= 80 && /^(Dog|Cat|Parrot)$/.test(p.species); }); }, build: function () {
+    var pet = U.pick(S().pets.filter(function (p) { return p.rel >= 80 && /^(Dog|Cat|Parrot)$/.test(p.species); }));
+    var what = pet.species === 'Dog' ? pet.name + ' wouldn\'t stop barking at 3 AM. There was smoke coming from the kitchen.' : pet.species === 'Cat' ? pet.name + ' kept pawing at my face in the middle of the night. The space heater had caught the curtains.' : pet.name + ' started screeching "FIRE! FIRE!" at 3 AM. The parrot was right.';
+    return { icon: '🦸', title: 'Saved by ' + pet.name, text: what, choices: [
+      { label: 'Get everyone out', run: function () { E.stat('happy', 8); pet.rel = 100; pet.hero = (pet.hero || 0) + 1; E.log('🦸 ' + pet.name + ' woke me up during a house fire. Best ' + pet.species.toLowerCase() + ' ever.', 'good'); return good('We all made it out safely. ' + pet.name + ' got the biggest steak in town.'); } },
+      { label: 'Try to put it out myself', run: function () { pet.rel = 100; pet.hero = (pet.hero || 0) + 1; if (U.chance(0.6)) { E.stat('happy', 6); return good('I got the fire out with an extinguisher. ' + pet.name + ' watched like a supervisor.'); } E.stat('health', -U.rand(5, 15)); return bad('I inhaled a lot of smoke before the fire department arrived. ' + pet.name + ' stayed by my side.'); } }
+    ] };
+  } });
   def('car_breakdown', {
     scripted: true,
     build: function (d) {
