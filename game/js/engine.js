@@ -857,7 +857,8 @@ TL.engine = (function () {
     // assets
     s.assets.forEach(function (a) {
       if (a.kind === 'house') {
-        a.value = Math.round(a.value * U.randf(0.97, 1.075));
+        // Run-down houses lag the market; well-kept ones keep pace.
+        a.value = Math.round(a.value * (U.randf(0.97, 1.075) - (a.cond < 40 ? 0.03 : 0)));
         a.cond = U.clamp(a.cond - U.rand(1, 5), 0, 100);
         expense += Math.round(a.value * (a.upkeep || 0.013));
         if (a.rented) { var r = Math.round(a.value * 0.055); income += r; a.rentIncome = r; }

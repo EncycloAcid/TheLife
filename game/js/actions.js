@@ -1072,21 +1072,36 @@ TL.actions = (function () {
   function realEstate() {
     var ls = listings('houses', function () {
       return D.HOUSES.map(function (h) {
-        var price = E.$(Math.round(U.randf(h.min, h.max) / 1000) * 1000);
-        var num = U.rand(10, 9999);
-        return { id: U.uid(), type: h.type, upkeep: h.upkeep, price: price, beds: h.beds, cond: U.rand(35, 100), year: S().year - U.rand(0, 120), addr: num + ' ' + U.pick(D.STREETS) + ' ' + U.pick(D.STREET_TYPES) + (S().city ? ', ' + S().city : '') };
+        // Condition sets the asking price, and older, run-down places hide more problems (see buyHouse).
+        var cond = U.rand(35, 100), age = U.rand(0, 120);
+        var price = E.$(Math.round(U.randf(h.min, h.max) * (0.7 + cond * 0.004) / 1000) * 1000);
+        var num = U.rand(10, 9999), defect = U.chance(0.06 + (100 - cond) / 250 + (age > 60 ? 0.08 : 0)) ? U.pick(DEFECTS) : null;
+        return { id: U.uid(), type: h.type, upkeep: h.upkeep, price: price, beds: h.beds, cond: cond, year: S().year - age, defect: defect, addr: num + ' ' + U.pick(D.STREETS) + ' ' + U.pick(D.STREET_TYPES) + (S().city ? ', ' + S().city : '') };
       });
     });
     ui().menu('Real estate', function () {
       return [{ info: true, html: '<p class="muted">Mortgages need 20% down and a job (or plenty of savings).</p>' }].concat(ls.map(function (h) {
-        return { icon: '🏠', label: h.type, sub: h.addr + ' · ' + (h.beds ? h.beds + ' bed' : 'Studio') + ' · built ' + h.year + ' · condition ' + h.cond + '%', right: E.fmt(h.price), disabled: h.sold, onClick: function () { buyHouse(h); } };
+        return { icon: '🏠', label: h.type, sub: h.addr + ' · ' + (h.beds ? h.beds + ' bed' : 'Studio') + ' · built ' + h.year + ' · condition ' + h.cond + '%' + (h.inspected ? ' · 🔍 ' + (h.defect ? h.defect[0] : 'inspected, no major problems') : ''), right: E.fmt(h.price), disabled: h.sold, onClick: function () { buyHouse(h); } };
       }));
     });
+  }
+  // Hidden problems a house can have: [what, repair cost as a share of the price, hurts health].
+  var DEFECTS = [['a cracked foundation', 0.12], ['a leaking roof', 0.05, 1], ['termites', 0.04], ['mold in the walls', 0.06, 1], ['ancient wiring', 0.03], ['corroded plumbing', 0.04]];
+  function inspect(h) {
+    var fee = E.$(450);
+    if (!afford(fee)) return done(noMoney(fee));
+    E.addMoney(-fee); h.inspected = true;
+    if (!h.defect) return done(good('The inspector went over every inch of ' + h.addr + '. No major problems. 🔍'));
+    var fix = Math.round(h.price * h.defect[1]), off = Math.round(fix * 0.7 / 100) * 100;
+    h.price -= off; h.discount = off;
+    return done(bad('The inspector found ' + h.defect[0] + ' (about ' + E.fmt(fix) + ' to fix). The seller knocked ' + E.fmt(off) + ' off the price.'));
   }
   function buyHouse(h) {
     var s = S(), down = Math.round(h.price * 0.2);
     var canMortgage = (s.job && !s.job.partTime && E.jobSalary(s.job) * 5 > h.price) || s.money > h.price * 0.5 || (s.fame > 50);
-    ui().choose(h.type + ' — ' + E.fmt(h.price), h.addr, [
+    ui().choose(h.type + ' — ' + E.fmt(h.price), h.addr + (h.inspected ? (h.defect ? ' · 🔍 ' + h.defect[0] + (h.discount ? ' (price cut ' + E.fmt(h.discount) + ')' : '') : ' · 🔍 no major problems') : ' · not inspected'), (h.inspected ? [] : [
+      { label: '🔍 Get an inspection first (' + E.fmt(E.$(450)) + ')', fn: function () { inspect(h); } }
+    ]).concat([
       { label: 'Pay cash (' + E.fmt(h.price) + ')', fn: function () {
         if (!afford(h.price)) return done(noMoney(h.price));
         E.addMoney(-h.price); addHouse(h, 0);
@@ -1098,11 +1113,13 @@ TL.actions = (function () {
         if (!canMortgage) return done(bad('The bank rejected my mortgage application. I need a better income.'));
         E.addMoney(-down); addHouse(h, h.price - down);
       } }
-    ]);
+    ]));
   }
   function addHouse(h, loan) {
     h.sold = true;
     S().assets.push({ id: U.uid(), kind: 'house', type: h.type, name: h.addr, value: h.price, price: h.price, cond: h.cond, upkeep: h.upkeep, loan: loan, payment: loan ? Math.round(loan / 30 * 1.6) : 0 });
+    // A hidden problem turns up once I own the place (js/events.js house_defect).
+    if (h.defect) S().pending.push({ id: 'house_defect', data: { id: S().assets[S().assets.length - 1].id, what: h.defect[0], cost: Math.round(h.price * h.defect[1]), health: !!h.defect[2], known: !!h.inspected } });
     E.stat('happy', 10);
     E.achieve('homeowner');
     done(good('I bought a ' + h.type.toLowerCase() + ' at ' + h.addr + '! 🏡'));
@@ -1668,7 +1685,7 @@ TL.actions = (function () {
         } },
         { icon: '🏋️', label: 'Work out in the yard', onClick: function () { var f = diminish('pgym'); me().athl = U.clamp(me().athl + Math.round(4 * f), 0, 100); E.stat('health', 2 * f); done('I pumped iron in the yard.'); } },
         { icon: '📖', label: 'Prison library', onClick: function () { var f = diminish('plib'); E.stat('smarts', 3 * f); done('I read in the prison library.'); } },
-        { icon: '🎓', label: 'Earn a GED', disabled: E.hasDegree('hs') || used('pged'), onClick: function () { use('pged'); if (U.chance(me().smarts / 110 + 0.1)) { S().degrees.push({ type: 'hs' }); return done(good('I earned my GED in prison!')); } done('I failed the GED exam.'); } },
+        { icon: '🎓', label: 'Earn a GED', sub: E.hasDegree('hs') ? 'I already have my diploma' : used('pged') ? 'Tried this year' : 'Study for the exam inside', disabled: E.hasDegree('hs') || used('pged'), onClick: function () { use('pged'); if (U.chance(me().smarts / 110 + 0.1)) { S().degrees.push({ type: 'hs' }); return done(good('I earned my GED in prison!')); } done('I failed the GED exam.'); } },
         { icon: '🙏', label: 'Good behavior', onClick: function () { var f = diminish('behave'); E.karma(1); if (f >= 0.5) pr.conduct = Math.min(8, (pr.conduct || 0) + 1); if (U.chance(0.12 * f) && pr.remaining > 1) { pr.remaining--; return done(good('The parole board noticed my good behavior. A year was cut from my sentence!')); } done('I kept my head down and followed the rules.'); } },
         { icon: '🔥', label: 'Start a riot', danger: true, onClick: function () { E.karma(-3); pr.conduct = (pr.conduct || 0) - 2; if (U.chance(0.3)) { E.stat('happy', 10); return done('The riot was chaos. Nobody knew I started it. 😈'); } pr.remaining += 1; pr.total += 1; E.stat('health', -12); done(bad('The guards caught me. +1 year and solitary confinement.')); } },
         { icon: '🤝', label: 'Befriend an inmate', onClick: function () { if (used('inmate') > 1) return done(nope('Nobody else wants to talk.')); use('inmate'); var p = E.addPerson({ role: 'friend', age: me().age + U.rand(-10, 15), rel: 50, gender: me().gender, job: 'Inmate' }); done('I befriended ' + E.fullName(p) + ' in the cafeteria.'); } }

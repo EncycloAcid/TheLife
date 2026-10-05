@@ -406,7 +406,7 @@ TL.events = (function () {
       namesakes.forEach(function (q) {
         choices.push({ label: 'Name ' + him + ' after my ' + E.relWord(q) + ' ' + q.first, run: function () {
           fin(q.first); b.namesake = q.id; E.stat('happy', 3);
-          if (q.alive) { E.rel(q, 12); return good(q.first + ' teared up when we told them. "' + q.first + '"... it sounds right.'); }
+          if (q.alive) { E.rel(q, 12); return good(q.first + ' teared up when we told ' + (q.gender === 'M' ? 'him' : 'her') + '. "' + q.first + '"... it sounds right.'); }
           return good('Every time I say ' + b.first + '\'s name, I think of my ' + E.relWord(q) + '.');
         } });
       });
@@ -506,6 +506,21 @@ TL.events = (function () {
       { label: 'Try to put it out myself', run: function () { pet.rel = 100; pet.hero = (pet.hero || 0) + 1; if (U.chance(0.6)) { E.stat('happy', 6); return good('I got the fire out with an extinguisher. ' + pet.name + ' watched like a supervisor.'); } E.stat('health', -U.rand(5, 15)); return bad('I inhaled a lot of smoke before the fire department arrived. ' + pet.name + ' stayed by my side.'); } }
     ] };
   } });
+  def('house_defect', {
+    scripted: true,
+    build: function (d) {
+      var a = S().assets.filter(function (q) { return q.id === (d && d.id) && q.kind === 'house'; })[0];
+      if (!a) return null;
+      return {
+        icon: '🏚️', title: d.known ? 'Time to fix it' : 'Surprise!', text: d.known ? 'The ' + d.what + ' the inspector found at ' + a.name + ' needs dealing with.' : 'A few weeks after closing, I found ' + d.what + ' at ' + a.name + '. Nobody mentioned that.',
+        choices: [
+          { label: 'Fix it properly (' + E.fmt(d.cost) + ')', run: function () { E.addMoney(-d.cost); a.cond = Math.min(100, a.cond + 15); a.value = Math.round(a.value * 1.03); return good('Contractors fixed the ' + d.what.replace(/^an? /, '') + '. The place is better than ever.'); } },
+          { label: 'Patch it cheaply (' + E.fmt(Math.round(d.cost * 0.3)) + ')', run: function () { E.addMoney(-Math.round(d.cost * 0.3)); a.cond = Math.max(0, a.cond - 8); if (U.chance(0.4)) { a.value = Math.round(a.value * 0.92); return bad('The patch didn\'t hold. The problem is back, and buyers will notice.'); } return 'A quick patch. It\'ll hold... for now.'; } },
+          { label: 'Live with it', run: function () { a.cond = Math.max(0, a.cond - 25); a.value = Math.round(a.value * 0.85); E.stat('happy', -4); if (d.health) E.stat('health', -U.rand(3, 8)); return bad('I\'m living with ' + d.what + '. The house is worth less every year I ignore it.'); } }
+        ]
+      };
+    }
+  });
   def('car_breakdown', {
     scripted: true,
     build: function (d) {
