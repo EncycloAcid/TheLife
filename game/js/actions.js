@@ -972,7 +972,9 @@ TL.actions = (function () {
       s.assets.forEach(function (a) { prop += a.value; owed += a.loan || 0; });
       Object.keys(s.stocks).forEach(function (k) { inv += s.stocks[k] * s.prices[k]; });
       var cell = function (l, v, neg) { return '<div><small>' + l + '</small><b' + (neg ? ' class="neg"' : '') + '>' + (neg ? '−' : '') + E.fmt(Math.abs(v)) + '</b></div>'; };
-      items.push({ info: true, html: '<div class="nw"><small>Net worth</small><div class="nw-big' + (E.netWorth() < 0 ? ' neg' : '') + '">' + E.fmt(E.netWorth()) + '</div><div class="nw-grid">' + cell('Cash', s.money, s.money < 0) + cell('Property', prop) + cell('Investments', Math.round(inv)) + cell('Debt', owed, owed > 0) + '</div></div>' });
+      items.push({ info: true, html: '<div class="nw"><small>Net worth</small><div class="nw-big' + (E.netWorth() < 0 ? ' neg' : '') + '">' + E.fmt(E.netWorth()) + '</div><div class="nw-grid">' + cell('Cash', Math.max(0, s.money)) + cell('Property', prop) + cell('Investments', Math.round(inv)) + cell('Debt', owed + Math.max(0, -s.money), owed + Math.max(0, -s.money) > 0) + '</div></div>' });
+      var cr = E.credit();
+      if (cr != null) items.push({ info: true, html: '<p class="small muted">💳 Credit score <b>' + cr + '</b> · ' + E.creditWord(cr) + (s.flags.debtPlan ? ' · on a payment plan' : s.flags.collections ? ' · debt in collections' : s.flags.bankruptYear && s.year - s.flags.bankruptYear < 10 ? ' · bankruptcy in ' + s.flags.bankruptYear : '') + '</p>' });
       var rc = E.rentCost();
       items.push({ icon: E.home().type === 'homeless' ? '⛺' : E.home().type === 'palace' ? '🏰' : '🏡', label: E.homeLabel(), sub: me().age < 18 ? 'Where I live' : (rc ? E.fmt(rc) + '/yr rent · ' : '') + 'Tap to move', onClick: livingMenu });
       if (s.assets.length) {
@@ -1071,6 +1073,8 @@ TL.actions = (function () {
       } },
       { label: 'Mortgage (' + E.fmt(down) + ' down)', fn: function () {
         if (!afford(down)) return done(noMoney(down));
+        var cr = E.credit();
+        if (cr != null && cr < 580) return done(bad('The bank rejected my mortgage application. My credit score (' + cr + ') is too low.'));
         if (!canMortgage) return done(bad('The bank rejected my mortgage application. I need a better income.'));
         E.addMoney(-down); addHouse(h, h.price - down);
       } }
@@ -1139,6 +1143,8 @@ TL.actions = (function () {
           var opts = [{ label: 'Pay cash (' + E.fmt(c.price) + ')', fn: function () { if (!afford(c.price)) return done(noMoney(c.price)); E.addMoney(-c.price); addCar(c, 0); } }];
           if (c.price < E.$(500000)) opts.push({ label: 'Finance (' + E.fmt(down) + ' down)', fn: function () {
             if (!afford(down)) return done(noMoney(down));
+            var cr = E.credit();
+            if (cr != null && cr < 560) return done(bad('My loan application was denied because of my credit score (' + cr + ').'));
             if (!(s.job && E.jobSalary(s.job) > c.price / 3)) return done(bad('My loan application was denied.'));
             E.addMoney(-down); addCar(c, c.price - down);
           } });

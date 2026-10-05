@@ -855,32 +855,61 @@ TL.engine = (function () {
     addMoney(income - expense);
     if (TL.market && earned) TL.market.autoInvest(Math.round(earned * (1 - c.tax)));
     if (income || expense) log('💵 ' + [income ? 'Income ' + fmt(income) : '', expense ? 'Expenses ' + fmt(expense) : ''].filter(Boolean).join(' · '), 'money');
-    // Debt: say how much, and only when it starts, grows a lot, or ends.
+    // Debt: it charges interest (less on a payment plan, more once it's in
+    // collections), and the log says how much only when it starts, grows a
+    // lot, or ends. Past $20k creditors come calling and I choose what to do.
     if (s.money < 0) {
-      stat('happy', -Math.round(2 + 6 * Math.min(1, -s.money / $(20000))));
-      if (s.money < -$(20000) && U.chance(0.35)) bankruptcy();
+      var plan = s.flags.debtPlan, coll = s.flags.collections;
+      addMoney(-Math.round(-s.money * (plan ? 0.03 : coll ? 0.18 : 0.12)));
+      stat('happy', -Math.round((2 + 6 * Math.min(1, -s.money / $(20000))) * (plan ? 0.5 : 1)));
+      if (plan && m.age >= 18) stat('happy', -1); // living on a strict budget
+      if (plan && -s.money > (s.flags.planOwe || 0) * 1.5 + $(5000)) {
+        // Still sinking: the plan falls apart and the debt goes to collections.
+        delete s.flags.debtPlan; delete s.flags.planOwe; s.flags.collections = s.year; plan = false; coll = true;
+        log('📉 I fell too far behind on my payment plan. The debt went to collections.', 'bad');
+      }
+      if (s.money < -$(20000) && coll && U.chance(0.35)) bankruptcy();
       else {
+        if (s.money < -$(20000) && !plan && !coll && !s.pending.some(function (q) { return q.id === 'debt_collectors'; })) queue('debt_collectors');
         var owe = -s.money, last = s.flags.debtLogged || 0;
         if (!last) log('💳 I\'m ' + fmt(owe) + ' in debt. Creditors keep calling me.', 'bad');
         else if (owe > last * 1.5) log('💳 My debt has grown to ' + fmt(owe) + '.', 'bad');
         if (!last || owe > last * 1.5) s.flags.debtLogged = owe;
       }
-    } else if (s.flags.debtLogged) {
-      delete s.flags.debtLogged;
-      log('🎉 I\'m finally out of debt!', 'good');
+    } else if (s.flags.debtLogged || s.flags.debtPlan || s.flags.collections) {
+      log(s.flags.debtPlan ? '🎉 I finished my payment plan. I\'m finally out of debt!' : '🎉 I\'m finally out of debt!', 'good');
+      delete s.flags.debtLogged; delete s.flags.debtPlan; delete s.flags.planOwe; delete s.flags.collections;
     }
+    if (m.age >= 18 && s.money >= 0) s.flags.goodYears = (s.flags.goodYears || 0) + 1;
     // stock market (fallback without js/market.js)
     if (!TL.market) D.STOCKS.forEach(function (st) {
       var change = U.gauss(st.drift, st.vol);
       s.prices[st.sym] = Math.max(0.01 * k(), Math.round(s.prices[st.sym] * (1 + change) * 100) / 100);
     });
   }
+  // A FICO-style credit score (300-850) from 1989 on, for adults: debt and
+  // collections drag it down, a bankruptcy sinks it for about ten years, and
+  // years in the black plus a steady income build it back up.
+  function credit() {
+    var s = S(), m = me();
+    if (m.age < 18 || ancient() || s.year < 1989) return null;
+    var sc = 660, f = s.flags;
+    if (s.money < 0) sc -= Math.round(Math.min(180, 120 * -s.money / $(20000)));
+    if (f.collections) sc -= 100;
+    if (f.debtPlan) sc -= 30;
+    if (f.bankruptYear && s.year - f.bankruptYear < 10) sc -= 220 - 20 * (s.year - f.bankruptYear);
+    sc += Math.min(120, 8 * (f.goodYears || 0));
+    if (s.job && !s.job.partTime) sc += Math.min(60, Math.round(jobSalary(s.job) / $(2000)));
+    return U.clamp(sc, 300, 850);
+  }
+  function creditWord(sc) { return sc >= 800 ? 'Excellent' : sc >= 740 ? 'Very good' : sc >= 670 ? 'Good' : sc >= 580 ? 'Fair' : 'Poor'; }
   function bankruptcy() {
     var s = S();
     log('⚖️ I declared bankruptcy. My assets were seized.', 'bad');
     s.assets = s.assets.filter(function (a) { return a.kind === 'house' && a.loan === 0 && a.value < $(150000); });
     s.stocks = {};
-    s.money = 0; s.flags.bankrupt = (s.flags.bankrupt || 0) + 1; delete s.flags.debtLogged;
+    s.money = 0; s.flags.bankrupt = (s.flags.bankrupt || 0) + 1; s.flags.bankruptYear = s.year; s.flags.goodYears = 0;
+    delete s.flags.debtLogged; delete s.flags.debtPlan; delete s.flags.planOwe; delete s.flags.collections;
     stat('happy', -25);
     validateHome();
   }
@@ -1591,7 +1620,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
+    achieve: achieve, netWorth: netWorth, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,

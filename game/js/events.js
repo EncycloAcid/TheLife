@@ -41,6 +41,21 @@ TL.events = (function () {
       };
     }
   });
+  // Debt past $20k: the creditors come calling and I decide how to face it.
+  def('debt_collectors', {
+    scripted: true,
+    build: function () {
+      var owe = -S().money, cr = E.credit();
+      return {
+        icon: '📞', title: 'Debt collectors', text: 'I owe ' + E.fmt(Math.max(0, owe)) + ' and it\'s growing 12% a year. My creditors have sent the debt to a collection agency, and they won\'t stop calling.' + (cr ? ' My credit score is ' + cr + '.' : ''),
+        choices: [
+          { label: 'Set up a payment plan', run: function () { if (S().money >= 0) return 'Turns out I was already caught up.'; S().flags.debtPlan = S().year; S().flags.planOwe = -S().money; E.stat('happy', 2); return good('I agreed to a payment plan. The interest drops to 3% and I\'ll live on a tight budget until it\'s paid off.'); } },
+          { label: 'Declare bankruptcy', run: function () { if (S().money >= 0) return 'Turns out I was already caught up.'; E.bankruptcy(); return 'A fresh start, but my credit will be wrecked for years.'; } },
+          { label: 'Ignore them', run: function () { S().flags.collections = S().year; E.stat('happy', -3); return bad('I let it go to collections. The interest jumps to 18%, and they could force me into bankruptcy.'); } }
+        ]
+      };
+    }
+  });
   def('spouse_leaves', {
     scripted: true,
     build: function (d) {
