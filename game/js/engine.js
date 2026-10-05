@@ -862,9 +862,20 @@ TL.engine = (function () {
         expense += Math.round(a.value * (a.upkeep || 0.013));
         if (a.rented) { var r = Math.round(a.value * 0.055); income += r; a.rentIncome = r; }
       } else if (a.kind === 'car') {
-        a.value = Math.round(a.value * (a.type === 'Private Jet' || a.type === 'Superyacht' ? 0.93 : 0.86));
+        var craft = a.type === 'Private Jet' || a.type === 'Superyacht';
+        if (!a.made) a.made = s.year;
+        var carAge = s.year - a.made;
+        // A well-kept car 25+ years old becomes a classic and starts gaining value;
+        // anything else bottoms out at scrap value rather than sinking to nothing.
+        if (!craft && carAge >= 25 && a.cond >= 60) {
+          if (!a.classic) { a.classic = s.year; a.value = Math.max(a.value, Math.round(a.price * 0.35)); log('🚘 My ' + a.name + ' is officially a classic now. Collectors are interested.', 'good'); }
+          a.value = Math.round(a.value * U.randf(1.03, 1.09));
+        } else a.value = Math.max(Math.round(a.price * 0.06), Math.round(a.value * (craft ? 0.93 : 0.86)));
+        if (a.classic && a.cond < 60) a.classic = 0;
         a.cond = U.clamp(a.cond - U.rand(3, 10), 0, 100);
-        expense += Math.round(a.price * 0.03);
+        expense += Math.round(a.price * (a.classic ? 0.015 : 0.03));
+        // Neglected cars break down, and I have to decide what to do with them.
+        if (!craft && a.cond < 30 && U.chance(0.35) && !s.pending.some(function (q) { return q.id === 'car_breakdown'; })) queue('car_breakdown', { id: a.id });
       } else if (a.kind === 'business' && TL.business) {
         // js/business.js runs the books: revenue, costs, staff, reputation.
         var pr = TL.business.year(a);

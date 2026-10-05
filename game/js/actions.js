@@ -1037,6 +1037,7 @@ TL.actions = (function () {
         items.push({ icon: '🎉', label: 'Throw a house party', onClick: function () { var f = diminish('houseparty'); E.stat('happy', 8 * f); E.people(['friend']).forEach(function (p) { E.rel(p, 5 * f); }); if (U.chance(0.15)) { a.cond = Math.max(0, a.cond - 15); return done(bad('The party got wild. Someone put a hole in the wall.')); } done(good('I threw an epic house party!')); } });
       }
       if (a.kind === 'car') {
+        if (a.made && a.type !== 'Private Jet' && a.type !== 'Superyacht') { var age = S().year - a.made; items.push({ info: true, html: '<p class="small muted">' + a.made + ' model · ' + U.plural(age, 'year') + ' old' + (a.classic ? ' · 🚘 a classic: gaining value while it stays in good shape' : age >= 20 ? ' · keep it in good shape and it becomes a classic at 25' : a.cond < 30 ? ' · likely to break down' : '') + '</p>' }); }
         items.push({ icon: '🔧', label: 'Maintenance', right: E.fmt(Math.round(a.price * 0.05)), onClick: function () { var c = Math.round(a.price * 0.05); if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); a.cond = Math.min(100, a.cond + 30); done('My ' + a.type + ' was serviced.'); } });
         items.push({ icon: '🛣️', label: 'Take it for a drive', onClick: function () { var f = diminish('drive'); E.stat('happy', 4 * f); if (U.chance(0.06 + (100 - a.cond) / 800)) { a.cond = Math.max(0, a.cond - 30); E.stat('health', -U.rand(5, 20)); return done(bad('I crashed! I\'m hurt and my ' + a.type + ' is damaged.')); } done('I went for a joyride. 😎'); } });
       }
@@ -1169,7 +1170,7 @@ TL.actions = (function () {
   }
   function addCar(c, loan) {
     c.sold = true;
-    S().assets.push({ id: U.uid(), kind: 'car', type: c.type, name: c.color + ' ' + (c.model || c.type), value: c.price, price: c.price, cond: c.cond, loan: loan, payment: loan ? Math.round(loan / 5 * 1.15) : 0 });
+    S().assets.push({ id: U.uid(), kind: 'car', made: c.year || S().year, type: c.type, name: c.color + ' ' + (c.model || c.type), value: c.price, price: c.price, cond: c.cond, loan: loan, payment: loan ? Math.round(loan / 5 * 1.15) : 0 });
     E.stat('happy', 6);
     done(good('I bought a ' + c.color.toLowerCase() + ' ' + (c.model || c.type) + '! 🚗'));
   }
@@ -1684,7 +1685,7 @@ TL.actions = (function () {
 
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
-    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu, fameMenu: fameMenu,
+    activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu, fameMenu: fameMenu, assetMenu: assetMenu,
     achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

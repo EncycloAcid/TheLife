@@ -386,6 +386,23 @@ TL.events = (function () {
       { label: 'Run', run: function () { if (U.chance(me().athl / 100 + 0.2)) return 'I got away!'; E.addMoney(-amt); return bad('They caught me and took ' + E.fmt(amt) + '.'); } }
     ] };
   } });
+  // A neglected car gives out: fix it, junk it or keep limping along.
+  def('car_breakdown', {
+    scripted: true,
+    build: function (d) {
+      var a = S().assets.filter(function (q) { return q.id === (d && d.id) && q.kind === 'car'; })[0];
+      if (!a) return null;
+      var fix = Math.max(E.$(300), Math.round(a.price * 0.08)), scrap = Math.max(E.$(150), Math.round(a.price * 0.03));
+      return {
+        icon: '🚗', title: 'Breakdown', text: 'My ' + a.name + ' broke down on the side of the road. The mechanic says it\'s in rough shape.',
+        choices: [
+          { label: 'Fix it (' + E.fmt(fix) + ')', run: function () { if (S().money < fix) return bad('I couldn\'t afford the repair. It\'s sitting in the driveway.'); E.addMoney(-fix); a.cond = Math.min(100, a.cond + 45); return 'The mechanic got it running like new.'; } },
+          { label: 'Junk it (+' + E.fmt(scrap) + ')', run: function () { S().assets = S().assets.filter(function (q) { return q !== a; }); E.addMoney(scrap - (a.loan || 0)); return 'I sold my ' + a.name + ' for scrap.' + (a.loan ? ' I still had to pay off the ' + E.fmt(a.loan) + ' left on the loan.' : ''); } },
+          { label: 'Keep driving it', run: function () { a.cond = Math.max(0, a.cond - 10); E.stat('happy', -3); if (U.chance(0.3)) { E.stat('health', -U.rand(3, 10)); return bad('It died again on the highway. I got hurt getting it off the road.'); } return 'It\'s held together with duct tape, but it runs.'; } }
+        ]
+      };
+    }
+  });
   def('car_accident', { min: 16, max: 95, w: 3, cond: function () { return S().assets.some(function (a) { return a.kind === 'car'; }); }, build: function () {
     var car = S().assets.filter(function (a) { return a.kind === 'car'; })[0];
     return { icon: '💥', title: 'Car accident', text: 'Someone ran a red light and T-boned my ' + car.name + '!', choices: [
