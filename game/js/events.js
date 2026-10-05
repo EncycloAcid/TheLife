@@ -387,6 +387,36 @@ TL.events = (function () {
     ] };
   } });
   // A neglected car gives out: fix it, junk it or keep limping along.
+  // Naming a newborn: keep the name we'd been using, honor a relative, let my partner pick, or go bold.
+  var BOLD = { M: ['Phoenix', 'Zion', 'Atlas', 'Orion', 'Maverick', 'Ocean', 'Jupiter', 'Kai'], F: ['Nova', 'Luna', 'River', 'Sky', 'Juniper', 'Wren', 'Saffron', 'Indigo'] };
+  def('baby_name', {
+    scripted: true,
+    build: function (d) {
+      var b = E.person(d.id);
+      if (!b || !b.alive || b.role !== 'child' || b.named) return null;
+      var M = b.gender === 'M', him = M ? 'him' : 'her', he = M ? 'he' : 'she', cty = TL.data.country(S().country);
+      var used = E.people(['child'], true).filter(function (q) { return q !== b; }).map(function (q) { return q.first; }).concat([E.me().first]);
+      var free = function (pool) { return (pool || []).filter(function (n) { return used.indexOf(n) < 0 && n !== b.first; }); };
+      var fin = function (name) { b.first = name; b.named = true; };
+      var choices = [{ label: 'Keep ' + b.first, run: function () { fin(b.first); return good(b.first + ' it is. ' + U.pick(['It just fits.', 'We\'d been calling ' + him + ' that for months anyway.', 'Perfect.'])); } }];
+      // Honor a relative of the same gender whose name isn't already taken.
+      var pt = E.partner(), other = d.other ? E.person(d.other) : null; pt = pt || (other && other.alive ? other : null);
+      var namesakes = E.people(['mother', 'father', 'grandparent', 'sibling'], true).filter(function (q) { return q.gender === b.gender && used.indexOf(q.first) < 0 && q.first !== b.first; })
+        .sort(function (a, c) { return (a.alive ? 1 : 0) - (c.alive ? 1 : 0) || c.rel - a.rel; }).slice(0, pt ? 1 : 2);
+      namesakes.forEach(function (q) {
+        choices.push({ label: 'Name ' + him + ' after my ' + E.relWord(q) + ' ' + q.first, run: function () {
+          fin(q.first); b.namesake = q.id; E.stat('happy', 3);
+          if (q.alive) { E.rel(q, 12); return good(q.first + ' teared up when we told them. "' + q.first + '"... it sounds right.'); }
+          return good('Every time I say ' + b.first + '\'s name, I think of my ' + E.relWord(q) + '.');
+        } });
+      });
+      var pick = free(M ? cty.male : cty.female);
+      if (pt && pick.length) choices.push({ label: 'Let ' + pt.first + ' choose', run: function () { fin(U.pick(pick)); E.rel(pt, 6); return pt.first + ' had a name picked out all along: ' + b.first + '.'; } });
+      var bold = free(BOLD[b.gender]);
+      if (bold.length) choices.push({ label: 'Something bold', run: function () { var n = U.pick(bold); fin(n); E.stat('happy', 2); return U.pick(['My mother made a face, but ' + n + ' it is.', n + '! Nobody else at daycare will have that name.', n + '. It\'s a statement.']); } });
+      return { icon: '👶', title: 'Naming the baby', text: 'Our new baby ' + (M ? 'boy' : 'girl') + ' needs a name. We\'ve been calling ' + him + ' ' + b.first + ', but nothing\'s official yet.', choices: choices };
+    }
+  });
   def('parent_care', { min: 30, max: 90, w: 5, cond: function () { var s = S(); return !s.flags.care && !s.prison && !E.ancient() && E.parentsAround().some(function (p) { return p.age >= 72 && p.health < 50; }); }, build: function () {
     var s = S(), p = E.parentsAround().filter(function (q) { return q.age >= 72 && q.health < 50; }).sort(function (a, b) { return a.health - b.health; })[0];
     var sib = E.people('sibling').filter(function (q) { return q.age >= 18; }).sort(function (a, b) { return b.rel - a.rel; })[0];

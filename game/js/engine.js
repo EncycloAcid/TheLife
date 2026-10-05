@@ -1290,10 +1290,20 @@ TL.engine = (function () {
     var last = me().last;
     var baby = addPerson({ role: 'child', age: 0, last: last, rel: 90, money: 0, job: 'Toddler' });
     baby.otherParent = other ? other.id : null;
+    // Brothers and sisters never share a first name (not even twins). Roman
+    // daughters sharing the family name is history, so ancient eras keep theirs.
+    var cty = country(), used = people(['child'], true).filter(function (q) { return q !== baby; }).map(function (q) { return q.first; }).concat([me().first]);
+    if (!cty.ancient && used.indexOf(baby.first) >= 0) {
+      var free = ((baby.gender === 'M' ? cty.male : cty.female) || []).filter(function (n) { return used.indexOf(n) < 0; });
+      if (free.length) baby.first = U.pick(free);
+    }
     s.counts.kids++;
     var who = o.surrogate ? 'Our surrogate gave birth to' : me().gender === 'F' ? 'I gave birth to' : (other && other.gender === 'F' ? other.first + ' gave birth to' : 'We welcomed');
-    if (o.twin) log('👶 ...and a second baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + ', ' + baby.first + '! It\'s twins! 👯', 'good');
-    else log('👶 ' + who + ' a baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + ' named ' + baby.first + '!', 'good');
+    // Outside the ancient eras I get to name my own children (js/events.js baby_name).
+    var naming = !cty.ancient && !s.dead;
+    if (naming) queue('baby_name', { id: baby.id });
+    if (o.twin) log('👶 ...and a second baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + (naming ? '' : ', ' + baby.first) + '! It\'s twins! 👯', 'good');
+    else log('👶 ' + who + ' a baby ' + (baby.gender === 'M' ? 'boy' : 'girl') + (naming ? '' : ' named ' + baby.first) + '!', 'good');
     stat('happy', 15);
     achieve('parent');
     if (!o.twin && U.chance(0.03)) { haveBaby(other, { twin: true }); achieve('twins'); }
