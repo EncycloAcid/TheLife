@@ -588,6 +588,10 @@ TL.hoops = (function () {
     }
     // Head coach: the roster's quality plus my coaching.
     var gp = games(), q = tq(c.team), strength = (q - 50) * 1.05 + (c.skill - 55) / 2.5 + U.rand(-7, 7);
+    var plan = s.flags.coachPlan && s.flags.coachPlan.y >= s.year - 1 ? s.flags.coachPlan.k : null; delete s.flags.coachPlan;
+    strength += c.carry || 0; c.carry = 0;
+    strength += plan === 'win' ? 5 : plan === 'youth' ? -3 : plan === 'system' ? -2 : 0;
+    if (plan === 'system' && c.skill < 65) c.skill = Math.min(c.skill + 1, 65);
     var wins = U.clamp(Math.round(gp / 2 + strength * gp / 82), Math.round(gp * 0.12), Math.round(gp * 0.88)), losses = gp - wins;
     c.head++; c.wins += wins; c.losses += losses;
     var rec = wins + '-' + losses, expect = Math.round(gp / 2 + (q - 50) * 1.05 * gp / 82), msg = '📋 Coaching the ' + c.team.replace(/^the /, '') + ': ' + rec + '.', cls = '';
@@ -600,20 +604,32 @@ TL.hoops = (function () {
     if (wins - expect >= 12 && U.chance(0.35)) { c.coy++; award(x, 'Coach of the Year', { year: s.year }); msg += ' I was named Coach of the Year!'; cls = 'good'; E.fame(3); }
     E.log(msg, cls);
     drift(x);
+    // The offseason plan echoes into next year's roster.
+    if (plan === 'win') { c.carry = -U.rand(4, 7); E.log('📉 Trading our picks for veterans thinned out the ' + c.team.replace(/^the /, '') + '\'s future.'); }
+    if (plan === 'youth') { c.carry = U.rand(2, 5); E.log('📈 The young players I developed on the ' + c.team.replace(/^the /, '') + ' took a step forward.'); }
     // Owners are impatient.
     c.bad = wins / gp < 0.37 ? (c.bad || 0) + 1 : 0;
-    if (c.bad >= 2 && U.chance(0.6)) { E.log('✂️ The ' + c.team.replace(/^the /, '') + ' fired me as head coach.', 'bad'); E.stat('happy', -10); c.role = 'assistant'; c.bad = 0; x.coach.fired = (x.coach.fired || 0) + 1; j.title = 'Assistant Coach'; j.salary = E.$(coachPay(false, c.skill)); c.team = U.pick(teams()); j.company = 'the ' + c.team.replace(/^the /, '') + ' (' + league() + ')'; E.log('📋 I landed back on a bench as an assistant with the ' + c.team.replace(/^the /, '') + '.'); }
+    if (c.bad >= 2 && U.chance(0.6)) { E.log('✂️ The ' + c.team.replace(/^the /, '') + ' fired me as head coach.', 'bad'); E.stat('happy', -10); c.role = 'assistant'; c.bad = 0; c.carry = 0; x.coach.fired = (x.coach.fired || 0) + 1; j.title = 'Assistant Coach'; j.salary = E.$(coachPay(false, c.skill)); c.team = U.pick(teams()); j.company = 'the ' + c.team.replace(/^the /, '') + ' (' + league() + ')'; E.log('📋 I landed back on a bench as an assistant with the ' + c.team.replace(/^the /, '') + '.'); }
     return j.salary;
   }
   def('hoops_coach_offer', { build: function () {
     var x = h(), c = x && x.coach; if (!c || c.role !== 'assistant') return null;
     var pool = U.shuffle(teams().slice()), bad = pool.filter(function (t) { return tq(t) < 45; })[0] || pool[0], ok = pool.filter(function (t) { return tq(t) >= 50 && t !== bad; })[0];
-    var take = function (t) { c.role = 'head'; c.team = t; var j = S().job; j.title = 'Head Coach'; j.salary = E.$(coachPay(true, c.skill)); j.company = 'the ' + t.replace(/^the /, '') + ' (' + league() + ')'; E.fame(3); E.stat('happy', 12); return good('I\'m the new head coach of the ' + t.replace(/^the /, '') + ', ' + teamKind(tq(t)) + '. 📋'); };
+    var take = function (t) { c.role = 'head'; c.team = t; c.carry = 0; var j = S().job; j.title = 'Head Coach'; j.salary = E.$(coachPay(true, c.skill)); j.company = 'the ' + t.replace(/^the /, '') + ' (' + league() + ')'; E.fame(3); E.stat('happy', 12); return good('I\'m the new head coach of the ' + t.replace(/^the /, '') + ', ' + teamKind(tq(t)) + '. 📋'); };
     var ch = [{ label: 'Rebuild the ' + bad.replace(/^the /, '') + ' (' + outlook(tq(bad)) + ')', run: function () { return take(bad); } }];
     if (ok && U.chance(0.35 + c.skill / 200)) ch.push({ label: 'Take over the ' + ok.replace(/^the /, '') + ' (' + outlook(tq(ok)) + ')', run: function () { return take(ok); } });
     ch.push({ label: 'Stay an assistant for now', run: function () { return 'I stayed on the bench. My time will come.'; } });
     return { icon: '📋', title: 'Head coaching offer', text: 'After ' + U.plural(c.years, 'season') + ' as an assistant, teams want me to run the show. Coaching skill ' + cskill(x) + '.', choices: ch };
   } });
+  var CPLANS = { win: 'Win now', youth: 'Develop the young core', system: 'Install my system' };
+  function coachPlan() {
+    var s = S(), set = function (k, msg) { s.flags.coachPlan = { y: s.year, k: k }; return done(msg); };
+    ui().choose('📋 Offseason plan', 'How do I want to build the ' + h().coach.team.replace(/^the /, '') + ' (' + outlook(tq(h().coach.team)) + ') this year?', [
+      { label: '🔥 Win now (trade picks for veterans: better this season, thinner next year)', fn: function () { set('win', 'We\'re all in. I traded future picks for veterans who can win today. 🔥'); } },
+      { label: '🌱 Develop the young core (lose a bit more now, a better team next year)', fn: function () { set('youth', 'The kids are playing big minutes this year. Short-term pain, long-term gain. 🌱'); } },
+      { label: '🧠 Install my system (a small dip now, more coaching skill)', fn: function () { set('system', 'Training camp is all about my schemes this year. 🧠'); } }
+    ]);
+  }
   function coachLine(x) {
     var c = x.coach; if (!c) return '';
     return '<div class="small muted" style="margin-top:6px">📋 ' + (S().job && S().job.coach ? (c.role === 'head' ? 'Head coach' : 'Assistant coach') + ', ' + c.team.replace(/^the /, '') : 'Former coach') + ' · skill ' + cskill(x) + (c.head ? ' · ' + c.wins + '-' + c.losses + ' as head coach' : '') + (c.titles ? ' · ' + U.plural(c.titles, 'title') : '') + (c.coy ? ' · ' + c.coy + '× Coach of the Year' : '') + '</div>';
@@ -708,6 +724,7 @@ TL.hoops = (function () {
       if (!x || x.stage === 'retired' || !x.stage) {
         if (x && x.stage === 'retired' && !(S().job && S().job.coach)) items.push({ icon: '📋', label: x.coach ? 'Get back into coaching' : 'Become a coach', sub: 'Start as an assistant; basketball IQ ' + attr(x, 'pla'), disabled: usedThisYear('hoops_coachtry'), onClick: becomeCoach });
         if (x && x.stage === 'retired' && S().job && S().job.coach) items.push({ info: true, html: coachLine(x) });
+        if (x && x.coach && x.coach.role === 'head' && S().job && S().job.coach) { var cp = S().flags.coachPlan && S().flags.coachPlan.y === S().year ? S().flags.coachPlan.k : null; items.push({ icon: '📋', label: 'Offseason plan', sub: cp ? 'This year: ' + CPLANS[cp] : 'Win now, develop the kids or install my system', onClick: coachPlan }); }
         if (x && x.stage === 'retired') items.push({ icon: '🎙️', label: 'Become a TV analyst', onClick: function () { if (!onceAYear('hoops_tv')) return done(nope('I already did TV this year.')); var p = E.$(U.rand(200, 900) * 1000); E.addMoney(p); E.fame(2); done(good('I broke down games on TV for ' + E.fmt(p) + '.')); } });
       } else {
         items.push({ section: 'Train' });

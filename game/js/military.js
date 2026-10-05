@@ -282,7 +282,7 @@ TL.military = (function () {
     var p = need[1] * (0.6 + x.perf / 125) * (1 + Math.min(0.15, (x.badges || []).length * 0.05)) * (leads(x) ? 1 + ((x.unit == null ? 55 : x.unit) - 55) / 300 : 1) + Math.min(0.15, x.medals.length * 0.03);
     if (U.chance(U.clamp(p, 0.02, 0.98))) {
       x.grade++; x.tig = 0; x.passed = 0;
-      E.log('🎖️ I was promoted to ' + rankTitle() + ' (' + payGrade() + ')!', 'good');
+      E.log('🎖️ I was promoted to ' + rankTitle() + (/\(/.test(rankTitle()) ? '' : ' (' + payGrade() + ')') + '!', 'good');
       E.stat('happy', 6);
       if (officer() && x.grade >= 6) { E.achieve('general'); E.fame(5); }
     } else if (need[1] < 0.9) { x.passed = (x.passed || 0) + 1; if (x.passed <= 2) E.log('The promotion board passed me over for ' + (officer() ? RANKS[x.branch][1] : RANKS[x.branch][0])[x.grade + 1] + '.'); }
@@ -315,7 +315,7 @@ TL.military = (function () {
   var THEATERS = ['the Middle East', 'Eastern Europe', 'the Horn of Africa', 'the Pacific', 'Central Asia', 'a NATO mission in the Baltics', 'a UN peacekeeping mission'];
   def('mil_deploy', { cond: function () { return m() && m().active; }, build: function () {
     var x = m(), where = U.pick(THEATERS), r = risk(x);
-    return { icon: '🎖️', title: 'Deployment', text: 'My unit is deploying to ' + where + ' for ' + U.pick(['six', 'nine', 'twelve']) + ' months. I\'m ' + E.an(rankTitle()) + ' (' + jobName() + ').', choices: [
+    return { icon: '🎖️', title: 'Deployment', text: 'My unit is deploying to ' + where + ' for ' + U.pick(['six', 'nine', 'twelve']) + ' months. I\'m ' + E.an(rankTitle()) + ', ' + jobName() + '.', choices: [
       { label: 'Lead from the front', run: function () { return deployment(where, r + 1); } },
       { label: 'Do my job by the book', run: function () { return deployment(where, r); } },
       { label: 'Volunteer for a support role', run: function () { return deployment(where, Math.max(0, r - 1)); } }
