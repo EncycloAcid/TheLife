@@ -282,6 +282,7 @@ TL.hoops = (function () {
       else if (hi >= 40 && best) E.log('🔥 Career night: ' + hi + ' points against ' + (home ? withStar(foe) : 'the ' + foe) + '.', 'good');
       if (best) x.high = { pts: hi, year: s.year, opp: foe };
     }
+    if (home && mins >= 22) rivalSeason(x, played, gp);
     // Awards
     var allStar = false;
     if (proLeague) {
@@ -303,7 +304,8 @@ TL.hoops = (function () {
     // Playoffs: sometimes it comes down to one possession.
     if (sim && sim.wait) {
       E.log('Playoffs: it all came down to ' + (lg === 'NBA' ? 'Game 7' : 'the deciding game') + ' of the ' + ROUNDS[sim.wait.round] + ' against ' + withStar(sim.wait.opp) + '.');
-      s.pending.push({ id: 'hoops_clutch', data: { year: s.year, round: sim.wait.round, opp: sim.wait.opp, lg: me().gender } });
+      var rv = x.rival && rivalTeam(x.rival) === sim.wait.opp ? x.rival.n : null;
+      s.pending.push({ id: 'hoops_clutch', data: { year: s.year, round: sim.wait.round, opp: sim.wait.opp, lg: me().gender, rival: rv } });
     }
     else if (round < 0) E.stat('happy', -3);
     else if (round === 4) champion(x, lg, null, sim ? !!sim.fmvp : null);
@@ -481,7 +483,7 @@ TL.hoops = (function () {
     var x = h(), q = lastSeason(x, d && d.year);
     if (!q || q.clutch || d.round == null) return null;
     var g7 = q.league === 'NBA' ? 'Game 7' : 'The deciding game';
-    return { icon: '⏱️', title: g7, text: g7 + ' of the ' + ROUNDS[d.round] + ' against the ' + d.opp + '. We\'re down two with eight seconds left, and the ball is in my hands.', choices: [
+    return { icon: '⏱️', title: g7, text: g7 + ' of the ' + ROUNDS[d.round] + ' against ' + (d.rival ? 'my rival ' + d.rival + ' and the ' : 'the ') + d.opp + '. We\'re down two with eight seconds left, and the ball is in my hands.', choices: [
       { label: '🎯 Pull up for a three to win it (shooting ' + attr(x, 'sho') + ')', run: function () { return clutch(d, 'sho'); } },
       { label: '💥 Attack the rim to tie it (athleticism ' + attr(x, 'ath') + ')', run: function () { return clutch(d, 'ath'); } },
       { label: '🧠 Draw the defense and find the open man (playmaking ' + attr(x, 'pla') + ')', run: function () { return clutch(d, 'pla'); } }
@@ -515,18 +517,66 @@ TL.hoops = (function () {
       E.stat('happy', -6);
       out.push({ sho: 'My three rimmed out at the buzzer. Our season is over.', ath: 'I drove, but they blocked my layup at the rim. Our season is over.', pla: 'I found the open man, but the shot was off. Our season is over.' }[how]);
       q.result = RESULTS[d.round];
+      if (d.rival && x.rival && x.rival.n === d.rival) { x.rival.l++; x.rival.heat = Math.min(100, x.rival.heat + 20); out.push(d.rival + ' got the last word this time.'); }
       if (r && r.champ) out.push('The ' + r.champ + ' went on to win the title.');
       return bad(out.join(' '));
     }
     x.clutch = (x.clutch || 0) + 1; E.fame(how === 'pla' ? 2 : 5); E.stat('happy', 10);
     if (how !== 'pla') E.achieve('hoops_clutch');
+    if (d.rival && x.rival && x.rival.n === d.rival) { x.rival.w++; x.rival.heat = Math.min(100, x.rival.heat + 25); x.rival.po = (x.rival.po || 0) + 1; E.fame(3); }
     out.push({ sho: '🎯 I buried a step-back three at the buzzer to win it!', ath: '💥 I tied it at the rim and we won in overtime!', pla: '🧠 I drew two defenders and found the open man for the game-winner!' }[how]);
     var round = r && r.round != null ? r.round : d.round + 1;
     q.result = RESULTS[round];
+    if (d.rival && x.rival && x.rival.n === d.rival) out.push('I sent ' + d.rival + ' home. 😤');
     if (round === 4) { out.push('We rode that shot all the way.'); champion(x, q.league, out, !!(r && r.fmvp)); }
     else { out.push('We won the series, then lost in the ' + ROUNDS[round] + '.'); if (r && r.champ) out.push('The ' + r.champ + ' won the title.'); }
     return good(out.join(' '));
   }
+  // ------------------------------------------------------------ rivalry
+  // A real star on another team the media can't stop comparing me to: a
+  // national-TV showdown each season, a running head-to-head record, and
+  // higher stakes if we meet in the playoffs.
+  function lgState() { return TL.league ? TL.league.st(me().gender) : null; }
+  function rivalTeam(r) { var L = lgState(); if (!L) return null; var p = L.pl.filter(function (q) { return q.n === r.n; })[0]; return p && L.teams[p.t] ? L.teams[p.t].n : null; }
+  function rivalRating(r) { var L = lgState(), p = L && L.pl.filter(function (q) { return q.n === r.n; })[0]; return p ? p.o : r.o || 80; }
+  function pickRival(x) {
+    var L = lgState(); if (!L) return null;
+    var pool = L.pl.filter(function (p) { return L.teams[p.t] && L.teams[p.t].n !== x.team && p.o >= Math.max(78, x.ovr - 8) && (x.rivals || []).indexOf(p.n) < 0; });
+    pool.sort(function (a, b) { return (a.pos === x.pos ? 0 : 6) + Math.abs(a.o - x.ovr) - ((b.pos === x.pos ? 0 : 6) + Math.abs(b.o - x.ovr)); });
+    var p = U.pick(pool.slice(0, 3)); return p ? { n: p.n, o: p.o, w: 0, l: 0, heat: 20, since: S().year } : null;
+  }
+  function rivalSeason(x, played, gp) {
+    var r = x.rival;
+    if (r && !rivalTeam(r)) {
+      E.log('⚔️ ' + r.n + ' retired. Our rivalry ends ' + (r.w > r.l ? 'with me on top, ' : r.w < r.l ? 'with ' + r.n + ' ahead, ' : 'all square, ') + r.w + '-' + r.l + '.');
+      (x.rivals = x.rivals || []).push(r.n); (x.pastRivals = x.pastRivals || []).push({ n: r.n, w: r.w, l: r.l });
+      x.rival = r = null;
+    }
+    if (!r && x.ovr >= 76 && U.chance(0.6)) {
+      r = x.rival = pickRival(x);
+      if (r) E.log('⚔️ A rivalry is born: the media can\'t stop comparing me to ' + r.n + ' of the ' + rivalTeam(r) + '.');
+      return;
+    }
+    if (r && played >= gp * 0.3) S().pending.push({ id: 'hoops_rival', data: { year: S().year } });
+  }
+  def('hoops_rival', { cond: pro, build: function (d) {
+    var x = h(), r = x && x.rival, team = r && rivalTeam(r);
+    if (!r || !team || (d && d.year !== S().year - 1 && d.year !== S().year)) return null;
+    var o = rivalRating(r), pr = me().gender === 'F' ? ['her', 'she'] : ['him', 'he'];
+    var go = function (k, base, scale, heat) {
+      var a = k === 'sco' ? (attr(x, 'sho') + attr(x, 'ath')) / 2 : attr(x, k), won = U.chance(U.clamp(base + (a - o) / scale + (r.heat - 50) / 400, 0.12, 0.85));
+      var mine = Math.max(8, Math.round((lastSeason(x, d.year) || {}).ppg || 15) + U.rand(won ? 4 : -6, won ? 14 : 4)), his = Math.round(U.rand(won ? 14 : 24, won ? 26 : 38) * (me().gender === 'F' ? 0.8 : 1));
+      r.heat = Math.min(100, r.heat + heat);
+      if (won) { r.w++; E.fame(r.heat >= 70 ? 3 : 2); E.stat('happy', 6); E.log('⚔️ I outdueled ' + r.n + ' on national TV: ' + mine + ' points to ' + his + '. Rivalry: ' + r.w + '-' + r.l + '.', 'good'); return good('We won, and I got the better of ' + r.n + ', ' + mine + ' to ' + his + '. 😤'); }
+      r.l++; E.stat('happy', -3); E.log('⚔️ ' + r.n + ' got the best of me on national TV: ' + his + ' points to my ' + mine + '. Rivalry: ' + r.w + '-' + r.l + '.', 'bad');
+      return bad(r.n + ' had the last laugh, ' + his + ' to ' + mine + '. Next time.');
+    };
+    return { icon: '⚔️', title: 'Rivalry game', text: 'National TV: the ' + team + ' and ' + r.n + ' (' + o + ' OVR) are in town. Everyone\'s talking about our rivalry' + (r.w + r.l ? ' (' + r.w + '-' + r.l + ')' : '') + '. How do I play ' + pr[0] + '?', choices: [
+      { label: '🎯 Go right at ' + pr[0] + ' (scoring ' + Math.round((attr(x, 'sho') + attr(x, 'ath')) / 2) + ')', run: function () { return go('sco', 0.45, 45, 18); } },
+      { label: '🔒 Guard ' + pr[0] + ' myself (defense ' + attr(x, 'def') + ')', run: function () { return go('def', 0.45, 40, 14); } },
+      { label: '🤝 Let the team beat ' + pr[0] + ' (playmaking ' + attr(x, 'pla') + ')', run: function () { return go('pla', 0.52, 70, 6); } }
+    ] };
+  } });
   def('hoops_contest', { cond: pro, build: function (d) {
     var x = h();
     if (!lastSeason(x, d && d.year) || !d.kind) return null;
@@ -691,6 +741,7 @@ TL.hoops = (function () {
       if (x.high) rows.push({ icon: '🔥', label: 'Career high: ' + x.high.pts + ' points', sub: 'Against the ' + x.high.opp + ', ' + x.high.year });
       if (x.fifty) rows.push({ icon: '🔥', label: U.plural(x.fifty, '50-point game') });
       if (x.clutch) rows.push({ icon: '🧊', label: U.plural(x.clutch, 'Game 7 game-winner') });
+      (x.pastRivals || []).concat(x.rival ? [x.rival] : []).forEach(function (r) { rows.push({ icon: '⚔️', label: 'Rivalry with ' + r.n, sub: (r === x.rival ? 'Ongoing · ' : '') + 'head-to-head ' + r.w + '-' + r.l, right: r.w > r.l ? 'Won' : r.w < r.l ? 'Lost' : 'Even' }); });
       if (x.hof) rows.push({ icon: '🏛️', label: 'Naismith Hall of Fame', sub: 'Inducted in ' + x.hof });
       if (!rows.length) rows.push({ info: true, html: '<p class="muted">No hardware yet. Go win something.</p>' });
       return rows;
@@ -763,6 +814,7 @@ TL.hoops = (function () {
         var gpNow = S().flags.hoopsPlan && S().flags.hoopsPlan.y === S().year ? S().flags.hoopsPlan.k : null;
         items.push({ icon: '📋', label: 'Game plan', sub: gpNow ? { score: 'Score-first this season', team: 'Team-first this season', def: 'Lockdown defense this season' }[gpNow] : 'Pick how I play this season', onClick: gamePlan });
         if (TL.league && homeLeague() && TL.league.rosterOf(me().gender, x.team).length) items.push({ icon: '👥', label: 'My teammates', sub: teamLine(x), onClick: teammates });
+        if (x.rival && rivalTeam(x.rival)) items.push({ info: true, html: '<div class="small muted">⚔️ Rival: <b>' + U.esc(x.rival.n) + '</b> (' + U.esc(rivalTeam(x.rival)) + ') · head-to-head ' + x.rival.w + '-' + x.rival.l + (x.rival.po ? ' · ' + U.plural(x.rival.po, 'playoff knockout') : '') + '</div>' });
         items.push({ section: 'Off the court' });
         items.push({ icon: '🎤', label: 'Press conference', onClick: function () {
           if (!onceAYear('hoops_press')) return done(nope('One press conference a year is plenty.'));
