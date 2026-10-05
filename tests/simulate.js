@@ -15,7 +15,7 @@ var storage = { getItem: function (k) { return k in mem ? mem[k] : null; }, setI
 var ctx = { console: console, Math: SMath, Date: Date, JSON: JSON, localStorage: storage };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'talents', 'celebs', 'extras', 'world', 'hoops', 'nba', 'nbarosters', 'league', 'hoopsocial', 'phone', 'mind', 'social', 'military', 'sports', 'creator', 'acting', 'specials', 'music', 'prosports', 'politics', 'work', 'business', 'health', 'market', 'history', 'ancient', 'medieval', 'viking', 'eras', 'mapdata', 'maps', 'recap'].forEach(function (f) {
+['util', 'data', 'realdata', 'logofiles', 'logos', 'engine', 'events', 'actions', 'features', 'talents', 'celebs', 'extras', 'world', 'hoops', 'nba', 'nbarosters', 'league', 'hoopsocial', 'phone', 'mind', 'social', 'military', 'sports', 'creator', 'acting', 'specials', 'wrestling', 'music', 'prosports', 'politics', 'work', 'business', 'health', 'market', 'history', 'ancient', 'medieval', 'viking', 'eras', 'mapdata', 'maps', 'recap'].forEach(function (f) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../game/js/' + f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
 });
 var TL = ctx.TL;

@@ -300,11 +300,13 @@ TL.specials = (function () {
   function rung(id, rep) { var L = C[id].ladder, r = L[0]; L.forEach(function (q) { if (rep >= q[0]) r = q; }); return r; }
   function title(job) {
     var j = job || S().job, x = j && st(j.special);
+    if (j && j.special === 'wrestler' && TL.wrestling && S().wr) return TL.wrestling.title();
     if (!x) return 'Freelancer';
     var t = rung(j.special, x.rep)[1];
     return j.special === 'chef' && x.rest ? 'Chef-Owner' : j.special === 'model' && me().gender === 'M' && t === 'Supermodel' ? 'Supermodel' : t;
   }
   function summary(id) {
+    if (id === 'wrestler' && TL.wrestling) return TL.wrestling.summary();
     var x = st(id);
     if (x && x.youth && !x.retired) return 'Junior · reputation ' + Math.round(x.rep) + (me().age >= 14 ? ' · ready to turn pro' : '');
     if (!x) return C[id].blurb || { model: 'Agencies, castings, Fashion Week · looks 55+', chef: 'Kitchens, cookbooks, your own restaurant', gamer: 'Tournaments, teams, streaming · 1997+' }[id];
@@ -498,6 +500,7 @@ TL.specials = (function () {
   // ------------------------------------------------------------ yearly
   function year() {
     var s = S(), j = s.job, id = j.special, x = st(id), c = C[id], m = me();
+    if (id === 'wrestler' && TL.wrestling && s.wr && !s.wr.retired) return TL.wrestling.year();
     if (!x) return 0;
     var r = rung(id, x.rep), earn = E.$(r[2]) + (x.earn || 0); x.earn = 0;
     // Workload: three gigs, two trainings and a big swing every year wears anyone down.
@@ -709,6 +712,7 @@ TL.specials = (function () {
 
   // ------------------------------------------------------------ menus
   function menu(id) {
+    if (id === 'wrestler' && TL.wrestling) return TL.wrestling.menu(); // pro wrestling has its own module (js/wrestling.js)
     ui().menu(C[id].icon + ' ' + C[id].name, function () {
       var x = st(id), c = C[id], j = S().job, on = j && j.special === id, items = [];
       if (!x || !on) {
