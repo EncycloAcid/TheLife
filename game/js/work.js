@@ -153,9 +153,49 @@ TL.work = (function () {
     return done('I mentored ' + (cw ? cw.first : 'a new hire') + '. Teaching someone else made me better at my job too. 🧑‍🏫');
   }
 
+  // ------------------------------------------------------------ office rival
+  // A coworker gunning for the same promotion. Their edge (0-40) cuts my odds.
+  function standing(r) { return r.edge >= 22 ? 'ahead of me' : r.edge >= 10 ? 'neck and neck' : 'falling behind'; }
+  function rivalry() {
+    var j = S().job, r = j.rival;
+    if (!r) return done(nope('Nobody is competing with me right now.'));
+    if (count('wk_rival')) return done(nope('I already dealt with ' + r.first + ' this year.'));
+    var b = boss(j), m = me(), win = U.clamp(0.3 + (m.smarts + m.looks - 110) / 250 + (b.trait === 'Supportive' ? 0.1 : 0), 0.15, 0.7);
+    ui().choose('⚔️ ' + r.first + ' ' + r.last, r.first + ' wants the same promotion I do, and right now ' + (r.gender === 'F' ? 'she\'s ' : 'he\'s ') + standing(r) + '.', [
+      { label: 'Outwork ' + (r.gender === 'F' ? 'her' : 'him') + ' (long hours, costs some health)', fn: function () {
+        bump('wk_rival'); r.edge = U.clamp(r.edge - U.rand(5, 10), 0, 40); j.perf = U.clamp(j.perf + 1, 0, 100); E.stat('health', -5); E.stat('happy', -2);
+        return done('I was first in and last out all year. ' + r.first + ' noticed. 💼');
+      } },
+      { label: 'Try to make ' + (r.gender === 'F' ? 'her' : 'him') + ' an ally (' + Math.round(win * 100) + '%)', fn: function () {
+        bump('wk_rival');
+        if (U.chance(win)) { j.rival = null; j.rivalCool = 3; j.perf = U.clamp(j.perf + 3, 0, 100); E.stat('happy', 4); E.log('🤝 ' + r.first + ' and I stopped competing and started covering for each other.', 'good'); return done(good('Over lunch, ' + r.first + ' and I agreed there\'s room for both of us. We\'re allies now. 🤝')); }
+        r.edge = U.clamp(r.edge + 3, 0, 40); return done('I tried to be friendly. ' + r.first + ' smiled and then took credit for my slides.');
+      } },
+      { label: 'Undermine ' + (r.gender === 'F' ? 'her' : 'him') + ' (risky, bad karma)', fn: function () {
+        bump('wk_rival'); E.karma(-6);
+        if (U.chance(b.trait === 'Political' ? 0.25 : 0.35)) { brel(b, -15); j.perf = U.clamp(j.perf - 8, 0, 100); r.edge = U.clamp(r.edge + 8, 0, 40); E.log('😬 Everyone found out I tried to sabotage ' + r.first + '.', 'bad'); return done(bad('It got back to ' + b.first + '. Now I\'m the one who looks bad. 😬')); }
+        r.edge = U.clamp(r.edge - U.rand(12, 20), 0, 40); return done('A few well-timed comments, and ' + r.first + '\'s star has dimmed. 🐍');
+      } }
+    ]);
+  }
+  // Once a year: a rival may appear, gain ground, win, or give up.
+  function rivalYear(j, promoted) {
+    var c = D.career(j.career), top = j.level >= c.levels.length - 1, r = j.rival;
+    if (top) { j.rival = null; return; }
+    if (!r) {
+      if (j.rivalCool) { j.rivalCool--; return; }
+      if (j.years >= 1 && U.chance(0.2)) { var g = U.pick(['M', 'F']), n = E.randomName(g); j.rival = { first: n.first, last: n.last, gender: g, edge: U.rand(8, 20) }; E.log('⚔️ ' + n.first + ' ' + n.last + ' started at work, and ' + (g === 'F' ? 'she' : 'he') + ' wants the same promotion I do.'); }
+      return;
+    }
+    if (promoted) { j.rival = null; j.rivalCool = 2; E.log('😤 ' + r.first + ' congratulated me on the promotion through gritted teeth.'); return; }
+    r.edge = U.clamp(r.edge + U.rand(0, 4), 0, 40);
+    if (r.edge >= 24 && U.chance(0.2)) { j.rival = null; j.rivalCool = 2; E.stat('happy', -6); E.log('😞 ' + r.first + ' ' + r.last + ' got the promotion I wanted.', 'bad'); return; }
+    if (r.edge <= 3) { j.rival = null; j.rivalCool = 2; E.log('🏳️ ' + r.first + ' gave up on the promotion race and transferred to another team.'); }
+  }
+
   // ------------------------------------------------------------ the year
   // Extra promotion odds from my boss and a project win.
-  function promoBonus(j) { if (!regular(j)) return 0; var b = boss(j); return (b.rel - 50) / 300 + (j.won ? 0.1 : 0) + (b.trait === 'Demanding' && j.perf >= 85 ? 0.05 : 0); }
+  function promoBonus(j) { if (!regular(j)) return 0; var b = boss(j); return (b.rel - 50) / 300 - (j.rival ? j.rival.edge / 200 : 0) + (j.won ? 0.1 : 0) + (b.trait === 'Demanding' && j.perf >= 85 ? 0.05 : 0); }
   // The annual review: a rating, a merit raise, and a word on promotion.
   function review(j, promoted) {
     if (!regular(j) || !S().job || S().job !== j) { if (j) j.won = false; return; }
@@ -171,6 +211,7 @@ TL.work = (function () {
     var note = promoted ? '' : top ? '' : j.perf >= 70 ? (wait ? ' I\'m on track for a promotion in ' + U.plural(wait, 'year') + '.' : ' A promotion could come any time now.') : r[0] === 'Performance plan' ? ' I\'m on thin ice.' : '';
     if (!promoted) E.log('📋 Performance review: ' + r[0] + (r[1] > 1 ? ' (merit raise)' : '') + '.' + note, r[0] === 'Outstanding' ? 'good' : r[0] === 'Performance plan' ? 'bad' : '');
     j.won = false;
+    rivalYear(j, promoted);
     // Bosses come and go.
     if (U.chance(0.07)) { var old = bossName(b); j.boss = null; var nb = boss(j); E.log('👔 My boss ' + old + ' left the company. My new boss is ' + bossName(nb) + '.'); }
     else brel(b, U.rand(-4, 2));
@@ -180,7 +221,7 @@ TL.work = (function () {
     var b = boss(j), c = D.career(j.career), top = j.level >= c.levels.length - 1;
     var next = top ? 'Top of the ladder' : 'Next: ' + c.levels[j.level + 1][0] + ' (' + (j.perf >= 70 ? (j.levelYears >= 2 ? 'ready' : 'in ' + U.plural(2 - j.levelYears, 'year')) : 'needs 70+ performance') + ')';
     return '<div class="minibar"><span>Boss</span><div class="track"><div class="fill ' + (b.rel >= 66 ? 'hi' : b.rel >= 33 ? 'mid' : 'lo') + '" style="width:' + b.rel + '%"></div></div></div>' +
-      '<div class="wk-line">👔 ' + U.esc(bossName(b)) + ' · ' + traitName(b) + '</div><div class="wk-line">📈 ' + U.esc(next) + (j.review ? ' · last review: ' + j.review : '') + '</div>';
+      '<div class="wk-line">👔 ' + U.esc(bossName(b)) + ' · ' + traitName(b) + '</div><div class="wk-line">📈 ' + U.esc(next) + (j.review ? ' · last review: ' + j.review : '') + '</div>' + (j.rival ? '<div class="wk-line">⚔️ Rival: ' + U.esc(j.rival.first + ' ' + j.rival.last) + ' · ' + standing(j.rival) + '</div>' : '');
   }
   function items(j) {
     if (!regular(j)) return [];
@@ -190,7 +231,7 @@ TL.work = (function () {
       { icon: '🗣️', label: 'One-on-one with ' + j.boss.first, sub: count('wk_1on1') ? 'Done this year' : 'Feedback, ideas or flattery', disabled: count('wk_1on1') > 0, onClick: oneOnOne },
       { icon: '💰', label: 'Ask for a raise', disabled: count('wk_raise') > 0, sub: count('wk_raise') ? 'Asked this year' : '', onClick: raise },
       { icon: '🔍', label: 'Look for a better job', sub: count('wk_hunt') ? 'Looked this year' : 'Get an offer to take or negotiate with', disabled: count('wk_hunt') > 0, onClick: hunt }
-    ].concat(j.level >= 2 ? [{ icon: '🧑‍🏫', label: 'Mentor a coworker', disabled: count('wk_mentor') > 0, onClick: mentor }] : []);
+    ].concat(j.rival ? [{ icon: '⚔️', label: 'Deal with ' + j.rival.first, sub: count('wk_rival') ? 'Done this year' : 'Outwork, befriend or undermine my rival', disabled: count('wk_rival') > 0, onClick: rivalry }] : []).concat(j.level >= 2 ? [{ icon: '🧑‍🏫', label: 'Mentor a coworker', disabled: count('wk_mentor') > 0, onClick: mentor }] : []);
   }
   return { regular: regular, boss: boss, card: card, items: items, promoBonus: promoBonus, review: review };
 })();
