@@ -606,6 +606,46 @@ TL.engine = (function () {
     s.job = null;
     stat('happy', -20);
   }
+  // Public pension from 67 (Social Security in the US, a state pension
+  // elsewhere) for anyone who worked at least ten years, in today's money.
+  function statePension() {
+    var s = S(), m = me();
+    if (ancient() || s.year < 1940 || m.age < 67 || s.prison) return 0;
+    if (!s.flags.spBase) {
+      var yrs = s.jobHistory.reduce(function (a, h) { return a + (h.years || 0); }, 0) + (s.job ? s.job.years || 0 : 0);
+      if (yrs < 10) return 0;
+      s.flags.spBase = Math.round(24000 * Math.min(35, yrs) / 35 * (country().life >= 75 ? 1 : 0.6));
+      log('📬 I started collecting ' + (country().name === 'United States' ? 'Social Security' : 'my state pension') + ': ' + fmt($(s.flags.spBase)) + ' a year.', 'good');
+    }
+    return $(s.flags.spBase);
+  }
+  // How I spend retirement, chosen on the Career screen and lived every year.
+  var RET_PLANS = {
+    travel: ['✈️', 'Travel the world', 'Lots of happiness, but trips cost money every year'],
+    family: ['👪', 'Be there for family', 'Closer to my kids and grandkids'],
+    volunteer: ['🙏', 'Volunteer', 'Good karma and a sense of purpose'],
+    relax: ['🌻', 'Take it easy', 'Gardening, golf and naps keep me healthy']
+  };
+  var TRIPS = ['cruised the Mediterranean', 'saw the northern lights in Norway', 'toured Japan in cherry blossom season', 'went on safari in Kenya', 'drove across the country in an RV', 'spent a month in Italy', 'visited the Great Barrier Reef', 'walked the Camino de Santiago'];
+  function retirementYear() {
+    var s = S(), p = s.retPlan;
+    if (!s.retired || !p || s.prison || ancient()) return 0;
+    if (p === 'travel') {
+      var cost = $(12000);
+      if (s.money < cost) { s.retPlan = 'relax'; log('🧳 I can\'t afford to keep traveling. Time to take it easy at home.'); return 0; }
+      stat('happy', 4);
+      if (U.chance(0.4)) log('✈️ This year I ' + U.pick(TRIPS) + '.', 'good');
+      return cost;
+    }
+    if (p === 'family') {
+      var fam = people(['child', 'grandchild']);
+      fam.forEach(function (q) { rel(q, 4); });
+      stat('happy', fam.length ? 3 : 1);
+      if (fam.length && U.chance(0.25)) log('👪 I spent the year with ' + (people('grandchild').length ? 'my grandkids' : 'my kids') + '. Those are the best days.', 'good');
+    } else if (p === 'volunteer') { karma(2); stat('happy', 2); }
+    else if (p === 'relax') { stat('health', 2); stat('happy', 1); }
+    return 0;
+  }
   function retire() {
     var s = S();
     if (!s.job || s.job.partTime) return { ok: false, msg: 'I have nothing to retire from.' };
@@ -787,6 +827,9 @@ TL.engine = (function () {
     // Back at a full-time job means I'm not retired anymore (the pension waits).
     if (s.retired && s.job && !s.job.partTime) { s.retired = false; log('💼 Working full-time again, I\'m officially out of retirement. My pension is on hold.'); }
     if (s.retired && s.pension) { income += s.pension; lines.push('Pension ' + fmt(s.pension)); }
+    var sp = statePension();
+    if (sp) { income += sp; lines.push((country().name === 'United States' ? 'Social Security ' : 'State pension ') + fmt(sp)); }
+    expense += retirementYear();
     if (s.social.platform && s.followers >= 10000) income += $(Math.round(s.followers * 0.01));
     // cost of living
     if (m.age >= 18 && !s.prison) {
@@ -1620,7 +1663,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
+    achieve: achieve, netWorth: netWorth, RET_PLANS: RET_PLANS, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,

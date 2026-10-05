@@ -666,7 +666,17 @@ TL.actions = (function () {
         if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
         if (me().age >= 55 && !j.partTime && !j.mil && !j.acting && !j.music && !j.pro) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
         if (!j.mil && !j.pro) items.push({ icon: '🚪', label: j.coach ? 'Step down as coach' : j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.coach ? 'Step down?' : j.hoops ? 'Retire?' : 'Quit?', j.coach ? 'Leave the bench for good?' : j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.coach) { E.quitJob(true); return done('I stepped down as ' + (j.title || 'coach').toLowerCase() + '. 📋'); } if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
-      } else if (s.retired) items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.</p>' });
+      } else if (s.retired) {
+        var sp = E.statePension();
+        items.push({ info: true, html: '<p>I\'m retired' + (s.pension ? ' with a pension of ' + E.fmt(s.pension) + '/yr' : '') + '.' + (sp ? ' ' + (S().country === 'United States' ? 'Social Security' : 'State pension') + ': ' + E.fmt(sp) + '/yr.' : me().age < 67 && !(TL.ancient && TL.ancient.on()) && S().year >= 1940 ? ' My public pension starts at 67.' : '') + '</p>' });
+        if (!(TL.ancient && TL.ancient.on())) {
+          items.push({ section: 'How I spend retirement' });
+          Object.keys(E.RET_PLANS).forEach(function (k) {
+            var pl = E.RET_PLANS[k];
+            items.push({ icon: pl[0], label: pl[1] + (s.retPlan === k ? ' ✓' : ''), sub: pl[2], onClick: function () { s.retPlan = k; done(good('From now on: ' + pl[1].toLowerCase() + '.')); } });
+          });
+        }
+      } else if (!s.job && me().age >= 62 && !s.prison && !s.edu) items.push({ icon: '🌅', label: 'Retire', sub: 'Stop looking for work', onClick: function () { s.retired = true; E.achieve('retired'); done(good('I\'m officially retired.')); } });
       if (s.job || s.retired || s.hoops || s.mil || s.acting || s.music || s.pro) items.push({ section: 'Other paths' });
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
