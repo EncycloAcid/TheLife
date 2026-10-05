@@ -113,12 +113,55 @@ TL.ui = (function () {
     ]);
   }
   var TEXT_SIZES = [['Small', 14], ['Normal', 16], ['Large', 18], ['Extra large', 20]];
+  // Material You color: every surface, container and accent comes from one
+  // seed hue, as tonal steps (0 = black, 100 = white) in OKLCH, so the whole
+  // app re-tints when you pick a color in Settings.
+  var SEEDS = [['violet', 'Violet', 292, '💜'], ['ocean', 'Ocean', 245, '🌊'], ['forest', 'Forest', 150, '🌿'], ['sunset', 'Sunset', 45, '🌅'], ['rose', 'Rose', 5, '🌸'], ['ios', 'Classic blue', 258, '🔵']];
+  function oklch(L, C, h) {
+    // OKLCH -> sRGB hex, lowering chroma until the color fits the gamut.
+    for (var c = C; c >= 0; c -= 0.004) {
+      var a = c * Math.cos(h * Math.PI / 180), b = c * Math.sin(h * Math.PI / 180);
+      var l_ = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3), m_ = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3), s_ = Math.pow(L - 0.0894841775 * a - 1.2914855480 * b, 3);
+      var rgb = [4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_, -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_, -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_];
+      if (rgb.every(function (v) { return v >= -0.0005 && v <= 1.0005; }) || c < 0.004) {
+        return '#' + rgb.map(function (v) { v = Math.max(0, Math.min(1, v)); v = v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; return ('0' + Math.round(v * 255).toString(16)).slice(-2); }).join('');
+      }
+    }
+  }
+  function tone(h, c, t) { return oklch(Math.pow(t / 100, 0.86), c, h); }
+  function palette(hue, dark) {
+    var P = function (t) { return tone(hue, 0.15, t); }, Pc = function (t) { return tone(hue, t > 50 ? 0.07 : 0.09, t); }, S = function (t) { return tone(hue, 0.045, t); }, T = function (t) { return tone(hue + 60, 0.11, t); };
+    var N = function (t) { return tone(hue, 0.009, t); }, V = function (t) { return tone(hue, 0.022, t); };
+    return dark ? {
+      '--primary': P(80), '--on-primary': P(20), '--primary-c': Pc(30), '--on-primary-c': P(90),
+      '--secondary-c': S(30), '--on-secondary-c': S(90), '--tertiary': T(80), '--tertiary-c': T(30), '--on-tertiary-c': T(90),
+      '--bg': N(6), '--cell': N(12), '--cell-2': N(17), '--surface-low': N(10), '--surface-high': N(17), '--surface-top': N(22),
+      '--text': N(92), '--muted': V(78), '--faint': V(50), '--sep': V(28), '--outline': V(60),
+      '--tint': P(80), '--tint-bg': Pc(30), '--material': N(17), '--glass': N(15) + 'E0'
+    } : {
+      '--primary': P(40), '--on-primary': P(100), '--primary-c': Pc(90), '--on-primary-c': P(10),
+      '--secondary-c': S(90), '--on-secondary-c': S(10), '--tertiary': T(40), '--tertiary-c': T(90), '--on-tertiary-c': T(10),
+      '--bg': N(96), '--cell': N(99), '--cell-2': N(93), '--surface-low': N(97), '--surface-high': N(92), '--surface-top': N(90),
+      '--text': N(10), '--muted': V(35), '--faint': V(65), '--sep': V(86), '--outline': V(50),
+      '--tint': P(40), '--tint-bg': Pc(90), '--material': N(95), '--glass': N(97) + 'D9'
+    };
+  }
+  function isDark() {
+    var t = document.documentElement.getAttribute('data-theme');
+    return t === 'dark' || (!t && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
+  }
+  function applyColor(st) {
+    var seed = SEEDS.filter(function (x) { return x[0] === (st.color || 'violet'); })[0] || SEEDS[0], root = document.documentElement.style, pal = palette(seed[2], isDark());
+    Object.keys(pal).forEach(function (k) { root.setProperty(k, pal[k]); });
+  }
+  if (window.matchMedia) try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { applySettings(); }); } catch (e) { }
   var THEMES = [['system', 'Match my phone', '📱'], ['dark', 'Dark', '🌙'], ['light', 'Light', '☀️']];
   function applySettings() {
     var st = E.loadGlobal().settings || {};
     document.documentElement.style.fontSize = (st.textSize || 16) + 'px';
     if (st.theme && st.theme !== 'system') document.documentElement.setAttribute('data-theme', st.theme);
     else document.documentElement.removeAttribute('data-theme');
+    applyColor(st);
     syncSystemBars();
   }
   // Tell the Android wrapper which color and icon style to use for the
@@ -139,6 +182,8 @@ TL.ui = (function () {
       function set(key, val) { g.settings = g.settings || {}; g.settings[key] = val; E.saveGlobal(g); applySettings(); renderSheet(); }
       return [{ section: 'Theme' }].concat(THEMES.map(function (t) {
         return { icon: t[2], label: t[1], radio: t[0] === theme, onClick: function () { set('theme', t[0]); } };
+      }), [{ section: 'Color' }], SEEDS.map(function (c) {
+        return { icon: '<i class="swatch" style="background:' + tone(c[2], 0.15, isDark() ? 80 : 40) + '"></i>', label: c[1], radio: c[0] === (st.color || 'violet'), onClick: function () { set('color', c[0]); } };
       }), [{ section: 'Text size' }], TEXT_SIZES.map(function (t) {
         return { icon: '<b style="font-size:' + (t[1] - 3) + 'px">Aa</b>', label: t[0], radio: t[1] === size, onClick: function () { set('textSize', t[1]); } };
       }), [{ section: 'Feel' }, { icon: '📳', label: 'Haptics', sub: 'A light buzz when you age up and choose', toggle: st.haptics !== false, onClick: function () { set('haptics', st.haptics === false); haptic(); } }], [{ section: 'Data' }, { icon: '🗑️', label: 'Delete all data', sub: 'Lives, achievements and the graveyard', danger: true, onClick: function () {

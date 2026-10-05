@@ -1,0 +1,175 @@
+/* TheLife — iOS × Material 3 Expressive (v2.4)
+ * Layered over style.css. iOS keeps the structure: page sheets with a grabber,
+ * the card stack behind them, a floating glass tab bar, banners and springs.
+ * Material 3 Expressive brings the color and shape: tonal roles from one seed
+ * (js/ui.js applyColor sets them), bigger and more varied corner shapes,
+ * segmented lists, pill buttons, a shape-shifting age button and a scalloped
+ * "cookie" avatar. */
+
+:root {
+  /* Fallback tonal roles (violet seed); js/ui.js replaces them at startup. */
+  --primary: #5b40a1; --on-primary: #fff; --primary-c: #e2defd; --on-primary-c: #0c0026;
+  --secondary-c: #e2deff; --on-secondary-c: #0a0519; --tertiary: #83395d; --tertiary-c: #fed5e6; --on-tertiary-c: #1a000b;
+  --surface-low: #f6f6fa; --surface-high: #e9e8f0; --surface-top: #e3e2ea; --outline: #77767f;
+  /* Shape scale */
+  --r-xs: 8px; --r-s: 12px; --r-m: 16px; --r-l: 24px; --r-xl: 28px; --r-full: 999px;
+  --cookie: polygon(100.0% 50.0%, 98.8% 54.3%, 95.8% 58.1%, 92.5% 61.4%, 90.4% 64.7%, 89.9% 68.6%, 90.3% 73.2%, 90.1% 78.1%, 88.3% 82.1%, 84.6% 84.6%, 79.9% 85.6%, 75.3% 86.1%, 71.5% 87.2%, 68.6% 89.9%, 65.9% 93.7%, 62.7% 97.3%, 58.7% 99.2%, 54.3% 98.8%, 50.0% 96.5%, 46.2% 93.9%, 42.5% 92.3%, 38.6% 92.5%, 34.1% 93.7%, 29.3% 94.4%, 25.0% 93.3%, 21.9% 90.1%, 20.1% 85.6%, 18.9% 81.1%, 17.1% 77.6%, 13.9% 75.3%, 9.7% 73.2%, 5.6% 70.7%, 3.0% 67.1%, 2.7% 62.7%, 4.2% 58.1%, 6.1% 53.8%, 7.0% 50.0%, 6.1% 46.2%, 4.2% 41.9%, 2.7% 37.3%, 3.0% 32.9%, 5.6% 29.3%, 9.7% 26.7%, 13.9% 24.7%, 17.1% 22.4%, 18.9% 18.9%, 20.1% 14.4%, 21.9% 9.9%, 25.0% 6.7%, 29.3% 5.6%, 34.1% 6.3%, 38.6% 7.5%, 42.5% 7.7%, 46.2% 6.1%, 50.0% 3.5%, 54.3% 1.2%, 58.7% 0.8%, 62.7% 2.7%, 65.9% 6.3%, 68.6% 10.1%, 71.5% 12.8%, 75.3% 13.9%, 79.9% 14.4%, 84.6% 15.4%, 88.3% 17.9%, 90.1% 21.9%, 90.3% 26.8%, 89.9% 31.4%, 90.4% 35.3%, 92.5% 38.6%, 95.8% 41.9%, 98.8% 45.7%);
+  --sunny: polygon(100.0% 50.0%, 99.2% 53.2%, 97.1% 56.2%, 94.9% 58.9%, 93.5% 61.6%, 93.3% 64.7%, 93.9% 68.2%, 94.2% 71.8%, 93.3% 75.0%, 91.0% 77.4%, 87.7% 78.9%, 84.4% 80.2%, 81.8% 81.8%, 80.2% 84.4%, 78.9% 87.7%, 77.4% 91.0%, 75.0% 93.3%, 71.8% 94.2%, 68.2% 93.9%, 64.7% 93.3%, 61.6% 93.5%, 58.9% 94.9%, 56.2% 97.1%, 53.2% 99.2%, 50.0% 100.0%, 46.8% 99.2%, 43.8% 97.1%, 41.1% 94.9%, 38.4% 93.5%, 35.3% 93.3%, 31.8% 93.9%, 28.2% 94.2%, 25.0% 93.3%, 22.6% 91.0%, 21.1% 87.7%, 19.8% 84.4%, 18.2% 81.8%, 15.6% 80.2%, 12.3% 78.9%, 9.0% 77.4%, 6.7% 75.0%, 5.8% 71.8%, 6.1% 68.2%, 6.7% 64.7%, 6.5% 61.6%, 5.1% 58.9%, 2.9% 56.2%, 0.8% 53.2%, 0.0% 50.0%, 0.8% 46.8%, 2.9% 43.8%, 5.1% 41.1%, 6.5% 38.4%, 6.7% 35.3%, 6.1% 31.8%, 5.8% 28.2%, 6.7% 25.0%, 9.0% 22.6%, 12.3% 21.1%, 15.6% 19.8%, 18.2% 18.2%, 19.8% 15.6%, 21.1% 12.3%, 22.6% 9.0%, 25.0% 6.7%, 28.2% 5.8%, 31.8% 6.1%, 35.3% 6.7%, 38.4% 6.5%, 41.1% 5.1%, 43.8% 2.9%, 46.8% 0.8%, 50.0% 0.0%, 53.2% 0.8%, 56.2% 2.9%, 58.9% 5.1%, 61.6% 6.5%, 64.7% 6.7%, 68.2% 6.1%, 71.8% 5.8%, 75.0% 6.7%, 77.4% 9.0%, 78.9% 12.3%, 80.2% 15.6%, 81.8% 18.2%, 84.4% 19.8%, 87.7% 21.1%, 91.0% 22.6%, 93.3% 25.0%, 94.2% 28.2%, 93.9% 31.8%, 93.3% 35.3%, 93.5% 38.4%, 94.9% 41.1%, 97.1% 43.8%, 99.2% 46.8%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #cbbeff; --on-primary: #2c1660; --primary-c: #432a87; --on-primary-c: #e8e0ff;
+    --secondary-c: #3c3654; --on-secondary-c: #e6e0fa; --tertiary: #f2b4d0; --tertiary-c: #643050; --on-tertiary-c: #ffd8e8;
+    --surface-low: #19181d; --surface-high: #28272d; --surface-top: #333238; --outline: #928f9b;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #cbbeff; --on-primary: #2c1660; --primary-c: #432a87; --on-primary-c: #e8e0ff;
+  --secondary-c: #3c3654; --on-secondary-c: #e6e0fa; --tertiary: #f2b4d0; --tertiary-c: #643050; --on-tertiary-c: #ffd8e8;
+  --surface-low: #19181d; --surface-high: #28272d; --surface-top: #333238; --outline: #928f9b;
+}
+
+/* ------------------------------------------------------------ type */
+h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -.035em; }
+.grad-text { color: var(--primary); }
+.section { text-transform: none; font-size: .875rem; font-weight: 650; color: var(--primary); letter-spacing: .005em; margin: 22px 8px 8px; }
+.year-h { text-transform: none; }
+
+/* ------------------------------------------------------------ buttons */
+/* Pills by default; pressing squares them off a little (shape morph). */
+.btn { border-radius: var(--r-full); background: var(--secondary-c); color: var(--on-secondary-c); min-height: 54px; font-weight: 650; transition: transform var(--bounce-ms) var(--bounce), border-radius var(--spring-ms) var(--spring), background-color .2s ease; }
+.btn:active { border-radius: var(--r-m); transform: scale(.97); opacity: 1; }
+.btn.primary { background: var(--primary); color: var(--on-primary); box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--primary) 60%, transparent); }
+.btn.danger { background: var(--red); color: #fff; }
+.btn.ghost { background: transparent; color: var(--primary); }
+.btn.small { min-height: 44px; }
+.icon-btn, .linkbtn { color: var(--primary); }
+
+/* ------------------------------------------------------------ home */
+.logo { width: 108px; height: 108px; border-radius: 0; clip-path: var(--sunny); background: var(--primary-c); box-shadow: none; font-size: 3.4rem; }
+.btn.continue { border-radius: var(--r-xl); background: var(--primary-c); color: var(--on-primary-c); min-height: 80px; padding: 14px 18px; }
+.btn.continue:active { border-radius: var(--r-l); }
+.c-play { background: var(--primary); color: var(--on-primary); clip-path: var(--cookie); border-radius: 0; width: 50px; height: 50px; }
+.c-text small { color: color-mix(in srgb, var(--on-primary-c) 70%, transparent); }
+.c-go { color: var(--on-primary-c); }
+.tiles { background: transparent; border-radius: 0; display: flex; flex-direction: column; gap: 3px; }
+.tile { background: var(--cell); border-radius: var(--r-xs); min-height: 56px; }
+.tile:first-child { border-radius: var(--r-l) var(--r-l) var(--r-xs) var(--r-xs); }
+.tile:last-child { border-radius: var(--r-xs) var(--r-xs) var(--r-l) var(--r-l); }
+.tile:only-child { border-radius: var(--r-l); }
+.tile + .tile::before { display: none; }
+.t-ico { width: 36px; height: 36px; border-radius: var(--r-s); }
+.tile:nth-child(4n+1) .t-ico { background: var(--primary-c); }
+.tile:nth-child(4n+2) .t-ico { background: var(--secondary-c); }
+.tile:nth-child(4n+3) .t-ico { background: var(--tertiary-c); }
+.tile:nth-child(4n+4) .t-ico { background: var(--surface-top); }
+
+/* ------------------------------------------------------------ forms */
+.form label { text-transform: none; font-size: .875rem; font-weight: 600; color: var(--primary); }
+.form input, .form select, #d-input, .custom, .form label.check { border-radius: var(--r-m); background: var(--cell); }
+.form input:focus, .form select:focus { box-shadow: inset 0 0 0 2px var(--primary); }
+.slider input, .form label.check input { accent-color: var(--primary); }
+
+/* ------------------------------------------------------------ header */
+.avatar-ring { width: 50px; height: 50px; border-radius: 0; clip-path: var(--cookie); background: var(--primary-c); }
+.gh-name { font-weight: 700; }
+.gh .money { font-weight: 750; }
+.delta { border-radius: var(--r-s); }
+
+/* ------------------------------------------------------------ life log */
+.year-h { margin: 0 0 8px 4px; }
+.year-h b, .year-h span { display: inline-flex; }
+.year-h b { padding: 3px 10px; border-radius: var(--r-full); background: var(--surface-high); color: var(--text); font-weight: 650; font-size: .75rem; }
+.year.latest .year-h b { background: var(--primary); color: var(--on-primary); }
+.year.latest .year-h { color: var(--primary); }
+.ycard { border-radius: var(--r-l); padding: 4px 0; }
+.year.latest .ycard { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 35%, transparent); }
+.entry + .entry::before { background: var(--sep); transform: none; left: 56px; right: 16px; }
+.e-ico.em { border-radius: var(--r-s); }
+.entry.good .e-ico.em { background: var(--good-bg); }
+.entry.bad .e-ico.em { background: var(--bad-bg); }
+.times { background: var(--secondary-c); color: var(--on-secondary-c); }
+
+/* ------------------------------------------------------------ stats */
+/* Four tonal tiles with chunky rings. */
+.stats { background: transparent; padding: 0; gap: 6px; margin: 4px 14px 0; }
+.stat { background: var(--cell); border-radius: var(--r-l); padding: 10px 2px 8px; transition: border-radius var(--spring-ms) var(--spring); }
+.stats:active .stat { border-radius: var(--r-m); }
+.ring { width: 46px; height: 46px; }
+.ring .rb { stroke-width: 7; stroke-opacity: .18; }
+.ring .rf { stroke-width: 7; }
+.stat.low { background: var(--bad-bg); }
+
+/* ------------------------------------------------------------ tab bar */
+.nav { border-radius: var(--r-full); border: 0; background: var(--glass); box-shadow: 0 8px 28px -8px rgba(0, 0, 0, .28), inset 0 0 0 1px color-mix(in srgb, var(--outline) 22%, transparent); grid-template-columns: 1fr 1fr 80px 1fr 1fr; padding: 6px; }
+.nav-btn { gap: 4px; font-size: .6875rem; font-weight: 600; color: var(--muted); background: none; }
+.nav-btn .ic { width: 56px; height: 30px; padding: 3px 16px; border-radius: var(--r-full); box-sizing: border-box; transition: background-color .3s ease, transform var(--bounce-ms) var(--bounce); }
+.nav-btn.active { background: none; color: var(--text); }
+.nav-btn.active .ic { background: var(--secondary-c); color: var(--on-secondary-c); }
+/* The age button: a big rounded-square FAB that turns round as you press it. */
+.ageup { width: 64px; height: 64px; border-radius: 22px; background: var(--primary-c); color: var(--on-primary-c); font-weight: 700; font-size: .6875rem; box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--primary) 55%, transparent); transition: transform var(--bounce-ms) var(--bounce), border-radius var(--spring-ms) var(--spring); }
+.ageup .ic { width: 26px; height: 26px; transition: transform var(--bounce-ms) var(--bounce); }
+.ageup:active { border-radius: 50%; transform: scale(.9); }
+.ageup:active .ic { transform: rotate(90deg); }
+.ageup.pop { animation: fab-pop var(--bounce-ms) var(--bounce); }
+@keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.84); } 100% { border-radius: 22px; } }
+.ageup.pop::after { border-radius: 22px; border-color: var(--primary); }
+.ageup:disabled { background: var(--surface-high); color: var(--muted); }
+
+/* ------------------------------------------------------------ sheets */
+.sheet-panel { border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.grip { width: 32px; height: 4px; background: var(--outline); opacity: .5; margin-top: 10px; }
+.sheet-head h3 { font-size: 1.1875rem; font-weight: 750; letter-spacing: -.015em; }
+.sheet-head .icon-btn.done { font-weight: 700; }
+/* Segmented lists: rows are separate tiles; the group rounds its ends. */
+.group { background: transparent; border-radius: 0; overflow: visible; display: flex; flex-direction: column; gap: 3px; }
+.group .item { background: var(--cell); border-radius: var(--r-xs); min-height: 56px; padding: 8px 16px; transition: background-color .2s ease, border-radius var(--spring-ms) var(--spring); }
+.group .item:first-child { border-top-left-radius: var(--r-l); border-top-right-radius: var(--r-l); }
+.group .item:last-child { border-bottom-left-radius: var(--r-l); border-bottom-right-radius: var(--r-l); }
+.group .item + .item::before { display: none; }
+.item:active:not(.disabled):not(.static) { background: var(--secondary-c); border-radius: var(--r-l); }
+.i-ico { width: 36px; height: 36px; border-radius: var(--r-s); background: var(--secondary-c); color: var(--on-secondary-c); }
+.i-label { font-weight: 500; }
+.i-chev { color: var(--outline); }
+.i-check.on, .i-switch.on { background: var(--primary); }
+.i-check.on { color: var(--on-primary); }
+.i-tick { color: var(--primary); }
+.i-switch::after { background: #fff; }
+.i-switch:not(.on)::after { background: var(--outline); transform: scale(.7); box-shadow: none; }
+.i-switch { box-shadow: inset 0 0 0 2px var(--outline); background: var(--surface-high); }
+.i-switch.on { box-shadow: none; }
+.i-switch.on::after { background: var(--on-primary); }
+.info, .card, .ribbon, .dstat { border-radius: var(--r-l); }
+.minibar .fill.hi, .fill.hi { background: var(--primary); }
+.track { background: var(--surface-high); }
+.swatch { display: block; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .35); }
+.pcard-emoji { border-radius: 0; clip-path: var(--cookie); background: var(--primary-c); width: 64px; height: 64px; }
+.tn { border-radius: var(--r-m); }
+.tn.me { background: var(--primary); color: var(--on-primary); }
+
+/* ------------------------------------------------------------ dialog */
+/* Material dialog bones with iOS centering: big radius, tonal pill choices. */
+.dialog-card { max-width: 340px; border-radius: var(--r-xl); background: var(--material); padding: 24px 0 0; }
+.d-icon { width: 60px; height: 60px; border-radius: 0; clip-path: var(--cookie); background: var(--primary-c); font-size: 1.9rem; margin-bottom: 12px; }
+.dialog-card h3 { font-size: 1.375rem; font-weight: 750; letter-spacing: -.02em; margin-bottom: 8px; }
+.d-text { font-size: .9375rem; color: var(--muted); margin-bottom: 20px; }
+#d-buttons { gap: 6px; padding: 0 16px 16px; }
+#d-buttons .btn { min-height: 48px; padding: 11px 18px; border-radius: var(--r-full); background: var(--secondary-c); color: var(--on-secondary-c); font-weight: 600; font-size: 1rem; transition: border-radius var(--spring-ms) var(--spring), transform var(--bounce-ms) var(--bounce); }
+#d-buttons .btn::before { display: none; }
+#d-buttons .btn:first-child { background: var(--primary); color: var(--on-primary); }
+#d-buttons .btn:only-child { background: var(--primary); color: var(--on-primary); }
+#d-buttons .btn:active { background: var(--secondary-c); border-radius: var(--r-m); transform: scale(.97); }
+#d-buttons .btn:first-child:active { background: var(--primary); }
+#d-buttons .btn.ghost { background: transparent; color: var(--primary); }
+#d-buttons .btn.danger { background: var(--red); color: #fff; }
+#d-input, #d-area { border-radius: var(--r-m); border: 0; background: var(--cell); }
+
+/* ------------------------------------------------------------ banner */
+.toast { border-radius: var(--r-l); background: var(--material); }
+.toast::before { border-radius: 0; clip-path: var(--cookie); width: 28px; height: 28px; background: var(--primary-c); }
+.toast.good::before { background: var(--primary); color: var(--on-primary); }
+
+/* ------------------------------------------------------------ death */
+.tomb { border-radius: 0; clip-path: var(--sunny); background: var(--surface-high); width: 104px; height: 104px; }
+.death-wrap h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; }
+.ribbon-ico { border-radius: var(--r-m); background: var(--primary-c); }
