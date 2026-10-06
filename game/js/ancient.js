@@ -652,7 +652,7 @@ TL.eras.rome = (function () {
       return { label: { Greens: '🟢', Blues: '🔵', Reds: '🔴', Whites: '⚪' }[f] + ' The ' + f + ' (bet ' + E.fmt(den(10)) + ')', fn: function () {
         bump('r_races'); E.stat('happy', 4);
         if (s.money < den(10)) return done('I couldn\'t afford a bet, but the races were thrilling anyway.');
-        if (U.chance(0.25)) { E.addMoney(den(30)); return done(good('The ' + f + ' won by a nose! I tripled my money. 🐎')); }
+        if (U.chance(0.25)) { E.addMoney(den(20)); return done(good('The ' + f + ' won by a nose! I tripled my money. 🐎')); }
         E.addMoney(-den(10)); done('The ' + f + ' lost. A chariot crashed on the last turn.');
       } };
     }));

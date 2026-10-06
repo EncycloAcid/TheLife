@@ -82,6 +82,7 @@ input, select, textarea { font: inherit; letter-spacing: inherit; }
 .small { font-size: .8125rem; }
 .center { text-align: center; }
 .neg { color: var(--red); }
+.pos { color: var(--good); }
 .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .grad-text { color: var(--tint); }
 .aurora { display: none; }

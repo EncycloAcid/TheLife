@@ -661,7 +661,7 @@ TL.ui = (function () {
     $('#d-title').textContent = title;
     $('#d-title').style.display = title ? '' : 'none';
     var t = $('#d-text');
-    t.textContent = cfg.text || '';
+    t.textContent = String(cfg.text || '').replace(/([^.])\.\.(?!\.)/g, '$1.'); // "Corner Co.. Is this it?" -> one period, like the log
     t.className = 'd-text ' + (cfg.cls || '');
     var area = $('#d-area');
     area.style.display = cfg.area != null ? '' : 'none';

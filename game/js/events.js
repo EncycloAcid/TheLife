@@ -649,7 +649,7 @@ TL.events = (function () {
     var s = S(), m = E.me(), j = s.job, pt = E.partner(), kids = E.people('child').filter(function (c) { return c.age >= 18; });
     var lines = [], choices = [];
     if (!pt) lines.push('I\'m ' + m.age + ' and still on my own.');
-    if (j && !j.fame && j.years >= 15) lines.push(U.plural(j.years, 'year') + ' at ' + j.company + '. Is this it?');
+    if (j && !j.fame && j.years >= 15) lines.push(U.plural(j.years, 'year') + ' at ' + String(j.company).replace(/\.$/, '') + '. Is this it?');
     else if (j && !j.fame && j.perf < 45) lines.push('My job at ' + j.company + ' feels like a dead end.');
     if (!j && m.age < 60) lines.push('I don\'t even have a job to complain about.');
     if (kids.length && kids.length === E.people('child').length) lines.push('The kids are grown and the house is quiet.');

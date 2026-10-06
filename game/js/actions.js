@@ -1503,7 +1503,9 @@ TL.actions = (function () {
           ui().choose(game, 'Cash: ' + E.fmt(S().money) + '. Place your bet:', bets.filter(function (b) { return b <= S().money; }).map(function (b) { return { label: E.fmt(b), fn: function () { gambleHook(); fn(b); } }; }));
         };
       };
+      var g = S().flags.gamble || { won: 0, lost: 0 }, net = g.won - g.lost;
       return [
+        { info: true, html: '<div class="kv">🎲 Lifetime at the tables: ' + (g.won || g.lost ? '<b class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? 'up ' : 'down ') + E.fmt(Math.abs(net)) + '</b>' : 'nothing yet') + '<br><span class="muted">The house always has an edge.</span></div>' },
         { icon: '🃏', label: 'Blackjack', sub: 'Beat the dealer (≈45% to win, 2×)', onClick: mk('Blackjack', blackjack) },
         { icon: '🎰', label: 'Slot machines', sub: 'Pull the lever', onClick: mk('Slots', slots) },
         { icon: '🎡', label: 'Roulette', sub: 'Red/black or a single number', onClick: mk('Roulette', roulette) },
@@ -1511,26 +1513,29 @@ TL.actions = (function () {
       ];
     });
   }
+  // Every bet goes in a lifetime ledger; chasing losses raises the risk of a problem.
+  function ledger(delta) { var f = S().flags, g = f.gamble || (f.gamble = { won: 0, lost: 0 }); if (delta > 0) g.won += delta; else g.lost -= delta; }
+  function bet(delta) { E.addMoney(delta); ledger(delta); }
   function gambleHook() {
-    var n = use('gamble');
-    if (n > 4 && !E.hasCondition('Gambling Addiction') && U.chance(0.05)) { E.addCondition('Gambling Addiction'); E.log('I think I have a gambling problem...', 'bad'); }
+    var n = use('gamble'), g = S().flags.gamble, down = g && g.lost - g.won > E.$(20000);
+    if (n > 4 && !E.hasCondition('Gambling Addiction') && U.chance(down ? 0.1 : 0.05)) { E.addCondition('Gambling Addiction'); E.log('I think I have a gambling problem...', 'bad'); }
   }
   function blackjack(b) {
-    var you = U.rand(14, 23), dealer = U.rand(16, 25);
+    var you = U.rand(12, 23), dealer = U.rand(16, 25); // a small house edge, like a real table
     var youBust = you > 21, dealerBust = dealer > 21;
     var txt = 'I had ' + you + ', the dealer had ' + dealer + '. ';
-    if (you === 21 && U.chance(0.4)) { E.addMoney(Math.round(b * 1.5)); return done(good('Blackjack! 🃏 I won ' + E.fmt(Math.round(b * 1.5)) + '.')); }
-    if (youBust || (!dealerBust && dealer > you)) { E.addMoney(-b); return done(bad(txt + (youBust ? 'I busted.' : 'Dealer wins.') + ' Lost ' + E.fmt(b) + '.')); }
+    if (you === 21 && U.chance(0.4)) { bet(Math.round(b * 1.5)); return done(good('Blackjack! 🃏 I won ' + E.fmt(Math.round(b * 1.5)) + '.')); }
+    if (youBust || (!dealerBust && dealer > you)) { bet(-b); return done(bad(txt + (youBust ? 'I busted.' : 'Dealer wins.') + ' Lost ' + E.fmt(b) + '.')); }
     if (you === dealer) return done(txt + 'Push. I got my money back.');
-    E.addMoney(b); done(good(txt + 'I won ' + E.fmt(b) + '!'));
+    bet(b); done(good(txt + 'I won ' + E.fmt(b) + '!'));
   }
   function slots(b) {
     var sym = ['🍒', '🍋', '🔔', '⭐', '💎', '7️⃣'];
     var r = [U.pick(sym), U.pick(sym), U.pick(sym)];
     var line = r.join(' ');
-    if (r[0] === r[1] && r[1] === r[2]) { var mult = r[0] === '7️⃣' ? 100 : r[0] === '💎' ? 50 : 15; E.addMoney(b * mult); return done(good(line + ' — JACKPOT! Won ' + E.fmt(b * mult) + '!')); }
-    if (r[0] === r[1] || r[1] === r[2]) { E.addMoney(Math.round(b * 0.5)); return done(line + ' — Small win: ' + E.fmt(Math.round(b * 1.5)) + ' back.'); }
-    E.addMoney(-b); done(bad(line + ' — Lost ' + E.fmt(b) + '.'));
+    if (r[0] === r[1] && r[1] === r[2]) { var mult = r[0] === '7️⃣' ? 40 : r[0] === '💎' ? 20 : 10; bet(b * mult); return done(good(line + ' — JACKPOT! Won ' + E.fmt(b * mult) + '!')); }
+    if (r[0] === r[1] || r[1] === r[2]) { bet(Math.round(b * 0.5)); return done(line + ' — Small win: ' + E.fmt(Math.round(b * 1.5)) + ' back.'); }
+    bet(-b); done(bad(line + ' — Lost ' + E.fmt(b) + '.'));
   }
   function roulette(b) {
     ui().choose('Roulette', 'Where do I put ' + E.fmt(b) + '?', [
@@ -1543,29 +1548,31 @@ TL.actions = (function () {
     var n = U.rand(0, 36);
     var color = n === 0 ? 'green' : (n % 2 ? 'red' : 'black');
     var txt = 'The ball landed on ' + n + ' ' + color + '. ';
-    if (pick === n) { E.addMoney(b * 35); return done(good(txt + 'I hit my number! Won ' + E.fmt(b * 35) + '! 🎉')); }
-    if (pick === color) { E.addMoney(b); return done(good(txt + 'I won ' + E.fmt(b) + '!')); }
-    E.addMoney(-b); done(bad(txt + 'Lost ' + E.fmt(b) + '.'));
+    if (pick === n) { bet(b * 35); return done(good(txt + 'I hit my number! Won ' + E.fmt(b * 35) + '! 🎉')); }
+    if (pick === color) { bet(b); return done(good(txt + 'I won ' + E.fmt(b) + '!')); }
+    bet(-b); done(bad(txt + 'Lost ' + E.fmt(b) + '.'));
   }
   function horses(b) {
     var hs = ['Thunderbolt', 'Lucky Clover', 'Midnight Express', 'Glue Factory', 'Silver Bullet'];
     var odds = [3, 4, 6, 12, 5];
     ui().choose('Horse racing', 'Pick a horse:', hs.map(function (h, i) {
       return { label: h + ' (' + odds[i] + ':1)', fn: function () {
-        var winner = U.weighted(hs.map(function (x, j) { return { w: 1 / odds[j], i: j }; })).i;
-        if (winner === i) { E.addMoney(b * odds[i]); return done(good(h + ' won! I collected ' + E.fmt(b * odds[i]) + '! 🏇')); }
-        E.addMoney(-b); done(bad(hs[winner] + ' won the race. I lost ' + E.fmt(b) + '.'));
+        // My horse wins a bit less often than the posted odds suggest: that's the track's cut.
+        var winner = U.chance(0.85 / (odds[i] + 1)) ? i : U.weighted(hs.map(function (x, j) { return { w: j === i ? 0 : 1 / odds[j], i: j }; })).i;
+        if (winner === i) { bet(b * odds[i]); return done(good(h + ' won! I collected ' + E.fmt(b * odds[i]) + '! 🏇')); }
+        bet(-b); done(bad(hs[winner] + ' won the race. I lost ' + E.fmt(b) + '.'));
       } };
     }));
   }
   function lottery() {
     var c = E.$(2);
     if (!afford(c)) return done(noMoney(c));
-    E.addMoney(-c);
+    bet(-c);
     var r = Math.random();
-    if (r < 1 / 50000) { var jp = E.$(U.rand(5, 250) * 1000000); E.addMoney(jp); E.stat('happy', 40); E.achieve('lottery'); return done(good('🎉🎉 I WON THE LOTTERY JACKPOT: ' + E.fmt(jp) + '!!! 🎉🎉')); }
-    if (r < 0.002) { var big = E.$(10000); E.addMoney(big); return done(good('I matched 5 numbers and won ' + E.fmt(big) + '!')); }
-    if (r < 0.05) { var sm = E.$(U.pick([4, 10, 50, 100])); E.addMoney(sm); return done('I won ' + E.fmt(sm) + ' on a lottery ticket.'); }
+    // Odds like a real draw: a ticket returns about 60 cents on the dollar.
+    if (r < 1 / 60000000) { var jp = E.$(U.rand(5, 75) * 1000000); bet(jp); E.stat('happy', 40); E.achieve('lottery'); return done(good('🎉🎉 I WON THE LOTTERY JACKPOT: ' + E.fmt(jp) + '!!! 🎉🎉')); }
+    if (r < 1 / 100000) { var big = E.$(10000); bet(big); return done(good('I matched 5 numbers and won ' + E.fmt(big) + '!')); }
+    if (r < 0.03) { var sm = E.$(U.pick([4, 4, 4, 10, 50])); bet(sm); return done('I won ' + E.fmt(sm) + ' on a lottery ticket.'); }
     done('My lottery ticket was a dud.');
   }
   function vacationMenu() {
