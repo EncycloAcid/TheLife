@@ -107,6 +107,13 @@ TL.actions = (function () {
     return 'Others';
   }
 
+  // Put money aside for a child's or grandchild's education (js/engine.js collegeFunds).
+  function collegeFund(p) {
+    var amts = [1000, 5000, 20000].map(function (v) { return E.$(v); });
+    ui().choose('College fund for ' + p.first, (p.fund ? 'There\'s ' + E.fmt(p.fund) + ' saved so far. ' : '') + 'It\'s invested until ' + p.first + ' turns 18, then pays for college. If I\'m gone by then and ' + p.first + ' carries on the family, it\'s theirs to use.', amts.map(function (v) {
+      return { label: 'Put in ' + E.fmt(v), fn: function () { if (S().money < v) return done(noMoney(v)); E.addMoney(-v); p.fund = (p.fund || 0) + v; E.rel(p, p.age >= 6 ? 3 : 0); done(good('I put ' + E.fmt(v) + ' into ' + p.first + '\'s college fund (' + E.fmt(p.fund) + ' saved).')); } };
+    }));
+  }
   function personMenu(p) {
     ui().menu(p.first + ' ' + p.last, function () { var its = personItems(p); return TL.mind ? TL.mind.wrap(p, its) : its; });
   }
@@ -130,6 +137,7 @@ TL.actions = (function () {
       if (me().age >= 5 && ['mother', 'father', 'grandparent', 'spouse', 'sibling', 'child', 'friend', 'best friend'].indexOf(r) >= 0 && p.age >= 18)
         items.push({ icon: '💸', label: 'Ask for money', onClick: function () { askMoney(p); } });
       if (r === 'child' && p.age <= 1 && !p.adopted) items.push({ icon: '✏️', label: 'Change ' + (p.gender === 'M' ? 'his' : 'her') + ' name', sub: 'Babies can still be renamed', onClick: function () { ui().prompt('Change name', 'New first name for ' + p.first + ':', p.first, function (v) { v = String(v || '').trim().replace(/[<>"]/g, '').slice(0, 20); if (!v) return; if (E.people(['child'], true).some(function (q) { return q !== p && q.first.toLowerCase() === v.toLowerCase(); })) return done(nope('One of my other kids is already called ' + v + '.')); var old = p.first; p.first = v; p.named = true; done('We changed ' + old + '\'s name to ' + v + '.'); }); } });
+      if ((r === 'child' || r === 'grandchild') && p.age < 18 && me().age >= 18 && !E.ancient()) items.push({ icon: '🎓', label: 'College fund', sub: p.fund ? E.fmt(p.fund) + ' saved · grows every year, paid out at 18' : 'Save for ' + (p.gender === 'M' ? 'his' : 'her') + ' education', onClick: function () { collegeFund(p); } });
       var care = S().flags.care;
       if (care && care.pid === p.id) items.push({ icon: '🫶', label: care.kind === 'home' ? 'Stop caring for ' + p.first + ' at home' : 'Stop paying for ' + p.first + '\'s care home', sub: (care.kind === 'home' ? 'I look after ' + p.first : p.first + ' lives in a care home') + ' · ' + E.fmt(E.$(E.CARE_COST[care.kind])) + '/yr', danger: true, onClick: function () { E.stopCare(); ui().back(); done(bad(p.first + ' is on their own again. ' + p.first + ' didn\'t say much, but I could tell it hurt.')); } });
       if (me().age >= 18 && p.age >= 3 && S().money > 0 && ['mother', 'father', 'sibling', 'child', 'friend', 'grandparent', 'best friend', 'grandchild'].indexOf(r) >= 0)
@@ -762,7 +770,7 @@ TL.actions = (function () {
       { label: 'Apply for a scholarship', fn: function () { finishEnroll(E.enrollUni(major, 'scholarship', u)); } },
       { label: 'Student loans', fn: function () { finishEnroll(E.enrollUni(major, 'loans', u)); } },
       { label: 'Pay with savings', fn: function () { finishEnroll(E.enrollUni(major, 'savings', u)); } }
-    ].concat(TL.military && TL.military.veteran() ? [{ label: '🎖️ Use the GI Bill', fn: function () { finishEnroll(E.enrollUni(major, 'gibill', u)); } }] : []));
+    ].concat(S().collegeFund > 0 ? [{ label: '🎓 Use my college fund (' + E.fmt(S().collegeFund) + ')', fn: function () { finishEnroll(E.enrollUni(major, 'fund', u)); } }] : []).concat(TL.military && TL.military.veteran() ? [{ label: '🎖️ Use the GI Bill', fn: function () { finishEnroll(E.enrollUni(major, 'gibill', u)); } }] : []));
   }
   function fundingMenu(major) {
     var cost = E.$(28000) * 4;
@@ -771,7 +779,7 @@ TL.actions = (function () {
       { label: 'Apply for a scholarship', fn: function () { finishEnroll(E.enrollUni(major, 'scholarship')); } },
       { label: 'Student loans', fn: function () { finishEnroll(E.enrollUni(major, 'loans')); } },
       { label: 'Pay with savings', fn: function () { finishEnroll(E.enrollUni(major, 'savings')); } }
-    ]);
+    ].concat(S().collegeFund > 0 ? [{ label: '🎓 Use my college fund (' + E.fmt(S().collegeFund) + ')', fn: function () { finishEnroll(E.enrollUni(major, 'fund')); } }] : []));
   }
   function finishEnroll(r) {
     if (r.ok) { ui().closeAll(); done(good(r.msg)); }
@@ -1583,6 +1591,7 @@ TL.actions = (function () {
     E.addMoney(-cost);
     var pt = E.partner();
     var c = E.addPerson({ role: 'child', age: age, last: me().last, rel: 70, money: 0, job: age < 5 ? 'Toddler' : 'Student' });
+    E.uniqueKidName(c); c.adopted = true;
     if (pt && pt.role === 'spouse') c.otherParent = pt.id;
     S().counts.kids++;
     E.achieve('parent');

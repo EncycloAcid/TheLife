@@ -446,6 +446,12 @@ TL.engine = (function () {
       enroll('uni', Object.assign({ major: major, funding: 'parents' }, at));
       return { ok: true, msg: 'My ' + relWord(rich) + ' agreed to pay my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '.' };
     }
+    if (funding === 'fund') {
+      var f = Math.min(s.collegeFund || 0, tuition), rest = tuition - f;
+      s.collegeFund = (s.collegeFund || 0) - f; if (rest > 0) s.studentDebt += rest;
+      enroll('uni', Object.assign({ major: major, funding: 'fund' }, at));
+      return { ok: true, msg: 'My college fund paid ' + fmt(f) + (rest > 0 ? ' and student loans covered the other ' + fmt(rest) : ', the whole bill') + '. I enrolled at ' + s.edu.school + ' to study ' + major + '. 🎓' };
+    }
     if (funding === 'gibill') {
       enroll('uni', Object.assign({ major: major, funding: 'gibill' }, at));
       return { ok: true, msg: 'The GI Bill covers my tuition! I enrolled at ' + s.edu.school + ' to study ' + major + '. 🎖️' };
@@ -1218,8 +1224,12 @@ TL.engine = (function () {
       }
       var gkids = people('grandchild').filter(function (g) { return g.parentId === c.id; }).length;
       if (c.married && c.age <= 42 && gkids < 4 && U.chance(0.16)) {
-        var g = addPerson({ role: 'grandchild', age: 0, last: c.gender === 'M' ? c.last : U.pick([c.last, randomName('M').last]), rel: U.rand(60, 85), money: 0, job: 'Toddler' });
+        // Brothers and sisters share one family name, and never a first name.
+        if (!c.kidsLast) c.kidsLast = c.gender === 'M' ? c.last : U.pick([c.last, randomName('M').last]);
+        var g = addPerson({ role: 'grandchild', age: 0, last: c.kidsLast, rel: U.rand(60, 85), money: 0, job: 'Toddler' });
         g.parentId = c.id;
+        var taken = people('grandchild', true).filter(function (q) { return q.parentId === c.id && q !== g; }).map(function (q) { return q.first; }).concat([c.first]);
+        if (!country().ancient && taken.indexOf(g.first) >= 0) { var cty0 = country(), free0 = ((g.gender === 'M' ? cty0.male : cty0.female) || []).filter(function (n) { return taken.indexOf(n) < 0; }); if (free0.length) g.first = U.pick(free0); }
         log('👶 My ' + (c.gender === 'M' ? 'son' : 'daughter') + ' ' + c.first + ' had a baby ' + (g.gender === 'M' ? 'boy' : 'girl') + ', ' + g.first + '! I\'m a grandparent' + (gkids ? ' again' : '') + '!', 'good');
         stat('happy', 8);
       }
@@ -1287,6 +1297,13 @@ TL.engine = (function () {
       log('📜 I inherited ' + fmt(share) + ' from ' + p.first + '.', 'good');
     }
   }
+  // Brothers and sisters never share a first name, however they joined the family.
+  function uniqueKidName(kid) {
+    var cty = country(), used = people(['child'], true).filter(function (q) { return q !== kid; }).map(function (q) { return q.first; }).concat([me().first]);
+    if (cty.ancient || used.indexOf(kid.first) < 0) return;
+    var free = ((kid.gender === 'M' ? cty.male : cty.female) || []).filter(function (n) { return used.indexOf(n) < 0; });
+    if (free.length) kid.first = U.pick(free);
+  }
   function haveBaby(other, o) {
     var s = S();
     o = o || {};
@@ -1295,11 +1312,8 @@ TL.engine = (function () {
     baby.otherParent = other ? other.id : null;
     // Brothers and sisters never share a first name (not even twins). Roman
     // daughters sharing the family name is history, so ancient eras keep theirs.
-    var cty = country(), used = people(['child'], true).filter(function (q) { return q !== baby; }).map(function (q) { return q.first; }).concat([me().first]);
-    if (!cty.ancient && used.indexOf(baby.first) >= 0) {
-      var free = ((baby.gender === 'M' ? cty.male : cty.female) || []).filter(function (n) { return used.indexOf(n) < 0; });
-      if (free.length) baby.first = U.pick(free);
-    }
+    var cty = country();
+    uniqueKidName(baby);
     s.counts.kids++;
     var who = o.surrogate ? 'Our surrogate gave birth to' : me().gender === 'F' ? 'I gave birth to' : (other && other.gender === 'F' ? other.first + ' gave birth to' : 'We welcomed');
     // Outside the ancient eras I get to name my own children (js/events.js baby_name).
@@ -1402,6 +1416,20 @@ TL.engine = (function () {
     if (p && p.alive) { rel(p, -15); return p; }
     return null;
   }
+  // College funds I've set up for my children and grandchildren: invested, then paid out at 18.
+  function collegeFunds() {
+    var s = S();
+    if (s.collegeFund > 0) s.collegeFund = Math.round(s.collegeFund * U.randf(1.03, 1.08)); // my own fund keeps growing until I use it
+    s.people.forEach(function (p) {
+      if (!p.fund) return;
+      if (!p.alive) { addMoney(p.fund); log('🎓 The college fund I saved for ' + p.first + ' came back to me (' + fmt(p.fund) + ').'); p.fund = 0; return; }
+      p.fund = Math.round(p.fund * U.randf(1.03, 1.08)); // a modest investment return
+      if (p.age >= 18) {
+        log('🎓 ' + p.first + '\'s college fund (' + fmt(p.fund) + ') paid for ' + (p.gender === 'M' ? 'his' : 'her') + ' education. Best money I ever spent.', 'good');
+        p.money = (p.money || 0) + p.fund; p.fund = 0; p.collegePaid = true; rel(p, 10); stat('happy', 4);
+      }
+    });
+  }
   // In prison, my pets need someone on the outside, or they go to a shelter.
   function petsToShelter() {
     var s = S();
@@ -1452,6 +1480,7 @@ TL.engine = (function () {
     var earned = progressJob();
     if (TL.racing) TL.racing.youthYear(); // kids in karts race without a job
     if (TL.gamedev) TL.gamedev.youthYear(); // and kids make games after school
+    collegeFunds();
     fameProgress();
     if (m.age >= 16 || s.money !== 0 || s.assets.length) yearlyFinances(earned);
     yearlyHome();
@@ -1574,6 +1603,8 @@ TL.engine = (function () {
       if (c.age >= 18) st.degrees.push({ type: 'hs' });
     }
     st.flags.wealth = inheritance > $(1000000) ? 'rich' : 'middle';
+    // A college fund saved for me carries over (js/actions.js personItems, enrollUni 'fund').
+    if (c.fund > 0) { st.collegeFund = Math.round(c.fund); log('🎓 ' + (viaGrandchild ? 'My grandparent' : 'My parent') + ' left a college fund in my name: ' + fmt(st.collegeFund) + '.', 'good'); }
     if (TL.extras) TL.extras.recordAncestor(s, st);
     if (gen >= 3) achieve('dynasty');
     if (TL.features) TL.features.inherit(s, c, st, kids);
@@ -1774,7 +1805,7 @@ TL.engine = (function () {
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
     statLabel: statLabel, statValue: statValue, haveBaby: haveBaby, jail: jail, queue: queue, die: die,
     runForOffice: runForOffice, reelect: reelect, campaigns: CAMPAIGNS, campaignCost: campaignCost, electionChance: electionChance,
-    ageUp: ageUp, heirs: heirs, continueAs: continueAs, ribbon: ribbon, checkAchievements: checkAchievements,
+    ageUp: ageUp, heirs: heirs, continueAs: continueAs, uniqueKidName: uniqueKidName, ribbon: ribbon, checkAchievements: checkAchievements,
     save: save, load: load, listSaves: listSaves, deleteSave: deleteSave, loadGlobal: loadGlobal, saveGlobal: saveGlobal,
     schoolName: schoolName
   };

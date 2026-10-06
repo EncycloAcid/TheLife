@@ -292,7 +292,7 @@ TL.gamedev = (function () {
       earn -= cost; st.morale = cl(st.morale + (st.morale < 60 ? 4 : -1));
       if (w.rep >= 60 && U.chance(0.15) && !s.pending.some(function (q) { return q.id === 'gd_acquire'; })) s.pending.push({ id: 'gd_acquire', data: {} });
       if (yr() >= 2008 && w.proj && w.proj.scope !== 'small' && !w.proj.loot && U.chance(0.15)) s.pending.push({ id: 'gd_loot', data: {} });
-    } else if (w.stage === 'indie') earn -= E.$(2500); // tools, licenses, coffee
+    } else if (w.stage === 'indie' && p) earn -= E.$(2500); // tools, licenses, coffee (only while I'm actually making something)
     earn = Math.round(earn);
     w.earned = (w.earned || 0) + Math.max(0, earn);
     syncSp(w, Math.max(0, earn));
