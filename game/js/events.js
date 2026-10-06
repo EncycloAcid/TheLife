@@ -281,6 +281,19 @@ TL.events = (function () {
       { label: 'Leave it be', run: function () { return 'Some bridges stay burned.'; } }
     ] };
   } });
+  // When one of my kids finishes high school, we decide what comes next together.
+  def('kid_after_school', { scripted: true, build: function (d) {
+    var k = E.person(d.pid);
+    if (!k || !k.alive || k.job !== 'Student') return null;
+    var cost = E.$(40000), him = k.gender === 'M' ? 'him' : 'her', smart = k.smarts >= 70 ? 'top of the class' : k.smarts >= 45 ? 'solid grades' : 'scraped by';
+    var ch = [];
+    if (k.fund > 0) ch.push({ label: 'Use the college fund (' + E.fmt(k.fund) + ')', run: function () { k.money = (k.money || 0) + k.fund; k.fund = 0; k.collegePaid = true; k.job = 'University Student'; E.rel(k, 10); return good(k.first + ' is off to university, paid for by the fund I started years ago. 🎓'); } });
+    ch.push({ label: 'Pay for university (' + E.fmt(cost) + ')', run: function () { if (S().money < cost) { E.rel(k, -3); return bad('I couldn\'t afford it. ' + k.first + ' is looking at loans instead.'); } E.addMoney(-cost); k.job = 'University Student'; E.rel(k, 12); E.stat('happy', 3); if (TL.mind) TL.mind.note(k, 6, 'paid for my university', true); return good('I\'m paying for ' + k.first + '\'s degree. ' + U.cap(k.gender === 'M' ? 'he' : 'she') + ' hugged me for a full minute. 🎓'); } });
+    ch.push({ label: 'University on student loans', run: function () { k.job = 'University Student'; k.money = (k.money || 0) - E.$(30000); E.rel(k, 2); return k.first + ' is going to university on student loans.'; } });
+    ch.push({ label: 'Trade school', run: function () { k.job = 'Trade School Student'; E.rel(k, k.smarts >= 75 ? -2 : 4); return k.first + ' enrolled in trade school. Two years and ' + (k.gender === 'M' ? 'he' : 'she') + '\'ll have a real skill. 🔧'; } });
+    ch.push({ label: 'Time to get a job', run: function () { k.job = E.npcJobFor(19, 'hs'); if (k.smarts >= 70) { E.rel(k, -8); if (TL.mind) TL.mind.note(k, -6, 'wouldn\'t help me go to university', true); return bad(k.first + ' really wanted university. ' + U.cap(k.gender === 'M' ? 'he' : 'she') + ' took a job as ' + E.an(k.job) + ', but it stung.'); } E.rel(k, 1); return k.first + ' started working as ' + E.an(k.job) + '.'; } });
+    return { icon: '🎓', title: k.first + ' finished high school', text: 'My ' + E.relWord(k) + ' ' + k.first + ' just graduated (' + smart + '). What\'s next for ' + him + '?', choices: ch };
+  } });
   def('talent_show', { min: 8, max: 17, w: 4, cond: function () { return S().edu; }, build: function () {
     return { icon: '🎤', title: 'Talent show', text: 'The school talent show is this weekend.', choices: [
       { label: 'Sing', run: function () { if (U.chance(0.4)) { E.stat('happy', 8); S().flags.music = (S().flags.music || 0) + 1; return good('I won the talent show with my singing!'); } E.stat('happy', -5); return bad('My voice cracked. Kids are still laughing.'); } },

@@ -194,6 +194,14 @@ TL.engine = (function () {
     var lvl = Math.min(c.levels.length - 1, Math.floor(U.randf(0, Math.min(c.levels.length, (age - 18) / 7 + 1))));
     return c.levels[lvl][0];
   }
+  // A job for someone with a given kind of schooling ('bachelor', 'trade', or 'hs' for none beyond high school).
+  function npcJobFor(age, edu) {
+    var ok = edu === 'bachelor' ? ['bachelor'] : edu === 'trade' ? ['trade'] : ['none', 'hs'];
+    var pool = D.CAREERS.filter(function (c) { return ok.indexOf(c.edu) >= 0; });
+    if (!pool.length || (TL.S && country().ancient)) return npcJob(age);
+    var c = U.pick(pool), lvl = Math.min(c.levels.length - 1, Math.floor(U.randf(0, Math.min(c.levels.length, (age - 18) / 7 + 1))));
+    return c.levels[lvl][0];
+  }
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
     var nm = randomName(gender, o.last, o.country);
@@ -1329,8 +1337,18 @@ TL.engine = (function () {
       if (p.role === 'friend' || p.role === 'best friend') friendYear(p);
       if (p.age === 5 && p.job === 'Toddler') p.job = ancient() ? TL.ancient.txt('child') : 'Student';
       if (p.age === 15 && p.job === 'Child') p.job = npcJob(20);
-      if (p.age === 18 && p.job === 'Student') p.job = U.chance(0.5) ? 'University Student' : npcJob(24);
-      if (p.age === 23 && p.job === 'University Student') p.job = npcJob(26);
+      if (p.age === 18 && p.job === 'Student') {
+        // My own kids' next step is a family decision; everyone else's is a coin flip.
+        if (p.role === 'child' && !ancient() && !s.dead) { if (p.collegePaid) p.job = 'University Student'; else queue('kid_after_school', { pid: p.id }); }
+        else p.job = U.chance(0.5) ? 'University Student' : npcJob(24);
+      }
+      // The decision never got made (dialog skipped): settle it the usual way so no one stays a "Student" forever.
+      if (p.age >= 19 && p.job === 'Student' && !s.pending.some(function (q) { return q.id === 'kid_after_school' && q.data && q.data.pid === p.id; })) p.job = p.age < 22 && U.chance(0.5) ? 'University Student' : npcJob(Math.max(24, p.age));
+      if (p.age === 20 && p.job === 'Trade School Student') { p.job = npcJobFor(20, 'trade'); if (p.role === 'child') log('🔧 My ' + relWord(p) + ' ' + p.first + ' finished trade school and works as ' + an(p.job) + ' now.', 'good'); }
+      if (p.age === 23 && p.job === 'University Student') {
+        p.job = npcJobFor(p.role === 'child' ? 30 : 26, 'bachelor'); p.degree = true; // graduates land jobs that need a degree
+        if (p.role === 'child') { log('🎓 My ' + relWord(p) + ' ' + p.first + ' graduated from university! Now: ' + p.job + '.', 'good'); stat('happy', 4); }
+      }
       if (p.age === 67 && p.job !== 'Retired' && U.chance(0.7)) p.job = 'Retired';
       p.money = Math.round(p.money * 1.02 + (p.age >= 18 && p.job !== 'Unemployed' && p.job !== 'Student' ? $(U.rand(1000, 8000)) : 0));
       // death
@@ -1951,7 +1969,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, stopCare: stopCare, CARE_COST: CARE_COST, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, retPlanBlock: retPlanBlock, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
+    achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, retPlanBlock: retPlanBlock, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob, npcJobFor: npcJobFor,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
