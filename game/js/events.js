@@ -914,17 +914,41 @@ TL.events = (function () {
       { label: 'Hide my money offshore', run: function () { E.karma(-5); if (U.chance(0.35)) { E.addMoney(-owed * 2); E.jail(U.rand(1, 4), 'Tax Evasion'); return bad('I was caught hiding assets.'); } return 'The auditors couldn\'t find anything.'; } }
     ] };
   } });
-  def('reunion', { min: 28, max: 55, w: 4, once: true, cond: function () { return E.hasDegree('hs'); }, build: function () {
-    return { icon: '🎉', title: 'High school reunion', text: 'I\'ve been invited to my high school reunion.', choices: [
-      { label: 'Go and brag about my life', run: function () { var nw = E.netWorth(); if (nw > E.$(500000) || S().fame > 30) { E.stat('happy', 10); return good('Everyone was impressed by how well I\'m doing.'); } E.stat('happy', -5); return 'People could tell I was exaggerating.'; } },
-      { label: 'Find my old crush', run: function () {
-        if (E.partner() && E.partner().role !== 'partner') { E.karma(-2); return 'We reminisced about old times. Nothing more.'; }
-        var c = E.makePerson({ age: me().age + U.rand(-1, 1), gender: me().interest === 'A' ? undefined : me().interest, role: 'partner' });
-        if (!E.partner() && U.chance(0.4)) { c.rel = 65; S().people.push(c); return good('Sparks flew with ' + c.first + '. We\'re dating now!'); }
-        return c.first + ' is happily married with three kids.';
+  def('reunion', { scripted: true, build: function (d) {
+    var s = S(), m = me(), yrs = d.yrs, mates = E.people('former classmate').filter(function (p) { return p.alive; });
+    // Some lives never kept any classmates around; the class still has people in it.
+    while (mates.length < 2) { var q = E.addPerson({ role: 'former classmate', age: m.age + U.rand(-1, 1), rel: U.rand(15, 45), money: 0 }); mates.push(q); }
+    var gone = E.people('former classmate', true).filter(function (p) { return !p.alive; }).length;
+    var pal = U.shuffle(mates.slice()).slice(0, Math.min(3, mates.length)), sc = E.lifeScore();
+    var want = m.interest === 'A' ? null : m.interest, single = !E.partner();
+    var crush = mates.filter(function (p) { return (!want || p.gender === want) && Math.abs(p.age - m.age) <= 2; }).sort(function (x, y) { return y.rel - x.rel; })[0];
+    var ch = [
+      { label: 'Catch up with old friends', run: function () {
+        var out = [];
+        pal.forEach(function (p) { E.rel(p, U.rand(8, 18)); out.push((pal.some(function (o) { return o !== p && o.first === p.first; }) ? E.fullName(p) : p.first) + ' (' + (p.job ? p.job.toLowerCase().replace(/^(a|an) /, '') : 'doing fine') + ')'); });
+        E.stat('happy', 5);
+        var best = pal.slice().sort(function (x, y) { return y.rel - x.rel; })[0], txt = 'I caught up with ' + (out.length > 1 ? out.slice(0, -1).join(', ') + ' and ' + out[out.length - 1] : out[0]) + '.';
+        if (best.rel >= 60 && E.people('friend').length < 6) { best.role = 'friend'; best.fyears = 0; txt += ' ' + best.first + ' and I swapped numbers. We\'re friends again!'; E.log('🎉 I reconnected with ' + best.first + ' at my ' + yrs + '-year reunion.', 'good'); }
+        else E.log('🎉 I went to my ' + yrs + '-year high school reunion.');
+        if (s.job && !s.job.fame && U.chance(0.3)) { s.job.perf = Math.min(100, s.job.perf + 5); txt += ' One of them even sent some work my way.'; }
+        return good(txt);
       } },
-      { label: 'Skip it', run: function () { return 'I have no interest in the past.'; } }
-    ] };
+      { label: 'Show everyone how well I\'m doing', run: function () {
+        E.log('🎉 I went to my ' + yrs + '-year high school reunion.');
+        if (sc >= 40) { E.stat('happy', 10); pal.forEach(function (p) { E.rel(p, 4); }); return good(U.pick(['Everyone wanted to hear about my life. ', 'People I barely knew lined up to talk to me. ']) + 'It felt good to be the success story.'); }
+        if (sc >= 25) { E.stat('happy', 2); return 'A few people were impressed. Most were busy bragging about themselves.'; }
+        E.stat('happy', -6); pal.forEach(function (p) { E.rel(p, -3); }); return bad('People could tell I was stretching the truth. Someone asked what I actually do.');
+      } }
+    ];
+    if (crush) ch.push({ label: 'Find ' + crush.first + ', my old crush', run: function () {
+      E.log('🎉 I went to my ' + yrs + '-year high school reunion.');
+      if (!single) { E.rel(crush, 6); if (E.partner().role !== 'partner') E.karma(-2); return 'We reminisced about old times. Nothing more.'; }
+      if (U.chance(0.25 + m.looks / 250 + crush.rel / 400)) { crush.role = 'partner'; crush.rel = Math.max(crush.rel, 65); E.stat('happy', 10); E.log('❤️ ' + crush.first + ' and I started dating after the reunion.', 'good'); return good('Sparks flew with ' + crush.first + ' after all these years. We\'re dating now!'); }
+      E.rel(crush, 5); return crush.first + ' was lovely, but ' + U.pick(['is happily married with three kids.', 'just got engaged.', 'only wanted to talk about work.']);
+    } });
+    ch.push({ label: 'Skip it', run: function () { return 'I have no interest in the past.'; } });
+    var t = { 10: 'Ten years since graduation already.', 20: 'Twenty years out of high school.', 30: 'Thirty years since we threw our caps in the air.', 40: 'Forty years. Some of us are grandparents now.', 50: 'Fifty years. The ones who are left are getting together.' }[yrs];
+    return { icon: '🎉', title: yrs + '-year class reunion', text: t + ' My class is holding a reunion this weekend.' + (gone && yrs >= 20 ? ' There will be a moment of silence for ' + (gone === 1 ? 'one classmate' : gone + ' classmates') + ' we lost.' : ''), choices: ch };
   } });
   def('headhunter', { min: 24, max: 62, w: 4, cond: function () { return hasJob() && !S().job.fame && !S().job.politics; }, build: function () {
     var j = S().job, boost = U.randf(1.12, 1.35);

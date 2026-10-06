@@ -191,16 +191,31 @@ TL.engine = (function () {
     if (age < 23 && U.chance(0.5)) return 'University Student';
     if (U.chance(0.1)) return 'Unemployed';
     var c = U.pick(D.CAREERS);
+    return c.levels[npcLevel(c, age)][0];
+  }
+  // How far up a career ladder someone this age plausibly is. Trainees are young.
+  var TRAINEE = /intern|apprentice|trainee|resident|junior|assistant/i;
+  function npcLevel(c, age) {
     var lvl = Math.min(c.levels.length - 1, Math.floor(U.randf(0, Math.min(c.levels.length, (age - 18) / 7 + 1))));
-    return c.levels[lvl][0];
+    return lvl === 0 && age >= 28 && c.levels.length > 1 && TRAINEE.test(c.levels[0][0]) ? 1 : lvl;
+  }
+  // NPC careers move: people get promoted over the years and retire by 75.
+  var NPC_TITLE = null;
+  function npcCareerYear(p) {
+    if (!NPC_TITLE) { NPC_TITLE = {}; D.CAREERS.forEach(function (c) { c.levels.forEach(function (l, i) { if (!NPC_TITLE[l[0]]) NPC_TITLE[l[0]] = { c: c, i: i }; }); }); }
+    var t = NPC_TITLE[p.job];
+    if (!t) return;
+    if (p.age >= 75 || (p.age > 67 && U.chance(0.25))) { p.job = 'Retired'; return; }
+    var cap = Math.min(t.c.levels.length - 1, Math.floor((p.age - 18) / 7) + 1), trainee = TRAINEE.test(p.job);
+    if (t.i < cap && U.chance(trainee ? 0.35 : 0.12)) p.job = t.c.levels[t.i + 1][0];
   }
   // A job for someone with a given kind of schooling ('bachelor', 'trade', or 'hs' for none beyond high school).
   function npcJobFor(age, edu) {
     var ok = edu === 'bachelor' ? ['bachelor'] : edu === 'trade' ? ['trade'] : ['none', 'hs'];
     var pool = D.CAREERS.filter(function (c) { return ok.indexOf(c.edu) >= 0; });
     if (!pool.length || (TL.S && country().ancient)) return npcJob(age);
-    var c = U.pick(pool), lvl = Math.min(c.levels.length - 1, Math.floor(U.randf(0, Math.min(c.levels.length, (age - 18) / 7 + 1))));
-    return c.levels[lvl][0];
+    var c = U.pick(pool);
+    return c.levels[npcLevel(c, age)][0];
   }
   function makePerson(o) {
     var gender = o.gender || (U.chance(0.5) ? 'M' : 'F');
@@ -409,7 +424,7 @@ TL.engine = (function () {
         log('My grades were too low to graduate. I have to repeat my senior year.', 'bad'); stat('happy', -15);
         return;
       }
-      s.degrees.push({ type: 'hs' });
+      s.degrees.push({ type: 'hs' }); s.flags.hsYear = s.year;
       var gl = gradeLetter(e.grade), avg = (/^[AEF]/.test(gl) ? 'an ' : 'a ') + gl + ' average';
       // Only cheer for grades worth cheering.
       log(/^[AB]/.test(gl) ? '🎓 I graduated from ' + e.school + ' with ' + avg + '!' : /^C/.test(gl) ? '🎓 I graduated from ' + e.school + ' with ' + avg + '.' : '🎓 I scraped through ' + e.school + ' with ' + avg + ', but I graduated.', /^[ABC]/.test(gl) ? 'good' : '');
@@ -1126,10 +1141,10 @@ TL.engine = (function () {
   };
   function routineYear() {
     var s = S(), m = me(), r = s.routine;
+    if (r === 'intense' && m.age >= 70) { s.routine = 'gym'; r = 'gym'; if (!s.prison) log('🏋️ At my age I eased off the hard training. The gym three times a week is plenty.'); } // before the prison check, or a 70th birthday behind bars kept it
     if (!r || r === 'none' || s.prison || m.age < 16 || ancient()) return 0;
     var cost = $(ROUTINES[r][3]);
     if (cost && s.money < cost) { s.routine = 'walks'; log('🚶 I couldn\'t keep paying for the gym. Walks it is.'); r = 'walks'; cost = 0; }
-    if (r === 'intense' && m.age >= 70) { s.routine = 'gym'; r = 'gym'; cost = $(ROUTINES.gym[3]); log('🏋️ At my age I eased off the hard training. The gym three times a week is plenty.'); }
     var aging = m.age >= 60 ? 0.5 : 1; // gains come slower later in life
     if (r === 'walks') { stat('health', 1); stat('happy', 1); }
     else if (r === 'gym') { stat('health', 2); stat('happy', 1); if (m.athl < 75) m.athl = Math.min(75, m.athl + Math.round(2 * aging)); if (U.chance(0.5)) stat('looks', 1); }
@@ -1314,6 +1329,25 @@ TL.engine = (function () {
     var yrs = s.year - sp.wed;
     if (ANNIV[yrs] && !s.prison && !s.pending.some(function (q) { return q.id === 'anniversary'; })) queue('anniversary', { pid: sp.id, yrs: yrs });
   }
+  // Class reunions: every ten years after high school, the old class gets together.
+  function reunionYear() {
+    var s = S();
+    if (!hasDegree('hs') || ancient() || s.prison) return;
+    var y = s.flags.hsYear || s.year - me().age + 18, yrs = s.year - y; // older saves: assume I graduated at 18
+    if (yrs >= 10 && yrs <= 50 && yrs % 10 === 0 && !s.pending.some(function (q) { return q.id === 'reunion'; })) queue('reunion', { yrs: yrs });
+  }
+  // How my life looks from the outside, 0-100, for showing off at reunions.
+  function lifeScore() {
+    var s = S(), m = me(), sc = 0, nw = netWorth();
+    sc += nw > $(1000000) ? 30 : nw > $(250000) ? 20 : nw > $(50000) ? 10 : nw < 0 ? -10 : 0;
+    if (s.job) sc += Math.min(25, 8 + (s.job.level || 0) * 4);
+    if (people('spouse').length) sc += 12;
+    if (people('child').length) sc += 8;
+    if (s.degrees.some(function (d) { return d.type !== 'hs' && d.type !== 'trade'; })) sc += 8;
+    sc += Math.min(20, Math.round((s.fame || 0) / 4)) + Math.round((m.looks - 50) / 5);
+    if (m.health < 30) sc -= 8;
+    return U.clamp(sc, 0, 100);
+  }
   // Grief: losing someone close hurts for years, more the closer we were.
   // Visiting the grave, honoring them and counseling help it heal.
   function startGrief(p) {
@@ -1389,6 +1423,7 @@ TL.engine = (function () {
         if (p.role === 'child') { log('🎓 My ' + relWord(p) + ' ' + p.first + ' graduated from university! Now: ' + p.job + '.', 'good'); stat('happy', 4); }
       }
       if (p.age === 67 && p.job !== 'Retired' && U.chance(0.7)) p.job = 'Retired';
+      if (!ancient() && p.age >= 19) npcCareerYear(p);
       p.money = Math.round(p.money * 1.02 + (p.age >= 18 && p.job !== 'Unemployed' && p.job !== 'Student' ? $(U.rand(1000, 8000)) : 0));
       // death
       // Real-world-ish mortality: about 1% a year at 60, 6% at 80, a third at 100,
@@ -1694,6 +1729,7 @@ TL.engine = (function () {
     yearlyPeople();
     griefYear();
     anniversaryYear();
+    reunionYear();
     if (TL.features) TL.features.yearly();
     if (m.age === 18 && !s.prison) log('I\'m officially an adult now! 🎉');
     // Allowance for kids from parents
@@ -2001,7 +2037,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, ANNIV: ANNIV, ROUTINES: ROUTINES, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, lifeScore: lifeScore, ANNIV: ANNIV, ROUTINES: ROUTINES, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
