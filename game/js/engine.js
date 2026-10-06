@@ -893,6 +893,7 @@ TL.engine = (function () {
     safetyNet(function (amt, what) { income += amt; lines.push(what + ' ' + fmt(amt)); });
     var sp = statePension();
     if (sp) { income += sp; lines.push((country().name === 'United States' ? 'Social Security ' : 'State pension ') + fmt(sp)); }
+    expense += routineYear();
     var rp = retirementYear();
     if (rp < 0) { income -= rp; lines.push('Consulting ' + fmt(-rp)); } else expense += rp;
     if (s.social.platform && s.followers >= 10000) income += $(Math.round(s.followers * 0.01));
@@ -1116,6 +1117,34 @@ TL.engine = (function () {
   }
 
   // ---------- health ----------
+  // A fitness routine I keep year after year, instead of tapping the gym every year.
+  var ROUTINES = {
+    none: ['🛋️', 'No routine', 'Whatever happens, happens', 0],
+    walks: ['🚶', 'Daily walks', 'Free · a little healthier and calmer', 0],
+    gym: ['🏋️', 'Gym three times a week', 'Healthier, fitter, looks better', 600],
+    intense: ['🔥', 'Train hard', 'Big gains, tiring, risk of injury', 1500]
+  };
+  function routineYear() {
+    var s = S(), m = me(), r = s.routine;
+    if (!r || r === 'none' || s.prison || m.age < 16 || ancient()) return 0;
+    var cost = $(ROUTINES[r][3]);
+    if (cost && s.money < cost) { s.routine = 'walks'; log('🚶 I couldn\'t keep paying for the gym. Walks it is.'); r = 'walks'; cost = 0; }
+    if (r === 'intense' && m.age >= 70) { s.routine = 'gym'; r = 'gym'; cost = $(ROUTINES.gym[3]); log('🏋️ At my age I eased off the hard training. The gym three times a week is plenty.'); }
+    var aging = m.age >= 60 ? 0.5 : 1; // gains come slower later in life
+    if (r === 'walks') { stat('health', 1); stat('happy', 1); }
+    else if (r === 'gym') { stat('health', 2); stat('happy', 1); if (m.athl < 75) m.athl = Math.min(75, m.athl + Math.round(2 * aging)); if (U.chance(0.5)) stat('looks', 1); }
+    else if (r === 'intense') {
+      stat('health', 3); stat('happy', -1); if (m.athl < 92) m.athl = Math.min(92, m.athl + Math.round(4 * aging)); stat('looks', 1);
+      if (U.chance(m.age >= 45 ? 0.035 : 0.02) && !hasCondition('Broken Leg')) { addCondition('Broken Leg'); stat('health', -10); log('🩼 I pushed too hard in training and broke my leg.', 'bad'); }
+    }
+    return cost;
+  }
+  // How much a routine cuts the odds of lifestyle diseases.
+  function routineRisk(name) {
+    var r = S().routine;
+    if (!/Heart Disease|Type 2 Diabetes|High Blood Pressure/.test(name) || !r || r === 'none') return 1;
+    return r === 'walks' ? 0.85 : r === 'gym' ? 0.65 : 0.6;
+  }
   function yearlyHealth() {
     var s = S(), m = me(), a = m.age, life = country().life;
     // aging: health drifts toward an age-based baseline, then illnesses bite
@@ -1145,7 +1174,7 @@ TL.engine = (function () {
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
       if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name) || (TL.health && TL.health.has(ill.name))) return;
-      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1) * (TL.talents ? TL.talents.sickMult() : 1) * (ill.name === 'Dementia' && s.retired && s.retPlan === 'learn' ? 0.5 : 1); // a busy mind
+      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1) * (TL.talents ? TL.talents.sickMult() : 1) * (ill.name === 'Dementia' && s.retired && s.retPlan === 'learn' ? 0.5 : 1) * routineRisk(ill.name); // a busy mind, a fit body
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
@@ -1961,7 +1990,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, ROUTINES: ROUTINES, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

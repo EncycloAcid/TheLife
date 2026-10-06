@@ -1334,6 +1334,9 @@ TL.actions = (function () {
       if (a >= 8) items.push({ icon: '🌻', label: 'Gardening', onClick: TL.world.gardening });
       if (a >= 13) items.push({ icon: '🛍️', label: 'Shopping', sub: 'Clothes and sneakers', onClick: TL.world.shoppingMenu });
       if (a >= 18) items.push({ icon: '🖋️', label: 'Tattoo parlor', sub: S().tattoos && S().tattoos.length ? U.plural(S().tattoos.length, 'tattoo') : 'Get inked', onClick: TL.extras.tattooMenu });
+      if (a >= 16 && !(TL.ancient && TL.ancient.on())) { var rt = E.ROUTINES[S().routine || 'none']; items.push({ icon: '💪', label: 'Fitness routine', sub: rt[1] + (S().routine && S().routine !== 'none' ? ' · every year' : ' · set one and keep it'), onClick: function () {
+        ui().choose('💪 Fitness routine', 'How do I want to keep in shape, year after year?', Object.keys(E.ROUTINES).filter(function (k) { return k !== 'intense' || me().age < 70; }).map(function (k) { var r = E.ROUTINES[k]; return { label: r[0] + ' ' + r[1] + (r[3] ? ' (' + E.fmt(E.$(r[3])) + '/yr)' : '') + (S().routine === k ? ' ✓' : ''), fn: function () { S().routine = k; done(k === 'none' ? 'I stopped bothering with exercise.' : good('New routine: ' + r[1].toLowerCase() + '. ' + r[2] + '.')); } }; }));
+      } }); }
       if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
       if (a >= 14) items.push({ icon: '🏃', label: 'Run a marathon', sub: 'Athleticism helps', disabled: used('marathon') > 0, onClick: marathon });
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });

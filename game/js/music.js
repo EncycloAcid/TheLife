@@ -111,7 +111,7 @@ TL.music = (function () {
     var m = me();
     ui().choose('🎵 Pick your genre', 'What kind of music do I make?', Object.keys(GENRES).map(function (g) {
       return { label: g, fn: function () {
-        var n = [m.first + ' ' + m.last, U.pick(['Lil ', 'Young ', 'DJ ', 'MC ', '']) + m.first, m.first.charAt(0) + '.' + m.last.charAt(0) + '.', U.pick(W1) + ' ' + m.first];
+        var n = [m.first + ' ' + m.last, U.pick(['Lil ', 'Young ', 'DJ ', 'MC ', '']) + m.first, m.first.charAt(0) + '.' + m.last.charAt(0) + '.', U.pick(W1.filter(function (w) { return w !== m.first; })) + ' ' + m.first]; // never "Ocean Ocean"
         if (g === 'Hip Hop') n[1] = U.pick(['Lil ', 'Young ', 'MC ']) + m.first;
         if (g === 'EDM') n[1] = 'DJ ' + m.first;
         if (g === 'Rock' || g === 'Indie') n[3] = 'The ' + U.pick(W1) + ' ' + U.pick(W2);
