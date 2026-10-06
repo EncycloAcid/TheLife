@@ -155,6 +155,8 @@ TL.features = (function () {
     var dad = E.people('father')[0], mom = E.people('mother')[0];
     var monarch = U.chance(0.6) ? dad : mom;
     [dad, mom].forEach(function (p) { p.married = true; p.last = st.me.last; p.money = E.$(U.rand(200, 900) * 1000000); });
+    // Taking the royal surname must not give Mom (or Dad) my exact name.
+    [dad, mom].forEach(function (p) { for (var i = 0; i < 8 && p.first === st.me.first; i++) p.first = E.randomName(p.gender).first; });
     monarch.job = monarch.gender === 'M' ? 'King' : 'Queen';
     var consort = monarch === dad ? mom : dad;
     consort.job = consort.gender === 'M' ? 'Prince Consort' : 'Queen Consort';
