@@ -1364,7 +1364,7 @@ TL.actions = (function () {
         ui().choose('💪 Fitness routine', 'How do I want to keep in shape, year after year?', Object.keys(E.ROUTINES).filter(function (k) { return k !== 'intense' || me().age < 70; }).map(function (k) { var r = E.ROUTINES[k]; return { label: r[0] + ' ' + r[1] + (r[3] ? ' (' + E.fmt(E.$(r[3])) + '/yr)' : '') + (S().routine === k ? ' ✓' : ''), fn: function () { S().routine = k; done(k === 'none' ? 'I stopped bothering with exercise.' : good('New routine: ' + r[1].toLowerCase() + '. ' + r[2] + '.')); } }; }));
       } }); }
       if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
-      if (a >= 14) items.push({ icon: '🏃', label: 'Run a marathon', sub: 'Athleticism helps', disabled: used('marathon') > 0, onClick: marathon });
+      if (a >= 8) { var inj = injury(), pb = (S().flags.pb || {}).full; items.push({ icon: '🏃', label: 'Run a race', sub: inj ? 'Not with a ' + inj.toLowerCase() : used('marathon') ? 'Raced this year' : pb ? 'Marathon best ' + raceTime(pb) : '5K to marathon', disabled: used('marathon') > 0 || !!inj, onClick: raceMenu }); }
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });
       if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', right: E.fmt(E.$(2)), onClick: lottery });
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
@@ -1373,7 +1373,7 @@ TL.actions = (function () {
       if (a >= 21) items.push({ icon: '👶', label: 'Adoption', sub: a > 55 ? 'Agencies won\'t place a child with me at my age' : undefined, disabled: a > 55, onClick: adopt });
 
       // Results say how much each stat moved (choices that open a dialog report when they finish).
-      items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons|Therapist|Nightclub|Spa day|Go fishing|Gardening|Go skydiving|Run a marathon)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); return f0.apply(this, arguments); }; } });
+      items.forEach(function (it) { if (it.onClick && /^(Gym|Library|Meditate|Go for a walk|Martial arts|Go on a diet|Learn an instrument|Acting lessons|Therapist|Nightclub|Spa day|Go fishing|Gardening|Go skydiving|Run a race)$/.test(it.label)) { var f0 = it.onClick; it.onClick = function () { gainFrom = snap(); return f0.apply(this, arguments); }; } });
       items.push({ section: 'Life' });
       if (TL.maps) items.push({ icon: '🗺️', label: 'World map', sub: 'Home, places I\'ve lived, wars of the day', onClick: TL.maps.menu });
       if (a >= 18) items.push({ icon: '🧳', label: 'Emigrate', onClick: emigrateMenu });
@@ -1509,20 +1509,50 @@ TL.actions = (function () {
     E.addMoney(-c);
     var r = U.rand(1, 100);
     if (r <= 3) { E.addCondition('Broken Leg'); E.stat('health', -15); S().flags.skydive = true; return done(bad('My parachute opened late. I landed hard and broke my leg! 🪂')); }
-    if (r <= 10) { E.stat('happy', 4); return done('The jump was cancelled due to high winds. I got a refund... of half my money.'); }
+    if (r <= 10) { E.addMoney(Math.round(c / 2)); E.stat('happy', 4); return done('The jump was cancelled due to high winds. I got a refund... of half my money.'); }
     S().flags.skydive = true; E.stat('happy', 12);
     done(good('I jumped out of a plane at 13,000 feet! What a rush! 🪂'));
   }
-  function marathon() {
-    use('marathon');
-    var m = me();
-    if (U.chance(m.athl / 110 + (TL.features.skill('fitness') / 200) + 0.05)) {
-      S().flags.marathon = true; m.athl = U.clamp(m.athl + 3, 0, 100); E.stat('happy', 10); E.stat('health', -2);
-      var mins = Math.round(360 - m.athl * 2.2 + U.rand(-15, 15));
-      return done(good('I finished the marathon in ' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm! 🏅'));
-    }
-    E.stat('health', -4);
-    done(bad('I hit the wall at mile ' + U.rand(14, 23) + ' and had to drop out.'));
+  // Races: from a 5K fun run to an ultramarathon. Fitness, routine, age and health all matter.
+  var RACES = [
+    { id: '5k', name: '5K fun run', km: 5, fee: 30, d: 0, age: 8, happy: 4 },
+    { id: 'half', name: 'Half marathon', km: 21.1, fee: 60, d: 25, age: 14, happy: 7 },
+    { id: 'full', name: 'Marathon', km: 42.2, fee: 120, d: 45, age: 16, happy: 10 },
+    { id: 'ultra', name: '50-mile ultramarathon', km: 80.5, fee: 200, d: 65, age: 18, happy: 14 }
+  ];
+  function injury() { return S().conditions.filter(function (n) { var i = D.illness(n); return i && i.injury; })[0] || null; }
+  function raceTime(mins) { mins = Math.round(mins); return mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60 < 10 ? '0' : '') + (mins % 60) + 'm' : mins + ' min'; }
+  function runFitness() {
+    var m = me(), s = S(), f = m.athl + TL.features.skill('fitness') / 2 + ({ walks: 3, gym: 8, intense: 15 }[s.routine] || 0) + (m.health - 60) / 3 - Math.max(0, m.age - 40) * 0.6;
+    if (E.hasCondition('Arthritis')) f -= 15;
+    if (E.hasCondition('Heart Disease')) f -= 20;
+    if (E.hasCondition('High Blood Pressure')) f -= 5;
+    return Math.round(f);
+  }
+  function raceChance(r) { return U.clamp((runFitness() - r.d + 40) / 80, 0.05, 0.97); }
+  function raceMenu() {
+    var s = S(), fin = s.flags.races || {}, f = runFitness();
+    var list = RACES.filter(function (r) { return me().age >= r.age && (r.id !== 'ultra' || fin.full); });
+    ui().choose('🏃 Run a race', 'How far am I going this year? ' + (f >= 70 ? 'I\'m in great shape.' : f >= 45 ? 'I\'m in decent shape.' : f >= 20 ? 'I\'m not in great shape.' : 'Honestly, I\'m in rough shape for this.') + (s.flags.pb && Object.keys(s.flags.pb).length ? ' Best times: ' + RACES.filter(function (r) { return s.flags.pb[r.id]; }).map(function (r) { return r.name.replace(/ \(.*/, '') + ' ' + raceTime(s.flags.pb[r.id]); }).join(', ') + '.' : ''),
+      list.map(function (r) { var c = Math.round(raceChance(r) * 100); return { label: r.name + ' (' + E.fmt(E.$(r.fee)) + ') · ' + (c >= 80 ? 'easy' : c >= 55 ? 'doable' : c >= 30 ? 'tough' : 'a long shot'), fn: function () { runRace(r); } }; }));
+  }
+  function runRace(r) {
+    var s = S(), m = me(), fee = E.$(r.fee), f = runFitness();
+    if (!afford(fee)) return done(noMoney(fee));
+    use('marathon'); E.addMoney(-fee);
+    var heart = E.hasCondition('Heart Disease') ? 0.1 : m.age >= 65 ? 0.03 : 0;
+    if (r.km > 10 && U.chance(heart)) { E.stat('health', -15); E.stat('happy', -5); E.log('🚑 I collapsed during a ' + r.name.toLowerCase() + ' at ' + m.age + '. The medics got to me fast.', 'bad'); return done(bad('Around mile ' + U.rand(8, 18) + ' my chest tightened and I went down. Medics took me off the course. My heart can\'t take this anymore.')); }
+    if (!U.chance(raceChance(r))) { E.stat('health', r.km > 30 ? -4 : -1); E.stat('happy', -2); return done(bad(r.km <= 5 ? 'I had to stop and walk most of it. Next year.' : 'I hit the wall at ' + (r.km > 50 ? 'mile ' + U.rand(25, 45) : 'mile ' + U.rand(Math.round(r.km / 3.2), Math.round(r.km / 1.7))) + ' and had to drop out.')); }
+    var pace = U.clamp(9.5 - f * 0.055, 3.1, 13) * (r.km > 50 ? 1.35 : r.km > 30 ? 1.08 : 1), mins = Math.round(r.km * pace * U.randf(0.96, 1.04));
+    var pb = s.flags.pb = s.flags.pb || {}, fin = s.flags.races = s.flags.races || {}, best = !pb[r.id] || mins < pb[r.id], first = !fin[r.id];
+    fin[r.id] = (fin[r.id] || 0) + 1; if (best) pb[r.id] = mins;
+    if (r.id === 'full' || r.id === 'ultra') s.flags.marathon = s.flags.marathon || true;
+    m.athl = U.clamp(m.athl + { '5k': 1, half: 2, full: 3, ultra: 4 }[r.id], 0, 100);
+    E.stat('happy', r.happy); E.stat('health', r.km > 50 ? -4 : r.km > 30 ? -2 : 1);
+    var podium = m.age >= 45 && f >= 60 && U.chance(0.25);
+    var txt = 'I finished the ' + r.name.replace(/ \(.*/, '').toLowerCase() + ' in ' + raceTime(mins) + '! 🏅' + (first ? ' My first one.' : best ? ' A new personal best!' : '') + (podium ? ' I even won my age group (' + Math.floor(m.age / 5) * 5 + '–' + (Math.floor(m.age / 5) * 5 + 4) + ').' : '');
+    if (first || best || podium) E.log('🏃 ' + txt, 'good');
+    done(good(txt));
   }
   function casinoMenu() {
     ui().menu('Casino 🎰', function () {
