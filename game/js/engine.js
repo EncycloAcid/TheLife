@@ -1388,7 +1388,7 @@ TL.engine = (function () {
       p.role = 'friend';
       log('💔 ' + p.first + ' and I aren\'t as close as we were. We\'re still friends, just not best friends.');
     } else if (!best && p.rel <= 6 && p.fyears >= 3 && U.chance(0.5)) {
-      p.role = 'former friend';
+      p.role = 'former friend'; p.ended = 'drift';
       log('🍂 ' + p.first + ' and I drifted apart. We haven\'t really talked in years.');
     } else if (best && p.rel >= 55 && m.happy < 35 && m.age >= 8 && !(p.helped > S().year - 5) && U.chance(0.6)) {
       p.helped = S().year; stat('happy', U.rand(5, 9)); rel(p, 3);

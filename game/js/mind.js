@@ -66,6 +66,7 @@ TL.mind = (function () {
   var rawResolve = TL.events.resolve;
   TL.events.resolve = function () { ctx = null; return rawResolve.apply(this, arguments); };
   function recent(p, yrs) { var y = S().year; return (p.mem || []).filter(function (m) { return y - m[0] <= (yrs || 6) && !m[3] && !m[4]; }); }
+  var ACQ = /^(former classmate|former coworker)$/;
   function grudge(p) { return recent(p).reduce(function (t, m) { return t + Math.min(0, m[1]); }, 0); }
   function warmth(p) { return recent(p).reduce(function (t, m) { return t + Math.max(0, m[1]); }, 0); }
   function worst(p) { return recent(p).filter(function (m) { return m[1] < 0; }).sort(function (a, b) { return a[1] - b[1]; })[0]; }
@@ -87,8 +88,10 @@ TL.mind = (function () {
     if (w && w[1] <= -8) why = 'still upset that I ' + fill(w[2], p) + ' (' + w[0] + ')';
     else if (!why && b && b[1] >= 6) why = 'remembers that I ' + fill(b[2], p) + ' (' + b[0] + ')';
     v = U.clamp(Math.round(v), 0, 100);
-    var word = v >= 85 ? 'Adores me' : v >= 70 ? 'Thinks highly of me' : v >= 50 ? 'Likes me' : v >= 35 ? 'Lukewarm about me' : v >= 20 ? 'Fed up with me' : 'Can\'t stand me';
-    return { v: v, word: word, why: why };
+    // Someone I simply lost touch with isn't hostile, just distant: no grudge, no one to resent.
+    var distant = v < 35 && (ACQ.test(p.role) || p.role === 'former friend' && (!p.ended || p.ended === 'drift')) && !grudge(p) && !has(p, 'Mean') && !(has(p, 'Jealous') && why);
+    var word = distant ? (v < 20 ? 'Barely knows me' : 'Out of touch') : v >= 85 ? 'Adores me' : v >= 70 ? 'Thinks highly of me' : v >= 50 ? 'Likes me' : v >= 35 ? 'Lukewarm about me' : v >= 20 ? 'Fed up with me' : 'Can\'t stand me';
+    return { v: v, word: word, why: why, distant: distant };
   }
   function mood(p) { var h = p.happy; return h >= 75 ? 'Happy' : h >= 50 ? 'Content' : h >= 30 ? 'Stressed' : 'Miserable'; }
 
@@ -197,8 +200,8 @@ TL.mind = (function () {
   // A line on their card: how they greet me.
   function greeting(p) {
     if (!p.alive || p.age < 4) return '';
-    var o = opinion(p).v, md = mood(p);
-    var l = steady(p, o >= 85 ? ['There you are! I was just thinking about you.', 'My favorite person!'] : o >= 65 ? ['Hey, you! Good to see you.', 'Oh nice, it\'s you.'] : o >= 45 ? ['Hey.', 'Oh, hi.'] : o >= 25 ? ['What do you want?', '…Hi.'] : ['Oh. It\'s you.', 'I\'m busy.']);
+    var op = opinion(p), o = op.v, md = mood(p);
+    var l = op.distant ? steady(p, ['Oh, hey! It\'s been a while.', 'Hi! …Sorry, remind me where we know each other from?', 'Wow, long time no see.']) : steady(p, o >= 85 ? ['There you are! I was just thinking about you.', 'My favorite person!'] : o >= 65 ? ['Hey, you! Good to see you.', 'Oh nice, it\'s you.'] : o >= 45 ? ['Hey.', 'Oh, hi.'] : o >= 25 ? ['What do you want?', '…Hi.'] : ['Oh. It\'s you.', 'I\'m busy.']);
     if (md === 'Miserable' && o >= 45) l += ' Sorry, rough week.';
     return l;
   }
@@ -317,7 +320,7 @@ TL.mind = (function () {
     return { icon: '😤', title: 'Confrontation', text: My(p) + ' confronted me about ' + about + '. ' + (has(p, 'Stubborn') ? U.cap(they(p)) + ' isn\'t going to let this go easily.' : U.cap(they(p)) + ' seems more hurt than angry.'), choices: [
       { label: 'Apologize sincerely', run: function () { var ok = !has(p, 'Stubborn') || U.chance(0.5); recent(p).forEach(function (m) { if (ok && m[1] < 0) m[3] = 1; }); E.rel(p, ok ? 12 : 4); E.stat('happy', -1); return ok ? good('I apologized and meant it. We hugged it out.') : 'I apologized. ' + p.first + ' said ' + they(p) + '\'d need time.'; } },
       { label: 'Stand my ground', run: function () { var win = U.chance(has(p, 'Stubborn') ? 0.2 : 0.45); E.rel(p, win ? 2 : -8); note(p, win ? 0 : -8, 'refused to apologize to ~'); return win ? p.first + ' eventually admitted ' + they(p) + ' was overreacting.' : bad('Neither of us would back down. Things are frosty now.'); } },
-      { label: 'Blow up at ' + them(p), run: function () { E.rel(p, -18); E.stat('happy', -4); note(p, -18, 'blew up at ~'); if (['friend', 'best friend'].indexOf(p.role) >= 0 && p.rel < 20) { p.role = 'former friend'; return bad('I lost my temper. ' + p.first + ' told me we\'re done as friends.'); } return bad('I lost my temper and said things I can\'t take back.'); } }
+      { label: 'Blow up at ' + them(p), run: function () { E.rel(p, -18); E.stat('happy', -4); note(p, -18, 'blew up at ~'); if (['friend', 'best friend'].indexOf(p.role) >= 0 && p.rel < 20) { p.role = 'former friend'; p.ended = 'fight'; return bad('I lost my temper. ' + p.first + ' told me we\'re done as friends.'); } return bad('I lost my temper and said things I can\'t take back.'); } }
     ] };
   } });
   def('mind_pitch', { build: function (d) {

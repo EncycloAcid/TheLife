@@ -175,7 +175,7 @@ TL.actions = (function () {
       }
       if (['classmate', 'coworker', 'former classmate', 'former coworker'].indexOf(r) >= 0) {
         items.push({ section: 'Social' });
-        items.push({ icon: '🤝', label: 'Befriend', onClick: function () { befriend(p); } });
+        items.push({ icon: '🤝', label: 'Befriend', sub: used('befriend' + p.id) ? 'Tried this year' : '', disabled: used('befriend' + p.id) > 0, onClick: function () { use('befriend' + p.id); befriend(p); } });
         if (r === 'coworker') {
           items.push({ icon: '🥪', label: 'Grab lunch together', sub: used('lunch' + p.id) ? 'Done this year' : 'Good work friends have my back', disabled: used('lunch' + p.id) > 0, onClick: function () { use('lunch' + p.id); E.rel(p, U.rand(5, 9)); E.stat('happy', 1); done('I grabbed ' + U.pick(['tacos', 'ramen', 'sandwiches', 'a salad', 'pizza']) + ' with ' + p.first + ' and we talked about everything but work.'); } });
           var sj = S().job, why = !sj || sj.perf == null ? 'Not at a regular job' : used('askhelp' + p.id) ? 'Done this year' : p.rel < 50 ? 'We\'re not close enough yet' : '';
@@ -189,7 +189,12 @@ TL.actions = (function () {
         if (me().age >= 14) items.push({ icon: '🎉', label: 'Go out partying', onClick: function () { party(p); } });
         if (r === 'friend' && p.rel >= 85) items.push({ icon: '🤞', label: 'Make best friend', onClick: function () { p.role = 'best friend'; done(good(p.first + ' is officially my best friend!')); } });
         if (canDate(p)) items.push({ icon: '💘', label: 'Ask out', onClick: function () { askOut(p); } });
-        items.push({ icon: '🚪', label: 'End friendship', danger: true, onClick: function () { p.role = 'former friend'; done('I ended my friendship with ' + p.first + '.'); } });
+        items.push({ icon: '🚪', label: 'End friendship', danger: true, onClick: function () { p.role = 'former friend'; p.ended = 'me'; done('I ended my friendship with ' + p.first + '.'); } });
+      }
+      if (r === 'former friend' && me().age >= 8) {
+        items.push({ section: 'Old friendship' });
+        items.push({ info: true, html: '<p class="small muted">' + { drift: '🍂 We drifted apart.', me: '🚪 I ended our friendship.', fight: '💥 We fell out after a fight.' }[p.ended || 'drift'] + '</p>' });
+        items.push({ icon: '📨', label: 'Reach out', sub: used('reach' + p.id) ? 'Tried this year' : p.ended === 'fight' || p.ended === 'me' ? 'It won\'t be easy' : 'It\'s been a while', disabled: used('reach' + p.id) > 0, onClick: function () { use('reach' + p.id); reachOut(p); } });
       }
       if (r === 'ex' && canDate(p)) items.push({ icon: '🔥', label: 'Try to rekindle', onClick: function () { askOut(p, true); } });
       if (r === 'child' && p.age < 12) items.push({ icon: '📖', label: 'Read a bedtime story', onClick: function () { var f = diminish('story' + p.id); E.rel(p, 10 * f); p.smarts = U.clamp(p.smarts + 2, 0, 100); done('I read ' + p.first + ' a bedtime story. 📚'); } });
@@ -366,8 +371,29 @@ TL.actions = (function () {
     if (m.interest !== 'A' && p.gender !== m.interest) return false;
     return !E.partner() || ['partner'].indexOf(E.partner().role) < 0;
   }
+  // Getting an old friend back depends on how it ended, who they are, and whether I own my part.
+  function reachOut(p) {
+    var t = p.traits || [], has = function (x) { return t.indexOf(x) >= 0; }, hurt = p.ended === 'fight' || p.ended === 'me';
+    var base = 0.2 + p.rel / 150 + (has('Loyal') || has('Kind') ? 0.15 : 0) - (has('Stubborn') ? 0.15 : 0) - (hurt ? 0.2 : 0);
+    var back = function (extra, how) {
+      if (U.chance(U.clamp(base + extra, 0.05, 0.9))) {
+        p.role = 'friend'; p.fyears = 0; delete p.ended; E.rel(p, 15); p.rel = Math.max(p.rel, 45); E.stat('happy', 6);
+        if (TL.mind) TL.mind.note(p, 6, 'reached out after we fell apart');
+        E.log('🤝 I reached out to ' + p.first + ' and we\'re friends again.', 'good');
+        return done(good(how + ' ' + U.pick(['We talked for hours, like no time had passed.', p.first + ' said ' + (p.gender === 'M' ? 'he' : 'she') + '\'d been meaning to call me too.', 'It was awkward for five minutes, then it wasn\'t.']) + ' We\'re friends again.'));
+      }
+      E.rel(p, hurt ? -2 : 3);
+      return done(hurt ? p.first + ' read my message and never answered. Maybe it\'s too soon.' : 'No reply yet. ' + p.first + ' is probably busy. I can try again next year.');
+    };
+    var cost = E.$(40), ch = [
+      { label: 'Send a message', fn: function () { back(0, 'I sent ' + p.first + ' a message.'); } },
+      { label: 'Invite ' + (p.gender === 'M' ? 'him' : 'her') + ' for coffee (' + E.fmt(cost) + ')', fn: function () { if (!afford(cost)) return done(noMoney(cost)); E.addMoney(-cost); back(0.1, 'We met up for coffee.'); } }
+    ];
+    if (hurt) ch.push({ label: 'Apologize for how things ended', fn: function () { E.karma(2); back(0.3, 'I apologized and meant it.'); } });
+    ui().choose('📨 Reach out to ' + p.first, hurt ? 'Things ended badly with ' + p.first + '. How do I reach out?' : p.first + ' and I lost touch. How do I reach out?', ch);
+  }
   function befriend(p) {
-    if (U.chance(p.rel / 100 + 0.25)) { p.role = 'friend'; E.rel(p, 10); done(good(p.first + ' and I are friends now!')); }
+    if (U.chance(p.rel / 100 + 0.25)) { p.role = 'friend'; p.fyears = 0; E.rel(p, 10); done(good(p.first + ' and I are friends now!')); }
     else { E.rel(p, -5); done(p.first + ' wasn\'t interested in being friends.'); }
   }
   function askOut(p, rekindle) {
