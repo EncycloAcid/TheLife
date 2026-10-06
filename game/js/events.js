@@ -294,6 +294,18 @@ TL.events = (function () {
     ch.push({ label: 'Time to get a job', run: function () { k.job = E.npcJobFor(19, 'hs'); if (k.smarts >= 70) { E.rel(k, -8); if (TL.mind) TL.mind.note(k, -6, 'wouldn\'t help me go to university', true); return bad(k.first + ' really wanted university. ' + U.cap(k.gender === 'M' ? 'he' : 'she') + ' took a job as ' + E.an(k.job) + ', but it stung.'); } E.rel(k, 1); return k.first + ' started working as ' + E.an(k.job) + '.'; } });
     return { icon: '🎓', title: k.first + ' finished high school', text: 'My ' + E.relWord(k) + ' ' + k.first + ' just graduated (' + smart + '). What\'s next for ' + him + '?', choices: ch };
   } });
+  def('anniversary', { scripted: true, build: function (d) {
+    var p = E.person(d.pid);
+    if (!p || !p.alive || p.role !== 'spouse') return null;
+    var name = E.ANNIV[d.yrs] || d.yrs + 'th', big = d.yrs >= 25, cost = E.$(Math.round(400 * (1 + d.yrs / 4))), vows = E.$(6000);
+    var ch = [
+      { label: 'Plan something special (' + E.fmt(cost) + ')', run: function () { if (S().money < cost) { E.rel(p, 2); return 'I wanted to do something big, but money is tight. We had a lovely night in anyway.'; } E.addMoney(-cost); E.rel(p, big ? 15 : 10); E.stat('happy', 6); if (TL.mind) TL.mind.note(p, 5, 'our ' + name + ' anniversary'); E.log('💍 ' + p.first + ' and I celebrated our ' + name + ' anniversary.', 'good'); return good(U.pick(['I surprised ' + p.first + ' with a weekend away. ', 'I booked the restaurant from our first date. ', 'I had our wedding song played at dinner. ']) + (big ? d.yrs + ' years. I\'d do it all again.' : 'Happy anniversary. 💐')); } },
+      { label: 'A quiet dinner at home', run: function () { E.rel(p, 4); E.stat('happy', 2); return 'We cooked dinner together and looked through our wedding photos. Simple and perfect.'; } },
+      { label: 'Let it slide this year', run: function () { var calm = p.traits && p.traits.indexOf('Easygoing') >= 0; E.rel(p, calm ? -2 : -10); if (TL.mind && !calm) TL.mind.note(p, -6, 'forgot our anniversary'); return calm ? p.first + ' laughed it off. "We\'ll celebrate next year."' : bad(p.first + ' noticed. ' + U.cap(p.gender === 'M' ? 'he' : 'she') + ' didn\'t say much, which was worse.'); } }
+    ];
+    if (big) ch.splice(1, 0, { label: 'Renew our vows (' + E.fmt(vows) + ')', run: function () { if (S().money < vows) { E.rel(p, 3); return 'We couldn\'t afford a ceremony, so we said our vows again on the porch. It counted.'; } E.addMoney(-vows); E.rel(p, 20); E.stat('happy', 10); if (TL.mind) TL.mind.note(p, 8, 'renewed our vows'); E.log('💒 After ' + d.yrs + ' years, ' + p.first + ' and I renewed our vows with family all around.', 'good'); return good('We renewed our vows in front of everyone we love. ' + d.yrs + ' years, and counting. 💒'); } });
+    return { icon: big ? '💒' : '💍', title: U.cap(name) + ' anniversary', text: d.yrs === 1 ? 'One year married to ' + p.first + '. How do we celebrate?' : d.yrs + ' years married to ' + p.first + '. How do we mark it?', choices: ch };
+  } });
   def('talent_show', { min: 8, max: 17, w: 4, cond: function () { return S().edu; }, build: function () {
     return { icon: '🎤', title: 'Talent show', text: 'The school talent show is this weekend.', choices: [
       { label: 'Sing', run: function () { if (U.chance(0.4)) { E.stat('happy', 8); S().flags.music = (S().flags.music || 0) + 1; return good('I won the talent show with my singing!'); } E.stat('happy', -5); return bad('My voice cracked. Kids are still laughing.'); } },

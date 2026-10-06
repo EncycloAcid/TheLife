@@ -501,7 +501,7 @@ TL.actions = (function () {
   }
   function marry(p, cost, tier) {
     E.addMoney(-cost);
-    p.role = 'spouse'; E.rel(p, 15 + tier * 5); E.stat('happy', 15 + tier * 3);
+    p.role = 'spouse'; p.wed = S().year; E.rel(p, 15 + tier * 5); E.stat('happy', 15 + tier * 3);
     E.achieve('married');
     ui().back();
     done(good('💒 I married ' + p.first + '! ' + ['It was a simple, sweet ceremony.', 'It was intimate and beautiful.', 'Everyone we know was there.', 'It was the event of the year!'][tier]));

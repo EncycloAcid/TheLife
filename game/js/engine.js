@@ -1305,18 +1305,27 @@ TL.engine = (function () {
       else p.role = 'former coworker';
     });
   }
+  // Wedding anniversaries: the big ones (1, 5, 10, 25, 40, 50) ask how I'll mark them.
+  var ANNIV = { 1: 'first', 5: 'fifth', 10: 'tenth', 25: 'silver', 40: 'ruby', 50: 'golden' };
+  function anniversaryYear() {
+    var s = S(), sp = people('spouse')[0];
+    if (!sp) return;
+    if (sp.wed == null) { sp.wed = s.year; return; } // saves from before v2.49 start counting now
+    var yrs = s.year - sp.wed;
+    if (ANNIV[yrs] && !s.prison && !s.pending.some(function (q) { return q.id === 'anniversary'; })) queue('anniversary', { pid: sp.id, yrs: yrs });
+  }
   // Grief: losing someone close hurts for years, more the closer we were.
   // Visiting the grave, honoring them and counseling help it heal.
   function startGrief(p) {
     var s = S(), yrs = (p.rel >= 70 ? 4 : p.rel >= 40 ? 3 : 1) + (['spouse', 'child'].indexOf(p.role) >= 0 ? 1 : 0);
     s.griefs = (s.griefs || []).filter(function (g) { return g.pid !== p.id; });
-    s.griefs.push({ pid: p.id, left: yrs });
+    s.griefs.push({ pid: p.id, left: yrs, y: s.year });
   }
   function grief(pid) { return (S().griefs || []).filter(function (g) { return g.pid === pid; })[0] || null; }
   function easeGrief(pid, n) {
     var s = S(), g = grief(pid);
     if (!g) return false;
-    g.left = Math.max(0, g.left - n);
+    g.left = Math.max(g.y === s.year ? 1 : 0, g.left - n); // comfort helps, but no one is over a loss the year it happens
     if (!g.left) { s.griefs = s.griefs.filter(function (x) { return x !== g; }); var p = person(pid); if (p) log('🕊️ I\'ve made peace with losing ' + p.first + '. I still think of them often.'); }
     return true;
   }
@@ -1325,6 +1334,7 @@ TL.engine = (function () {
     if (!s.griefs || !s.griefs.length) return;
     s.griefs.slice().forEach(function (g) {
       if (!person(g.pid)) { s.griefs = s.griefs.filter(function (x) { return x !== g; }); return; }
+      if (g.y === s.year) return; // the year they died already hurt enough; healing starts next year
       stat('happy', -(1 + Math.min(4, g.left))); // the hurt fades a little each year
       easeGrief(g.pid, 1);
     });
@@ -1683,6 +1693,7 @@ TL.engine = (function () {
     yearlyHealth();
     yearlyPeople();
     griefYear();
+    anniversaryYear();
     if (TL.features) TL.features.yearly();
     if (m.age === 18 && !s.prison) log('I\'m officially an adult now! 🎉');
     // Allowance for kids from parents
@@ -1990,7 +2001,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, ROUTINES: ROUTINES, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, ANNIV: ANNIV, ROUTINES: ROUTINES, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,
