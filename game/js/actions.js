@@ -1704,18 +1704,26 @@ TL.actions = (function () {
       if (me().age >= 16) items.push({ icon: '🕴️', label: 'Organized crime', sub: S().mob ? TL.features.mobTitle() : 'Join a crime family', onClick: TL.features.mobMenu });
       D.CRIMES.forEach(function (c) {
         var dis = me().age < c.minAge || (c.needsJob && !(S().job && !S().job.partTime && !S().job.fame));
-        items.push({ icon: c.icon || '🦹', label: c.name, sub: c.desc + (me().age < c.minAge ? ' · age ' + c.minAge + '+' : c.needsJob && dis ? ' · needs a job' : ''), disabled: dis, onClick: function () { commitCrime(c); } });
+        var odds = Math.round(crimeOdds(c, used('crime')) * 100), haul = c.id === 'embezzle' ? 'a cut of my salary' : c.reward[1] ? E.fmt(E.$(c.reward[0])) + '–' + E.fmt(E.$(c.reward[1])) : 'no money', risk = c.jail[1] ? 'up to ' + U.plural(c.jail[1], 'year') + ' inside' : 'a fine if caught';
+        items.push({ icon: c.icon || '🦹', label: c.name, sub: c.desc + (me().age < c.minAge ? ' · age ' + c.minAge + '+' : c.needsJob && dis ? ' · needs a job' : ' · ~' + odds + '% · ' + haul + ' · ' + risk), disabled: dis, onClick: function () { commitCrime(c); } });
       });
       return items;
     });
   }
+  // My odds of getting away with a crime: the crime, my skills, how much I've done it before,
+  // and how many times I've already pushed my luck this year.
+  function crimeOdds(c, n) {
+    var s = S(), m = me(), xp = (s.flags.crimeXp || {})[c.id] || 0;
+    return U.clamp(c.p + (c.stat ? (E.statValue(c.stat) - 50) / 200 : (m.athl - 50) / 300) - (n || 0) * 0.05 + (s.flags.gang ? 0.05 : 0) + Math.min(0.15, xp * 0.03), 0.05, 0.9);
+  }
   function commitCrime(c) {
     var s = S(), m = me();
     var n = use('crime');
-    var p = c.p + (c.stat ? (E.statValue(c.stat) - 50) / 200 : (m.athl - 50) / 300) - n * 0.05 + (s.flags.gang ? 0.05 : 0);
+    var p = crimeOdds(c, n);
     E.karma(c.karma);
     s.counts.crimes++;
-    if (U.chance(U.clamp(p, 0.05, 0.9))) {
+    if (U.chance(p)) {
+      var xp = s.flags.crimeXp || (s.flags.crimeXp = {}); xp[c.id] = (xp[c.id] || 0) + 1; // practice makes a better criminal
       var take = c.reward[1] ? E.$(U.rand(c.reward[0], c.reward[1])) : 0;
       if (c.id === 'embezzle') take = Math.round(E.jobSalary(s.job) * U.randf(0.1, 1.5));
       E.addMoney(take);
@@ -1724,6 +1732,9 @@ TL.actions = (function () {
     }
     if (U.chance(0.35)) return done('Something went wrong, but I escaped before the cops showed up.');
     var years = U.rand(c.jail[0], c.jail[1]);
+    // Judges are harder on repeat offenders.
+    var priors = s.record.filter(function (r) { return r.years > 0; }).length;
+    if (years > 0 && priors) years += Math.min(3, priors);
     if (m.age < 18) years = Math.min(years, Math.max(0, 18 - m.age + 1));
     if (c.id === 'embezzle' && s.job) E.fire('The company discovered the embezzlement.');
     if (years === 0) { E.jail(0, c.name); if (S().prison) { ui().closeAll(); return done(bad('I was caught (' + c.name.toLowerCase() + ') while on parole. I\'m going back to prison.')); } return done(bad('I was caught (' + c.name.toLowerCase() + ') and let off with a fine.')); }
@@ -1735,6 +1746,8 @@ TL.actions = (function () {
   function prisonMenu() {
     ui().menu('Prison ⛓️', function () {
       var pr = S().prison;
+      // Released while this screen was open (parole, pardon, end of sentence): don't crash on a null cell.
+      if (!pr) return [{ info: true, html: '<p>🔓 I\'m out of prison. Freedom!</p>' }];
       return [
         { info: true, html: '<div class="kv"><b>' + U.esc(pr.name) + '</b><br>Crime: ' + pr.crime + '<br>Sentence: ' + U.plural(pr.total, 'year') + ' · ' + U.plural(pr.remaining, 'year') + ' left' + (pr.total >= 3 && !(TL.ancient && TL.ancient.on()) ? '<br>Parole: ' + (pr.served >= Math.ceil(pr.total / 2) ? 'a hearing every year · ' : 'eligible after ' + U.plural(Math.ceil(pr.total / 2), 'year') + ' · ') + 'conduct ' + ((pr.conduct || 0) >= 3 ? 'excellent' : (pr.conduct || 0) >= 1 ? 'good' : (pr.conduct || 0) < 0 ? 'poor' : 'average') : '') + '</div>' },
         { icon: '⚖️', label: 'Appeal my sentence', sub: pr.appealed ? 'Already appealed' : 'Costs ' + E.fmt(E.$(10000)), disabled: pr.appealed, onClick: function () {
