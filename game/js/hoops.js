@@ -732,7 +732,7 @@ TL.hoops = (function () {
   function retire() {
     var x = h(), s = S();
     x.stage = 'retired'; x.retiredYear = s.year;
-    if (s.job && s.job.hoops) s.job = null;
+    if (s.job && s.job.hoops) { s.job = null; E.leaveWork(); }
     var pro = x.seasons.filter(function (q) { return q.league !== 'High school' && q.league !== 'NCAA'; });
     var pts = pro.reduce(function (t, q) { return t + q.ppg * (q.gp || 0); }, 0);
     if (x.allstar >= 3 || x.rings || x.mvp || awards(x, /^All-.* Team$/) >= 3) { E.fame(5); E.log('🎽 The ' + (x.team || 'team') + ' retired my #' + x.num + ' jersey.', 'good'); }

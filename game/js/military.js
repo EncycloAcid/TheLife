@@ -302,7 +302,7 @@ TL.military = (function () {
   function discharge(type, retired) {
     var s = S(), x = m();
     x.active = false; x.discharge = type; x.endYear = s.year;
-    if (s.job && s.job.mil) { s.jobHistory.push({ career: 'military', title: rankTitle(x), years: x.yos, company: branchName(x.branch) }); s.job = null; }
+    if (s.job && s.job.mil) { s.jobHistory.push({ career: 'military', title: rankTitle(x), years: x.yos, company: branchName(x.branch) }); s.job = null; E.leaveWork(); }
     if (retired) {
       var high3 = basePay(x);
       s.retired = true; s.pension = E.$(Math.round(high3 * 0.025 * x.yos));

@@ -208,7 +208,7 @@ TL.engine = (function () {
     }
     for (var t2 = 0; t2 < 6 && !o.first && nm.first === nm.last; t2++) nm.first = randomName(gender, null, o.country).first;
     // A given first name ("a collab partner named Mitchell") rerolls the surname instead: never "Mitchell Mitchell".
-    for (var t3 = 0; t3 < 6 && o.first && !o.last && o.first === nm.last; t3++) nm.last = randomName(gender, null, o.country).last;
+    for (var t3 = 0; t3 < 6 && o.first && !o.last && o.first === nm.last; t3++) { nm.last = randomName(gender, null, o.country).last; if (S() && country().ancient) nm.last = D.surname(nm.last, gender, country().ancient); }
     var age = o.age != null ? o.age : 20;
     // Romance stays age-appropriate: nobody under 13 dates, a minor's partner is
     // within two years of them, and nobody under 16 is engaged or married.
@@ -613,6 +613,7 @@ TL.engine = (function () {
     if (!silent) log('I quit my job as ' + an(jobTitle(s.job)) + '.');
     if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.job = null;
+    leaveWork();
   }
   function fire(reason) {
     var s = S();
@@ -620,6 +621,7 @@ TL.engine = (function () {
     if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, fired: true });
     s.job = null;
+    leaveWork();
     stat('happy', -20);
   }
   // Public pension from 67 (Social Security in the US, a state pension
@@ -1193,6 +1195,21 @@ TL.engine = (function () {
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
     if ((p.role === 'mother' || p.role === 'father') && me().age >= 18) validateHome(); // no more living with parents who are gone
   }
+  // Work friendships: close coworkers have my back, ones I've alienated don't,
+  // and the good ones stay in my life after I leave.
+  function coworkerYear() {
+    var j = S().job;
+    if (!j || j.partTime || j.perf == null || j.special || j.fame || j.politics || j.mil) return;
+    var cw = people('coworker'), close = cw.filter(function (p) { return p.rel >= 60; }), sour = cw.filter(function (p) { return p.rel <= 15; });
+    if (close.length) j.perf = U.clamp(j.perf + Math.min(2, close.length), 0, 100);
+    if (sour.length && U.chance(0.3)) { j.perf = U.clamp(j.perf - 3, 0, 100); log('😒 ' + sour[0].first + ' took credit for my work in a meeting.', 'bad'); }
+  }
+  function leaveWork() {
+    people('coworker', true).forEach(function (p) { // the late ones too, or they stay "coworker" forever
+      if (p.alive && p.rel >= 70) { p.role = 'friend'; p.fyears = 0; log('🤝 ' + p.first + ' and I stayed friends after I left the job.'); }
+      else p.role = 'former coworker';
+    });
+  }
   // Grief: losing someone close hurts for years, more the closer we were.
   // Visiting the grave, honoring them and counseling help it heal.
   function startGrief(p) {
@@ -1375,7 +1392,7 @@ TL.engine = (function () {
   function uniqueKidName(kid) {
     var cty = country(), used = people(['child'], true).filter(function (q) { return q !== kid; }).map(function (q) { return q.first; }).concat([me().first]);
     if (cty.ancient || used.indexOf(kid.first) < 0) return;
-    var free = ((kid.gender === 'M' ? cty.male : cty.female) || []).filter(function (n) { return used.indexOf(n) < 0; });
+    var free = ((kid.gender === 'M' ? cty.male : cty.female) || []).filter(function (n) { return used.indexOf(n) < 0 && n !== kid.last; });
     if (free.length) kid.first = U.pick(free);
   }
   function haveBaby(other, o) {
@@ -1581,7 +1598,8 @@ TL.engine = (function () {
     if (!s.edu && m.age >= 18 && people('coworker').length < 2 && s.job && !s.job.partTime) {
       addPerson({ role: 'coworker', age: m.age + U.rand(-10, 15), rel: U.rand(30, 60) });
     }
-    if (!s.job) people('coworker').forEach(function (p) { p.role = 'former coworker'; });
+    if (!s.job) leaveWork();
+    else coworkerYear();
     // Out of school, classmates become old classmates.
     if (!s.edu) people('classmate').forEach(function (p) { p.role = 'former classmate'; });
 
@@ -1867,7 +1885,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

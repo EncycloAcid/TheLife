@@ -220,7 +220,7 @@ TL.coup = (function () {
     items.push({ icon: '🕊️', label: 'Make peace with ' + R.neighbors[0], sub: 'Calm borders, a quieter army', onClick: function () { if (count('rule_peace')) return done(nope('One treaty a year is enough.')); bump('rule_peace'); r.pop = U.clamp(r.pop + 6, 0, 100); r.guard = U.clamp(r.guard - 4, 0, 100); E.fame(2); done('We swore peace and exchanged gifts. The warriors grumble that there is no one left to fight.'); } });
     if (!E.partner() && me().age >= 16) items.push({ icon: '💍', label: 'Marry for an alliance', sub: 'A royal match brings allies', onClick: function () {
       var g = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(g === 'F' ? R.brides : R.grooms), cty = TL.data.country(s.country);
-      var p = E.addPerson({ role: 'spouse', gender: g, age: me().age + U.rand(-6, 4), rel: U.rand(35, 70) }); p.first = U.pick(g === 'F' ? cty.female : cty.male); p.job = 'Royal consort';
+      var p = E.addPerson({ role: 'spouse', gender: g, age: me().age + U.rand(-6, 4), rel: U.rand(35, 70), first: U.pick(g === 'F' ? cty.female : cty.male) }); // never "Claudia Claudia" p.job = 'Royal consort';
       r.guard = U.clamp(r.guard + 12, 0, 100); r.pop = U.clamp(r.pop + 4, 0, 100); E.achieve('married');
       done(good('I married ' + p.first + ', ' + who + '. Their family\'s warriors are mine now. 💍'));
     } });
@@ -572,7 +572,7 @@ TL.dynasty = (function () {
     } });
     if (age >= 16 && !E.partner()) out.push({ icon: '💍', label: 'Make a royal marriage', sub: 'A foreign match brings allies', onClick: function () {
       var R = era().coupCfg('throne').rule, gg = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(gg === 'F' ? R.brides : R.grooms), cty = TL.data.country(s.country);
-      var sp = E.addPerson({ role: 'spouse', gender: gg, age: me().age + U.rand(-4, 4), rel: U.rand(35, 70) }); sp.first = U.pick(gg === 'F' ? cty.female : cty.male); sp.job = 'Royal consort';
+      var sp = E.addPerson({ role: 'spouse', gender: gg, age: me().age + U.rand(-4, 4), rel: U.rand(35, 70), first: U.pick(gg === 'F' ? cty.female : cty.male) }); sp.job = 'Royal consort';
       grow('support', 10); E.achieve('married');
       done(good('I married ' + sp.first + ', ' + who + '. Their family\'s swords stand behind my claim now. 💍'));
     } });
@@ -670,7 +670,7 @@ TL.dynasty = (function () {
   hdef('dy_match', { min: 16, max: 24, w: 5, cond: function () { return !E.partner(); }, build: function () {
     var c = cfg(), R = era().coupCfg('throne').rule, g = me().interest === 'F' ? 'F' : me().interest === 'M' ? 'M' : (me().gender === 'M' ? 'F' : 'M'), who = U.pick(g === 'F' ? R.brides : R.grooms);
     return { icon: '💌', title: 'A royal match', text: 'Envoys have come to propose a marriage between me and ' + who + '. An alliance would make my claim much stronger.', choices: [
-      { label: 'Agree to the match', run: function () { var cty = TL.data.country(S().country), sp = E.addPerson({ role: me().age >= 16 ? 'spouse' : 'fiance', gender: g, age: me().age + U.rand(-3, 3), rel: U.rand(30, 60) }); sp.first = U.pick(g === 'F' ? cty.female : cty.male); sp.job = 'Royal consort'; grow('support', 12); if (me().age >= 16) E.achieve('married'); return good((me().age >= 16 ? 'I married ' : 'I was betrothed to ') + sp.first + ', ' + who + '. Their family\'s swords stand behind me now. 💍'); } },
+      { label: 'Agree to the match', run: function () { var cty = TL.data.country(S().country), sp = E.addPerson({ role: me().age >= 16 ? 'spouse' : 'fiance', gender: g, age: me().age + U.rand(-3, 3), rel: U.rand(30, 60), first: U.pick(g === 'F' ? cty.female : cty.male) }); sp.job = 'Royal consort'; grow('support', 12); if (me().age >= 16) E.achieve('married'); return good((me().age >= 16 ? 'I married ' : 'I was betrothed to ') + sp.first + ', ' + who + '. Their family\'s swords stand behind me now. 💍'); } },
       { label: 'Refuse: I will choose for myself', run: function () { grow('love', 5); grow('support', -6); E.stat('happy', 3); return 'The envoys went home offended. The people liked my spirit; the great men of ' + c.realm + ' did not.'; } }
     ] };
   } });

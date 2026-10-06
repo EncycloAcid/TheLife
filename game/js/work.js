@@ -132,7 +132,7 @@ TL.work = (function () {
       { label: 'Take the offer', fn: function () {
         var keep = { career: j.career, level: lvl, perf: 55, years: 0, levelYears: 0, mult: mult, company: co };
         E.quitJob(true); s.job = keep; s.counts.jobs++;
-        E.people('coworker').forEach(function (p2) { p2.role = 'former coworker'; });
+        E.leaveWork();
         return done(good('I took the job at ' + co + ' as ' + E.an(E.jobTitle(keep)) + '. New salary: ' + E.fmt(E.jobSalary(keep)) + '. 📈'));
       } },
       { label: 'Ask my boss to match it', fn: function () {

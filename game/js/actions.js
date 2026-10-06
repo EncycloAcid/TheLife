@@ -176,6 +176,11 @@ TL.actions = (function () {
       if (['classmate', 'coworker', 'former classmate', 'former coworker'].indexOf(r) >= 0) {
         items.push({ section: 'Social' });
         items.push({ icon: '🤝', label: 'Befriend', onClick: function () { befriend(p); } });
+        if (r === 'coworker') {
+          items.push({ icon: '🥪', label: 'Grab lunch together', sub: used('lunch' + p.id) ? 'Done this year' : 'Good work friends have my back', disabled: used('lunch' + p.id) > 0, onClick: function () { use('lunch' + p.id); E.rel(p, U.rand(5, 9)); E.stat('happy', 1); done('I grabbed ' + U.pick(['tacos', 'ramen', 'sandwiches', 'a salad', 'pizza']) + ' with ' + p.first + ' and we talked about everything but work.'); } });
+          var sj = S().job, why = !sj || sj.perf == null ? 'Not at a regular job' : used('askhelp' + p.id) ? 'Done this year' : p.rel < 50 ? 'We\'re not close enough yet' : '';
+          items.push({ icon: '🙋', label: 'Ask for help on a project', sub: why || 'Better work, but it costs a favor', disabled: !!why, onClick: function () { use('askhelp' + p.id); S().job.perf = U.clamp(S().job.perf + 3, 0, 100); E.rel(p, -2); done(good(p.first + ' stayed late to help me finish. My boss noticed the work.')); } });
+        }
         if (canDate(p)) items.push({ icon: '💘', label: 'Ask out', onClick: function () { askOut(p); } });
       }
       if (['friend', 'best friend'].indexOf(r) >= 0) {
@@ -692,7 +697,7 @@ TL.actions = (function () {
         if (TL.work && TL.work.regular(j)) TL.work.items(j).forEach(function (it) { items.push(it); });
         else if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '💰', label: 'Ask for a raise', onClick: askRaise });
         if (j.fame && !j.hoops && !j.acting && !j.music && !j.pro && !j.special) items.push({ icon: '🎬', label: { actor: 'Audition for a big role', musician: 'Release an album', athlete: 'Negotiate new contract' }[j.career], onClick: fameGig });
-        if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, 8); done('I chatted with ' + c.first + ' by the water cooler.'); } });
+        if (!j.partTime && !j.fame && !j.politics && !j.mil) items.push({ icon: '☕', label: 'Chat with coworkers', onClick: function () { var cw = E.people('coworker'); if (!cw.length) return done('No one is around.'); var c = U.pick(cw); E.rel(c, Math.round(8 * diminish('chat'))); done('I chatted with ' + c.first + ' by the water cooler.'); } });
         if (me().age >= 55 && !j.partTime && !j.mil && !j.acting && !j.music && !j.pro && !j.special) items.push({ icon: '🌅', label: 'Retire', onClick: function () { ui().confirm('Retire?', 'Retire and collect a pension?', function () { var r = E.retire(); done(r.ok ? good(r.msg) : nope(r.msg)); }); } });
         if (!j.mil && !j.pro) items.push({ icon: '🚪', label: j.coach ? 'Step down as coach' : j.hoops ? 'Retire from basketball' : 'Quit job', danger: true, onClick: function () { ui().confirm(j.coach ? 'Step down?' : j.hoops ? 'Retire?' : 'Quit?', j.coach ? 'Leave the bench for good?' : j.hoops ? 'Hang up my sneakers for good?' : 'Quit your job as ' + E.jobTitle(j) + '?', function () { if (j.coach) { E.quitJob(true); return done('I stepped down as ' + (j.title || 'coach').toLowerCase() + '. 📋'); } if (j.hoops) return done(TL.hoops.retire()); E.quitJob(); done('I quit my job.'); }); } });
       } else if (s.retired) {
