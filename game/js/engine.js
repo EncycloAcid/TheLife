@@ -1573,7 +1573,8 @@ TL.engine = (function () {
     } else {
       var otherParent = c.otherParent ? person(c.otherParent) : null;
       if (otherParent) { otherParent.role = otherParent.gender === 'M' ? 'father' : 'mother'; newPeople.push(otherParent); }
-      kids.forEach(function (k) { if (k.id !== c.id) { k.role = 'sibling'; newPeople.push(k); } });
+      // My brothers and sisters: any college fund our parent saved for them is theirs now.
+      kids.forEach(function (k) { if (k.id !== c.id) { k.role = 'sibling'; if (k.fund) { k.money = (k.money || 0) + k.fund; k.fund = 0; } newPeople.push(k); } });
       // carry forward the heir's own spouse and children
       s.people.forEach(function (p) {
         if (p.role === 'in-law' && p.spouseOf === c.id) { p.role = 'spouse'; delete p.spouseOf; newPeople.push(p); }

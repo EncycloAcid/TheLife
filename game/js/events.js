@@ -644,12 +644,40 @@ TL.events = (function () {
       { label: 'Refuse', run: function () { E.rel(p, -15); return p.first + ' is upset with me.'; } }
     ] };
   } });
+  // A midlife crisis that knows my life: what's missing shapes the choices.
   def('midlife', { min: 40, max: 55, w: 4, once: true, build: function () {
-    return { icon: '🏍️', title: 'Midlife crisis', text: 'I\'ve been feeling restless. Is this all there is?', choices: [
-      { label: 'Buy a sports car', run: function () { var p = E.$(90000); if (S().money < p) return 'I can\'t afford one. I bought sunglasses instead.'; E.addMoney(-p); S().assets.push({ id: U.uid(), kind: 'car', type: 'Sports Coupe', name: 'Red Sports Coupe', value: p, price: p, cond: 100, loan: 0 }); E.stat('happy', 12); return good('I bought a red sports coupe. I feel 25 again.'); } },
-      { label: 'Take up a new hobby', run: function () { E.stat('happy', 8); return 'I started ' + U.pick(['pottery', 'salsa dancing', 'rock climbing', 'painting', 'guitar lessons']) + '.'; } },
-      { label: 'Get therapy', run: function () { E.addMoney(-E.$(1500)); E.stat('happy', 10); return 'Talking it out really helped.'; } }
-    ] };
+    var s = S(), m = E.me(), j = s.job, pt = E.partner(), kids = E.people('child').filter(function (c) { return c.age >= 18; });
+    var lines = [], choices = [];
+    if (!pt) lines.push('I\'m ' + m.age + ' and still on my own.');
+    if (j && !j.fame && j.years >= 15) lines.push(U.plural(j.years, 'year') + ' at ' + j.company + '. Is this it?');
+    else if (j && !j.fame && j.perf < 45) lines.push('My job at ' + j.company + ' feels like a dead end.');
+    if (!j && m.age < 60) lines.push('I don\'t even have a job to complain about.');
+    if (kids.length && kids.length === E.people('child').length) lines.push('The kids are grown and the house is quiet.');
+    if (!lines.length) lines.push('On paper, everything is fine. So why do I feel so restless?');
+    var car = E.$(90000);
+    choices.push({ label: 'Buy a sports car (' + E.fmt(car) + ')', run: function () {
+      if (s.money < car) return 'I can\'t afford one. I bought aviator sunglasses instead.';
+      E.addMoney(-car); s.assets.push({ id: U.uid(), kind: 'car', type: 'Sports Coupe', name: 'Red Sports Coupe', value: car, price: car, cond: 100, loan: 0, made: s.year });
+      E.stat('happy', 8); if (pt) E.rel(pt, -6); E.stat('looks', 2);
+      return good('A red convertible. ' + (pt ? pt.first + ' rolled their eyes, but I feel 25 again.' : 'I feel 25 again.'));
+    } });
+    if (j && !j.fame && !j.politics && !j.mil) choices.push({ label: 'Quit my job and start over', run: function () {
+      var co = j.company; E.quitJob(true); E.log('🚪 I walked out of ' + co + ' to start over. Terrifying. Exhilarating.'); E.stat('happy', 14); s.flags.fresh = s.year;
+      return good('I handed in my notice. For the first time in years, I have no idea what comes next, and I love it.');
+    } });
+    if (pt) choices.push({ label: 'Rekindle things with ' + pt.first, run: function () {
+      var trip = E.$(6000); if (s.money >= trip) E.addMoney(-trip);
+      E.rel(pt, 18); E.stat('happy', 10);
+      return good((s.money >= 0 ? 'We took a trip, just the two of us' : 'We started date nights again') + '. ' + pt.first + ' and I talked like we did when we first met.');
+    } });
+    choices.push({ label: 'Train for a marathon', run: function () {
+      if (m.health < 40 || U.chance(0.15)) { E.stat('health', -6); return bad('I pulled a hamstring three weeks in. Maybe next year.'); }
+      E.stat('health', 8); m.athl = U.clamp((m.athl || 30) + 8, 0, 100); E.stat('happy', 10); s.flags.marathon = s.year;
+      E.log('🏃 I ran my first marathon at ' + m.age + '. Slowly, but I finished.', 'good');
+      return good('26.2 miles. My legs are destroyed and I\'ve never been prouder.');
+    } });
+    choices.push({ label: 'Talk to a therapist', run: function () { E.addMoney(-E.$(1500)); E.stat('happy', 12); return good('It wasn\'t a crisis, just a question I\'d been avoiding. I have a better answer now.'); } });
+    return { icon: '🏍️', title: 'Midlife crisis', text: lines.join(' '), choices: choices.slice(0, 4) };
   } });
   def('health_scare', { min: 35, max: 90, w: 4, build: function () {
     return { icon: '🩺', title: 'Chest pain', text: 'I\'ve been having sharp chest pains.', choices: [

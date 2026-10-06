@@ -84,7 +84,7 @@ TL.gamedev = (function () {
     return 'Hobbyist Game Developer';
   }
   function setJob(w) {
-    var s = S(); if (me().age < 16 || w.stage === 'hobby') return;
+    var s = S(); if (me().age < 16 || w.stage === 'hobby' || s.prison) return;
     s.job = { career: 'sp_gamedev', special: 'gamedev', fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, salary: 0, company: w.stage === 'employed' ? w.employer : w.stage === 'owner' ? w.studio.name : 'Self-published' };
     s.sp = s.sp || {}; s.sp.gamedev = s.sp.gamedev || { rep: w.rep, skill: w.skill, since: yr(), peak: w.rep, honors: [], earnTotal: 0 }; s.sp.gamedev.retired = false;
   }
@@ -316,7 +316,8 @@ TL.gamedev = (function () {
   }
 
   // ------------------------------------------------------------ events
-  function def(id, o) { o.id = id; o.scripted = true; TL.events.defs[id] = o; }
+  // Career events never fire for someone who has left game development or is in prison.
+  function def(id, o) { var b = o.build; o.build = function (d) { var w = S().gd; if (!w || w.retired || S().prison) return null; return b(d); }; o.id = id; o.scripted = true; TL.events.defs[id] = o; }
   def('gd_launch', { build: function (d) {
     var w = S().gd; if (!w) return null;
     var ch = [];
