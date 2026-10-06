@@ -35,13 +35,14 @@ TL.real = (function () {
   // Yearly tuition in base dollars (the engine converts with E.$).
   function tuition(country, tier) { return Math.round(TIER_FEE[tier] * (EDU_COST[country] != null ? EDU_COST[country] : 1)); }
   // Chance of getting in, from high school grades, SAT, and athletics.
-  function admitChance(tier, grade, sat, athlete) {
+  function admitChance(tier, grade, sat, athlete, extra) {
     var p;
     if (tier === 3) p = grade >= 90 ? .5 : grade >= 82 ? .22 : grade >= 74 ? .06 : .01;
     else if (tier === 2) p = grade >= 78 ? .8 : grade >= 68 ? .45 : grade >= 58 ? .2 : .06;
     else p = grade >= 50 ? .97 : .8;
     if (sat) p += sat >= 1500 ? .2 : sat >= 1350 ? .08 : sat < 1000 ? -.05 : 0;
     if (athlete) p += tier === 3 ? .2 : .25;
+    if (extra && tier >= 2) p += extra; // clubs and leadership on the application
     return Math.max(.01, Math.min(.98, p));
   }
 

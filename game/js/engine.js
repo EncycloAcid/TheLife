@@ -382,6 +382,7 @@ TL.engine = (function () {
     // yearly grade change
     e.grade = U.clamp(Math.round(e.grade + (m.smarts - 50) / 12 + e.study * 3 + U.rand(-7, 7) - (m.happy < 25 ? 5 : 0)), 0, 100);
     reportCard(e);
+    clubYear(e);
     // Learning gets harder near the top, so not every kid maxes out by 12.
     var room = U.clamp((115 - me().smarts) / 60, 0.25, 1);
     if (e.stage !== 'grad' && e.stage !== 'uni') stat('smarts', Math.round((U.rand(0, 3) + e.study) * room));
@@ -460,7 +461,7 @@ TL.engine = (function () {
     }
     if (funding === 'scholarship') {
       var g = s.lastGrade || 50;
-      var p = g >= 90 ? 0.8 : g >= 80 ? 0.45 : g >= 70 ? 0.2 : 0.03;
+      var p = (g >= 90 ? 0.8 : g >= 80 ? 0.45 : g >= 70 ? 0.2 : 0.03) + clubBonus();
       if (s.sat) p += (s.sat - 1100) / 1500;
       if (s.flags.athleteScholar) p += 0.3;
       if (!U.chance(p)) return { ok: false, msg: 'My scholarship application was rejected.' };
@@ -1195,6 +1196,31 @@ TL.engine = (function () {
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
     if ((p.role === 'mother' || p.role === 'father') && me().age >= 18) validateHome(); // no more living with parents who are gone
   }
+  // Clubs: each year in one builds a skill and an application; years of
+  // commitment can make me president; too many clubs drag my grades down.
+  var CLUB_FX = { 'Chess Club': 'smarts', 'Debate Team': 'smarts', 'Robotics Club': 'smarts', 'Science Olympiad': 'smarts', 'Drama Club': 'acting', 'Band': 'music', 'Choir': 'music', 'Art Club': 'happy', 'Yearbook': 'happy', 'Student Council': 'popularity' };
+  function clubYear(e) {
+    var s = S(), m = me();
+    if (!e.clubs || !e.clubs.length) return;
+    e.clubYrs = e.clubYrs || {};
+    e.clubs.forEach(function (c) {
+      e.clubYrs[c] = (e.clubYrs[c] || 0) + 1;
+      var fx = CLUB_FX[c];
+      if (fx === 'smarts') stat('smarts', 1);
+      else if (fx === 'acting' || fx === 'music') s.flags[fx] = (s.flags[fx] || 0) + 0.5;
+      else if (fx === 'happy') stat('happy', 1);
+      else if (fx === 'popularity') e.popularity = U.clamp((e.popularity || 30) + 3, 0, 100);
+    });
+    s.flags.clubYears = (s.flags.clubYears || 0) + e.clubs.length;
+    var load = e.clubs.length + (e.team ? 1 : 0);
+    if (load > 3) { e.grade = U.clamp(e.grade - 3 * (load - 3), 0, 100); stat('happy', -2); if (U.chance(0.5)) log('😵 Between ' + U.plural(load, 'club') + ' and teams, I\'m spread too thin. My grades are slipping.', 'bad'); }
+    if (!e.pres && (e.stage === 'high' || e.stage === 'uni')) {
+      var vet = e.clubs.filter(function (c) { return e.clubYrs[c] >= 2; })[0];
+      if (vet && U.chance(0.04 + m.smarts / 900 + (e.popularity || 30) / 900)) { e.pres = vet; s.flags.clubPres = (s.flags.clubPres || 0) + 1; stat('happy', 5); log('🏅 I was elected president of the ' + vet + '!', 'good'); }
+    }
+  }
+  // What clubs add to a university application (0 to 0.12).
+  function clubBonus() { var f = S().flags; return Math.min(0.12, (f.clubYears || 0) * 0.01 + (f.clubPres ? 0.05 : 0)); }
   // Work friendships: close coworkers have my back, ones I've alienated don't,
   // and the good ones stay in my life after I leave.
   function coworkerYear() {
@@ -1885,7 +1911,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

@@ -739,8 +739,9 @@ TL.actions = (function () {
       var list = D.CLUBS.map(function (c) { return { name: c, sport: false }; });
       return list.map(function (c) {
         var inIt = e.clubs.indexOf(c.name) >= 0 || e.team === c.name;
-        return { icon: c.sport ? '🏅' : '🎭', label: c.name, right: inIt ? '✔' : '', onClick: function () {
-          if (inIt) return done(nope('I\'m already a member.'));
+        var yrs = (e.clubYrs || {})[c.name] || 0, pres = e.pres === c.name;
+        return { icon: c.sport ? '🏅' : '🎭', label: c.name, sub: pres ? 'President · ' + U.plural(yrs, 'year') : inIt ? 'Member' + (yrs ? ' · ' + U.plural(yrs, 'year') : '') + ' · tap to quit' : ({ 'Chess Club': 'Sharpens my mind', 'Debate Team': 'Sharpens my mind', 'Robotics Club': 'Sharpens my mind', 'Science Olympiad': 'Sharpens my mind', 'Drama Club': 'Stage experience', 'Band': 'Musical experience', 'Choir': 'Musical experience', 'Art Club': 'Fun and friends', 'Yearbook': 'Fun and friends', 'Student Council': 'More popular' })[c.name] || '', right: inIt ? '✔' : '', onClick: function () {
+          if (inIt) return ui().confirm('Quit the ' + c.name + '?', pres ? 'I\'d give up being president.' : 'More time for homework.', function () { e.clubs = e.clubs.filter(function (x) { return x !== c.name; }); if (pres) e.pres = null; done('I quit the ' + c.name + '.'); });
           if (c.sport) {
             if (U.chance(me().athl / 100 + 0.15)) { e.team = c.name; me().athl = U.clamp(me().athl + 5, 0, 100); if (me().athl > 80 && me().age >= 15) S().flags.athleteScholar = true; return done(good('I made the ' + c.name + '!')); }
             return done(bad('I didn\'t make the ' + c.name + '.'));
@@ -772,7 +773,7 @@ TL.actions = (function () {
       [3, 2, 1].forEach(function (tier) {
         items.push({ section: TL.real.TIER_LABEL[tier] });
         TL.real.universities(s.country).filter(function (u) { return u.tier === tier; }).forEach(function (u) {
-          var pct = Math.round(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar) * 100);
+          var pct = Math.round(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar, E.clubBonus()) * 100);
           var tried = s.flags['applied_' + u.name] === s.year;
           items.push({ icon: tier === 3 ? '🏛️' : tier === 2 ? '🎓' : '🏫', label: u.name, sub: (tried ? 'Already applied this year' : pct + '% chance') + ' · ' + E.fmt(E.$(TL.real.tuition(s.country, u.tier))) + '/yr', disabled: tried, onClick: function () { applyCollege(major, u); } });
         });
@@ -783,7 +784,7 @@ TL.actions = (function () {
   function applyCollege(major, u) {
     var s = S();
     s.flags['applied_' + u.name] = s.year;
-    if (!U.chance(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar))) return done(bad(u.name + ' rejected my application. 📭'));
+    if (!U.chance(TL.real.admitChance(u.tier, s.lastGrade || 60, s.sat, s.flags.athleteScholar, E.clubBonus()))) return done(bad(u.name + ' rejected my application. 📭'));
     var cost = E.$(TL.real.tuition(s.country, u.tier)) * 4;
     ui().choose('Accepted! 🎉', u.name + ' accepted me to study ' + major + '! Four years of tuition is ' + E.fmt(cost) + '. How will I pay?', [
       { label: 'Ask my parents', fn: function () { finishEnroll(E.enrollUni(major, 'parents', u)); } },
