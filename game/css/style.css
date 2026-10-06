@@ -601,3 +601,6 @@ body.sheet-open .screen.active { transform: translateY(calc(10px + var(--safe-t)
 .gh #h-phone[hidden] { display: none; }
 /* Design layers (css/ios26.css) switch these on. */
 .y-node, .sheet-large { display: none; }
+/* The app logo on the title screen fills its tile (each theme keeps its own tile shape). */
+.logo .logo-img { width: 100%; height: 100%; display: block; border-radius: inherit; }
+.logo:has(.logo-img) { background: none; padding: 0; overflow: hidden; }
