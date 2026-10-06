@@ -687,7 +687,7 @@ TL.actions = (function () {
           items.push({ section: 'How I spend retirement' });
           Object.keys(E.RET_PLANS).forEach(function (k) {
             var pl = E.RET_PLANS[k];
-            items.push({ icon: pl[0], label: pl[1] + (s.retPlan === k ? ' ✓' : ''), sub: pl[2], onClick: function () { s.retPlan = k; done(good('From now on: ' + pl[1].toLowerCase() + '.')); } });
+            var why = s.retPlan === k ? '' : E.retPlanBlock(k); items.push({ icon: pl[0], label: pl[1] + (s.retPlan === k ? ' ✓' : ''), sub: why || pl[2], disabled: !!why, onClick: function () { s.retPlan = k; done(good('From now on: ' + pl[1].toLowerCase() + '.')); } });
           });
         }
       } else if (!s.job && me().age >= 62 && !s.prison && !s.edu) items.push({ icon: '🌅', label: 'Retire', sub: 'Stop looking for work', onClick: function () { s.retired = true; E.achieve('retired'); done(good('I\'m officially retired.')); } });

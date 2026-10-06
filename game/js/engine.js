@@ -207,6 +207,8 @@ TL.engine = (function () {
       if (o.first) nm.last = o.last ? nm.last : alt.last; else { alt.last = nm.last; nm = alt; }
     }
     for (var t2 = 0; t2 < 6 && !o.first && nm.first === nm.last; t2++) nm.first = randomName(gender, null, o.country).first;
+    // A given first name ("a collab partner named Mitchell") rerolls the surname instead: never "Mitchell Mitchell".
+    for (var t3 = 0; t3 < 6 && o.first && !o.last && o.first === nm.last; t3++) nm.last = randomName(gender, null, o.country).last;
     var age = o.age != null ? o.age : 20;
     // Romance stays age-appropriate: nobody under 13 dates, a minor's partner is
     // within two years of them, and nobody under 16 is engaged or married.
@@ -599,10 +601,15 @@ TL.engine = (function () {
     if (c.id === 'judge') return 'the Courts';
     return U.pick(CO_A) + ' ' + (CO_B[c.id] || U.pick(['Group', 'Inc.', 'Corp.', 'Partners', 'Co.', 'Industries']));
   }
+  // What a regular career paid when I left it (retirees can consult in that field later).
+  function officePay(j) {
+    if (!j || j.partTime || j.special || j.acting || j.music || j.pro || j.hoops || j.mil || j.politics || j.ancient || j.fame || !D.career(j.career)) return 0;
+    return jobSalary(j) || 0;
+  }
   function quitJob(silent) {
     var s = S();
     if (!s.job) return;
-    s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, company: s.job.company });
+    s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, company: s.job.company, pay: officePay(s.job) });
     if (!silent) log('I quit my job as ' + an(jobTitle(s.job)) + '.');
     if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.job = null;
@@ -633,8 +640,22 @@ TL.engine = (function () {
     travel: ['✈️', 'Travel the world', 'Lots of happiness, but trips cost money every year'],
     family: ['👪', 'Be there for family', 'Closer to my kids and grandkids'],
     volunteer: ['🙏', 'Volunteer', 'Good karma and a sense of purpose'],
-    relax: ['🌻', 'Take it easy', 'Gardening, golf and naps keep me healthy']
+    relax: ['🌻', 'Take it easy', 'Gardening, golf and naps keep me healthy'],
+    learn: ['📚', 'Keep learning', 'Classes, books and puzzles keep my mind sharp'],
+    consult: ['💼', 'Consult part-time', 'Some income from my old field, while I still have the energy']
   };
+  // The career I could consult in: my last regular job, if I spent real years in it.
+  function consultField() {
+    var h = S().jobHistory, last = h[h.length - 1];
+    return last && last.pay > 0 && last.years >= 5 && !last.fired ? last : null;
+  }
+  // Why a plan can't be picked right now ('' when it can).
+  function retPlanBlock(k) {
+    if (k !== 'consult') return '';
+    if (!consultField()) return 'Needs 5+ years in my last regular job';
+    if (me().age >= 75) return 'I\'m past consulting age';
+    return '';
+  }
   var TRIPS = ['cruised the Mediterranean', 'saw the northern lights in Norway', 'toured Japan in cherry blossom season', 'went on safari in Kenya', 'drove across the country in an RV', 'spent a month in Italy', 'visited the Great Barrier Reef', 'walked the Camino de Santiago'];
   function retirementYear() {
     var s = S(), p = s.retPlan;
@@ -651,8 +672,26 @@ TL.engine = (function () {
       fam.forEach(function (q) { rel(q, 4); });
       stat('happy', fam.length ? 3 : 1);
       if (fam.length && U.chance(0.25)) log('👪 I spent the year with ' + (people('grandchild').length ? 'my grandkids' : 'my kids') + '. Those are the best days.', 'good');
-    } else if (p === 'volunteer') { karma(2); stat('happy', 2); }
+    } else if (p === 'volunteer') {
+      karma(2); stat('happy', 2); stat('health', 1);
+      // Volunteering is where retirees make new friends.
+      if (U.chance(0.12)) { var f = addPerson({ role: 'friend', age: me().age + U.rand(-12, 6), rel: U.rand(50, 70) }); log('🙏 Volunteering, I became friends with ' + fullName(f) + '.', 'good'); }
+    }
     else if (p === 'relax') { stat('health', 2); stat('happy', 1); }
+    else if (p === 'learn') {
+      var fee = $(1500);
+      if (s.money < fee) { s.retPlan = 'relax'; log('📚 Classes cost more than I can spare now. Library books and naps it is.'); return 0; }
+      stat('smarts', 2); stat('happy', 1);
+      if (U.chance(0.2)) log('📚 This year I ' + U.pick(['learned to paint', 'took a history course at the community college', 'finally learned Spanish', 'joined a chess club', 'read fifty books', 'learned to play the piano']) + '.', 'good');
+      return fee;
+    }
+    else if (p === 'consult') {
+      var fld = consultField();
+      if (!fld || me().age >= 75 || me().health < 30) { s.retPlan = 'relax'; log('💼 I closed the laptop for good. No more consulting, just taking it easy.'); return 0; }
+      var earn = Math.round(fld.pay * U.randf(0.2, 0.35) * Math.max(0.5, 1 - (me().age - 62) * 0.04));
+      stat('happy', 1); stat('health', -1);
+      return -earn; // negative cost is income
+    }
     return 0;
   }
   function retire() {
@@ -839,7 +878,8 @@ TL.engine = (function () {
     if (s.retired && s.pension) { income += s.pension; lines.push('Pension ' + fmt(s.pension)); }
     var sp = statePension();
     if (sp) { income += sp; lines.push((country().name === 'United States' ? 'Social Security ' : 'State pension ') + fmt(sp)); }
-    expense += retirementYear();
+    var rp = retirementYear();
+    if (rp < 0) { income -= rp; lines.push('Consulting ' + fmt(-rp)); } else expense += rp;
     if (s.social.platform && s.followers >= 10000) income += $(Math.round(s.followers * 0.01));
     // cost of living
     if (m.age >= 18 && !s.prison) {
@@ -1080,7 +1120,7 @@ TL.engine = (function () {
     // new illnesses
     D.ILLNESSES.forEach(function (ill) {
       if (!ill.p || a < ill.minAge || (ill.maxAge && a > ill.maxAge) || hasCondition(ill.name) || (TL.health && TL.health.has(ill.name))) return;
-      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1) * (TL.talents ? TL.talents.sickMult() : 1);
+      var p = ill.p * (m.health < 40 ? 1.8 : 1) * (ill.oldRisk && a > 65 ? 2.5 : 1) * (TL.health && TL.health.risk ? TL.health.risk(ill.name) : 1) * (TL.talents ? TL.talents.sickMult() : 1) * (ill.name === 'Dementia' && s.retired && s.retPlan === 'learn' ? 0.5 : 1); // a busy mind
       if (U.chance(p)) {
         if (TL.health && TL.health.hides(ill.name)) return TL.health.hide(ill.name);
         addCondition(ill.name);
@@ -1800,7 +1840,7 @@ TL.engine = (function () {
     log: log, stat: stat, addMoney: addMoney, karma: karma, fame: fame, person: person, people: people,
     partner: partner, rel: rel, stopCare: stopCare, CARE_COST: CARE_COST, hasDegree: hasDegree, eduRank: eduRank, highestDegree: highestDegree,
     degreeName: degreeName, hasCondition: hasCondition, addCondition: addCondition, removeCondition: removeCondition,
-    achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
+    achieve: achieve, netWorth: netWorth, paroleOdds: paroleOdds, parole: parole, expungeable: expungeable, RET_PLANS: RET_PLANS, retPlanBlock: retPlanBlock, statePension: statePension, credit: credit, creditWord: creditWord, bankruptcy: bankruptcy, makePerson: makePerson, addPerson: addPerson, randomName: randomName, npcJob: npcJob,
     newLife: newLife, enroll: enroll, enrollUni: enrollUni, enrollGrad: enrollGrad, enrollTrade: enrollTrade, dropOut: dropOut, gradeLetter: gradeLetter,
     eduYears: eduYears, jobSalary: jobSalary, jobTitle: jobTitle, companyName: companyName, eligible: eligible, applyJob: applyJob,
     applyPartTime: applyPartTime, quitJob: quitJob, fire: fire, retire: retire, fameAudition: fameAudition,
