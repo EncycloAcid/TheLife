@@ -432,6 +432,13 @@ TL.specials = (function () {
     if (!d) { var any = (GIFT[id] || []).map(function (k) { var q = TL.talents && TL.talents.get(k); return q ? q.icon + ' ' + q.name : ''; }).filter(Boolean); return any.length ? '<p class="small muted">Gifts that help: ' + any.join(', ') + '</p>' : ''; }
     return '<p class="small">🎁 ' + d.icon + ' <b>' + d.name + '</b> suits this career: stronger on every gig, training ' + Math.round((GIFT_TRAIN - 1) * 100) + '% faster, fame ' + Math.round((GIFT_REP - 1) * 100) + '% faster, more stamina.</p>';
   }
+  // Childhood lessons for a gift this career suits: a head start (js/events.js talent_nurture).
+  function headStart(id, x) {
+    var g = (GIFT[id] || []).filter(function (k) { return TL.talents && TL.talents.has(k) && TL.talents.nurtured(k); })[0];
+    if (!g) return;
+    x.skill = U.clamp(x.skill + 15, 0, 100); x.rep = U.clamp(x.rep + 5, 0, 100); x.nurtured = g;
+    E.log('🎁 All those years of lessons are paying off. I\'m starting well ahead of everyone else.', 'good');
+  }
   function powerOf(c, x) { return c.power(x) + (gift(c.id) ? GIFT_POWER : 0); }
   function bigName(c) { return typeof c.big[1] === 'function' ? c.big[1]() : c.big[1]; }
   function all() { return S().sp || (S().sp = {}); }
@@ -470,7 +477,7 @@ TL.specials = (function () {
     var x = st(id);
     // Kids train and enter junior events; the job (going pro) waits until 14.
     if (m.age < 14) {
-      if (!x) { x = all()[id] = { rep: 3, skill: U.rand(8, 18), since: s.year, peak: 3, honors: [], earnTotal: 0 }; if (id === 'gamer') { var gy = era(GAMES); x.game = gy[gy.length - 1] || 'Quake'; } }
+      if (!x) { x = all()[id] = { rep: 3, skill: U.rand(8, 18), since: s.year, peak: 3, honors: [], earnTotal: 0 }; headStart(id, x); if (id === 'gamer') { var gy = era(GAMES); x.game = gy[gy.length - 1] || 'Quake'; } }
       x.youth = true;
       E.log(c.icon + ' I started training to be ' + (/^[AEIOU]/.test(c.name) ? 'an ' : 'a ') + c.name.toLowerCase() + '. I can turn pro at 14.', 'good');
       ui().back(); return done(good('Training starts now. I can turn pro at 14.'));
@@ -478,6 +485,7 @@ TL.specials = (function () {
     if (!x) {
       if (id === 'model' && !U.chance(0.25 + (m.looks - 55) / 50)) { bump('spjoin'); return done(bad('The agency passed on me. Maybe next year.')); }
       x = all()[id] = { rep: 5, skill: U.rand(10, 25), since: s.year, peak: 5, honors: [], earnTotal: 0 };
+      headStart(id, x);
       if (id === 'gamer') { var gs = era(GAMES); x.game = gs[gs.length - 1] || 'Quake'; }
     }
     x.retired = false; delete x.youth;
@@ -485,7 +493,7 @@ TL.specials = (function () {
     s.job = { career: 'sp_' + id, special: id, fame: true, level: 0, perf: 60, years: 0, levelYears: 0, mult: 1, salary: 0, company: id === 'gamer' && x.rep < 40 ? 'Free agent' : org };
     if (id === 'gamer' && x.rep >= 40) x.team = org;
     E.log(C[id].icon + ' ' + (id === 'model' ? 'I signed with ' + org + '! I\'m officially a model.' : id === 'chef' ? 'I got a job as a line cook at ' + org + '.' : id === 'gamer' ? 'I\'m going pro in ' + x.game + '.' : 'I started my career as ' + (/^[AEIOU]/.test(c.name) ? 'an ' : 'a ') + c.name.toLowerCase() + ' with ' + org + '.'), 'good');
-    ui().closeAll(); done(good(id === 'model' ? 'Signed with ' + org + '!' : 'A new career begins.'));
+    ui().closeAll(); done({ text: id === 'model' ? 'Signed with ' + org + '!' : 'A new career begins.', cls: 'good', quiet: true }); // the log already says what happened
   }
 
   // ------------------------------------------------------------ the year's work

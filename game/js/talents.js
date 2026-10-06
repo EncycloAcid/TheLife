@@ -77,6 +77,8 @@ TL.talents = (function () {
       if (a >= d.at[0] && (a >= d.at[1] || U.chance(0.35))) {
         t.known = true;
         E.log(d.icon + ' ' + U.pick(d.found) + ' I have a gift: ' + d.name.toLowerCase() + '.', 'good');
+        // A gift spotted in childhood can be nurtured (js/events.js talent_nurture).
+        if (a < 18 && !E.ancient() && !s.prison && t.id !== 'beauty' && t.id !== 'iron') s.pending.push({ id: 'talent_nurture', data: { id: t.id } });
       }
     });
     // Musical kids end up on the talent-show stage (js/music.js).
@@ -96,12 +98,17 @@ TL.talents = (function () {
     return f;
   }
   // Extra career ceiling (talent/potential points) for a field.
-  function ceiling(field) { return { music: has('music') ? 22 : 0, acting: has('acting') ? 22 : 0, sports: has('athlete') ? 10 : 0, hoops: has('athlete') ? 6 : 0 }[field] || 0; }
+  function ceiling(field) {
+    var nb = function (id) { return nurtured(id) ? 6 : 0; }; // childhood lessons raise it a little more
+    return { music: has('music') ? 22 + nb('music') : 0, acting: has('acting') ? 22 + nb('acting') : 0, sports: has('athlete') ? 10 + nb('athlete') : 0, hoops: has('athlete') ? 6 + nb('athlete') : 0 }[field] || 0;
+  }
   function sickMult() { return has('iron') ? 0.55 : 1; }
+  // Years of lessons in childhood: a head start in any career the gift suits.
+  function nurtured(id) { var n = me() && me().nurture; return !!(n && n[id]); }
 
   function aboutRow() {
     var k = mine().filter(function (t) { return t.known; }).map(function (t) { var d = get(t.id); return d.icon + ' ' + d.name; });
     return k.length ? ['🌟 Talents', k.join(', ')] : null;
   }
-  return { LIST: LIST, roll: roll, give: give, has: has, mine: mine, yearly: yearly, revealAll: revealAll, skillMult: skillMult, ceiling: ceiling, sickMult: sickMult, aboutRow: aboutRow, get: get };
+  return { nurtured: nurtured, LIST: LIST, roll: roll, give: give, has: has, mine: mine, yearly: yearly, revealAll: revealAll, skillMult: skillMult, ceiling: ceiling, sickMult: sickMult, aboutRow: aboutRow, get: get };
 })();

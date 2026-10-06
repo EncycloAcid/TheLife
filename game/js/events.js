@@ -521,6 +521,30 @@ TL.events = (function () {
       };
     }
   });
+  // A childhood gift worth nurturing: lessons now give a head start in any career it suits (js/specials.js).
+  var NURTURE = {music: ['music lessons', 'My music teacher'], acting: ['drama classes', 'My drama teacher'], athlete: ['a travel team', 'A coach'], genius: ['the gifted program', 'My teacher'], artist: ['art classes', 'My art teacher'], charm: ['the debate team', 'My teacher'], palate: ['cooking classes', 'A chef at the community center'], nerve: ['climbing and martial arts lessons', 'A coach'], reflex: ['a youth sports academy', 'A coach'], stage: ['acting and public speaking classes', 'My drama teacher'], grace: ['dance and gymnastics classes', 'A dance teacher']};
+  def('talent_nurture', {
+    scripted: true,
+    build: function (d) {
+      var t = TL.talents && TL.talents.get(d && d.id), n = NURTURE[d && d.id];
+      if (!t || !n || (E.me().nurture || {})[t.id]) return null;
+      var par = E.parentsAround().filter(function (p) { return p.rel >= 25; })[0], cost = E.$(1500);
+      var who = n[1] + ' says';
+      return { icon: t.icon, title: 'A gift worth nurturing', text: who + ' my ' + t.name.toLowerCase() + ' could take me far, and suggests ' + n[0] + '.' + (par ? ' ' + par.first + ' would pay for it.' : ' I\'d have to pay for it myself (' + E.fmt(cost) + ').'), choices: [
+        { label: 'Sign me up for ' + n[0], run: function () {
+          if (!par) { if (S().money < cost) return bad('I couldn\'t afford ' + n[0] + '. Maybe later.'); E.addMoney(-cost); } else par.money = Math.max(0, (par.money || 0) - cost);
+          var m = E.me(); m.nurture = m.nurture || {}; m.nurture[t.id] = S().year;
+          if (t.id === 'athlete' || t.id === 'grace' || t.id === 'reflex') m.athl = U.clamp((m.athl || 30) + U.rand(4, 8), 0, 100);
+          if (t.id === 'genius') E.stat('smarts', U.rand(3, 6));
+          if (par) E.rel(par, 6);
+          E.stat('happy', 4);
+          E.log(t.icon + ' I started ' + n[0] + ' to nurture my ' + t.name.toLowerCase() + '.', 'good');
+          return good('Lessons every week. It\'s hard work, and I love it.');
+        } },
+        { label: 'Keep it just for fun', run: function () { E.stat('happy', 3); return 'I\'ll do it when I feel like it. No pressure.'; } }
+      ] };
+    }
+  });
   def('car_breakdown', {
     scripted: true,
     build: function (d) {
