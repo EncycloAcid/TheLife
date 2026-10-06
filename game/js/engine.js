@@ -201,7 +201,7 @@ TL.engine = (function () {
     // Roman women take the family name (Livia of the Livii); never "Livia Livia".
     for (var t0 = 0; t0 < 6 && !o.first && nm.first === nm.last; t0++) nm.first = randomName(gender, null, o.country).first;
     // No two people in one life share a full name (two "James Wilson" classmates was confusing).
-    var taken = function (f, l) { return S() && S().people.some(function (q) { return q.first === f && q.last === l; }); };
+    var taken = function (f, l) { return S() && ((S().me && S().me.first === f && S().me.last === l) || S().people.some(function (q) { return q.first === f && q.last === l; })); }; // nobody shares my full name either
     for (var tries = 0; tries < 8 && taken(o.first || nm.first, nm.last); tries++) {
       var alt = randomName(gender, o.last, o.country);
       if (o.first) nm.last = o.last ? nm.last : alt.last; else { alt.last = nm.last; nm = alt; }
@@ -621,6 +621,9 @@ TL.engine = (function () {
     log('I was fired from my job as ' + an(jobTitle(s.job)) + '. ' + (reason || ''), 'bad');
     if (s.job.special === 'gamedev' && TL.gamedev) TL.gamedev.left();
     s.jobHistory.push({ career: s.job.career, title: jobTitle(s.job), years: s.job.years, fired: true });
+    // Losing a job you held a year or more (not for a crime) qualifies for unemployment.
+    var pay = jobSalary(s.job) || 0;
+    if (s.job.years >= 1 && pay > 0 && !ancient() && s.year >= 1935 && !/caught|stole|steal|embezzl|arrest|prison|jail/i.test(reason || '')) s.uiElig = { pay: pay, year: s.year };
     s.job = null;
     leaveWork();
     stat('happy', -20);
@@ -879,6 +882,7 @@ TL.engine = (function () {
     // Back at a full-time job means I'm not retired anymore (the pension waits).
     if (s.retired && s.job && !s.job.partTime) { s.retired = false; log('💼 Working full-time again, I\'m officially out of retirement. My pension is on hold.'); }
     if (s.retired && s.pension) { income += s.pension; lines.push('Pension ' + fmt(s.pension)); }
+    safetyNet(function (amt, what) { income += amt; lines.push(what + ' ' + fmt(amt)); });
     var sp = statePension();
     if (sp) { income += sp; lines.push((country().name === 'United States' ? 'Social Security ' : 'State pension ') + fmt(sp)); }
     var rp = retirementYear();
@@ -1221,6 +1225,34 @@ TL.engine = (function () {
   }
   // What clubs add to a university application (0 to 0.12).
   function clubBonus() { var f = S().flags; return Math.min(0.12, (f.clubYears || 0) * 0.01 + (f.clubPres ? 0.05 : 0)); }
+  // A safety net: unemployment after losing a job, public assistance when broke.
+  function benefitsOpen() { return !ancient() && S().year >= 1935 && me().age >= 18 && !S().prison; }
+  function canClaimUI() { var s = S(); return benefitsOpen() && !s.job && !s.ui && s.uiElig && s.year - s.uiElig.year <= 1; }
+  function claimUI() {
+    var s = S();
+    if (!canClaimUI()) return { ok: false, msg: 'I don\'t qualify for unemployment right now.' };
+    s.ui = { pay: Math.min(Math.round(s.uiElig.pay * 0.4), $(20000)), left: 1 }; delete s.uiElig;
+    return { ok: true, msg: 'I filed for unemployment. I\'ll get ' + fmt(s.ui.pay) + ' this year while I look for work.' };
+  }
+  function canAssist() { var s = S(); return benefitsOpen() && !s.job && !s.assist && !s.retired && s.money < $(2000); }
+  function applyAssist() {
+    var s = S();
+    if (!canAssist()) return { ok: false, msg: 'I don\'t qualify for assistance.' };
+    s.assist = true; stat('happy', -2);
+    return { ok: true, msg: 'I signed up for public assistance. It isn\'t much, but it keeps food on the table.' };
+  }
+  function safetyNet(pay) {
+    var s = S();
+    if (s.ui) {
+      if (s.job || s.prison) delete s.ui;
+      else { pay(s.ui.pay, 'Unemployment'); if (--s.ui.left <= 0) { delete s.ui; log('📭 My unemployment benefits ran out.'); } }
+    }
+    if (s.uiElig && (s.job || s.year - s.uiElig.year > 1)) delete s.uiElig;
+    if (s.assist) {
+      if (s.job || s.retired || s.prison || s.money > $(20000) || !benefitsOpen()) { delete s.assist; if (s.job) log('👍 With a paycheck again, I came off public assistance.'); }
+      else pay($(6000), 'Assistance');
+    }
+  }
   // Work friendships: close coworkers have my back, ones I've alienated don't,
   // and the good ones stay in my life after I leave.
   function coworkerYear() {
@@ -1911,7 +1943,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, canClaimUI: canClaimUI, claimUI: claimUI, canAssist: canAssist, applyAssist: applyAssist, clubBonus: clubBonus, leaveWork: leaveWork, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

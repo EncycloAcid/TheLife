@@ -711,6 +711,9 @@ TL.actions = (function () {
           });
         }
       } else if (!s.job && me().age >= 62 && !s.prison && !s.edu) items.push({ icon: '🌅', label: 'Retire', sub: 'Stop looking for work', onClick: function () { s.retired = true; E.achieve('retired'); done(good('I\'m officially retired.')); } });
+      if (!s.job && (s.ui || s.assist)) items.push({ info: true, html: '<p class="muted">' + (s.ui ? '📬 Unemployment: ' + E.fmt(s.ui.pay) + ' this year. ' : '') + (s.assist ? '🥫 On public assistance.' : '') + '</p>' });
+      if (E.canClaimUI()) items.push({ icon: '📬', label: 'File for unemployment', sub: 'I lost my job, so I qualify for a year of benefits', onClick: function () { var r = E.claimUI(); done(r.ok ? good(r.msg) : nope(r.msg)); } });
+      if (E.canAssist()) items.push({ icon: '🥫', label: 'Apply for public assistance', sub: 'A small yearly payment while I\'m broke and out of work', onClick: function () { var r = E.applyAssist(); done(r.ok ? r.msg : nope(r.msg)); } });
       if (s.job || s.retired || s.hoops || s.mil || s.acting || s.music || s.pro) items.push({ section: 'Other paths' });
       if (!serving && m.age >= 18 && !(s.edu && (s.edu.stage === 'high'))) items.push({ icon: '🔎', label: 'Find a full-time job', sub: 'Browse openings', onClick: jobBoard });
       if (!serving && m.age >= 12) items.push({ icon: '⏰', label: 'Part-time jobs', sub: 'Flexible work', onClick: partTimeBoard });
