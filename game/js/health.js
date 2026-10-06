@@ -119,6 +119,7 @@ TL.health = (function () {
     if (name === 'Cancer' && m.stage.Cancer === 1) E.achieve('caught_early');
     E.log('🩺 ' + how + ' I was diagnosed with ' + E.illWith(name) + stg + '.', 'bad');
   }
+  function y0() { return S().year; }
   // Runs once a year from engine.yearlyHealth, before conditions do damage.
   function year() {
     var s = S(), m = st(), a = me().age;
@@ -139,6 +140,10 @@ TL.health = (function () {
       if (E.hasCondition('Cancer')) E.log(E.ancient() ? '📈 The tumor has grown worse.' : '📈 My cancer has progressed to stage ' + m.stage.Cancer + '.', 'bad');
     }
     if (!has('Cancer')) delete m.stage.Cancer;
+    // A terminal diagnosis: how do I want to spend the time I have left? (js/events.js final_chapter)
+    if (m.stage.Cancer >= 4 && E.hasCondition('Cancer') && !s.flags.finalChapter && !s.prison && !E.ancient() && a >= 18) { s.flags.finalChapter = y0(); s.pending.push({ id: 'final_chapter', data: {} }); }
+    // In hospice: comfort, family close by, and peace.
+    if (s.flags.hospice) { E.stat('happy', 6); E.people(['mother', 'father', 'sibling', 'child', 'spouse', 'partner', 'grandchild']).forEach(function (p) { E.rel(p, 3); }); }
     // Untreated heart disease can mean a heart attack.
     if (has('Heart Disease') && !m.meds['Heart Disease'] && !s.prison && !E.ancient() && U.chance(0.1 + (a > 65 ? 0.06 : 0))) s.pending.push({ id: 'med_heart_attack' });
     // COVID-19, 2020-2022 (vaccines from 2021).

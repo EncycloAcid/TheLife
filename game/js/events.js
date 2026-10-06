@@ -545,6 +545,37 @@ TL.events = (function () {
       ] };
     }
   });
+  // A terminal diagnosis (js/health.js): choosing how to spend the time that's left.
+  def('final_chapter', {
+    scripted: true,
+    build: function () {
+      var s = S(), m = E.me(), fam = E.people(['mother', 'father', 'sibling', 'child', 'spouse', 'partner', 'grandchild']);
+      if (!E.hasCondition('Cancer') || s.dead) return null;
+      var fight = E.$(60000), trip = E.$(18000), cure = TL.health && TL.health.eraCure ? TL.health.eraCure('Cancer') : 1;
+      return { icon: '🕯️', title: 'The final chapter', text: 'The doctors say the cancer has spread too far. They\'re talking about months, maybe a year or two. How do I want to spend the time I have left?', choices: [
+        { label: 'Fight it with every treatment there is (' + E.fmt(fight) + ')', run: function () {
+          E.addMoney(-fight); E.stat('happy', -4);
+          if (U.chance(0.12 * cure)) { if (s.med && s.med.stage) s.med.stage.Cancer = 2; E.stat('health', 15); E.log('🎗️ Against the odds, the experimental treatment pushed my cancer back to stage 2.', 'good'); return good('The scans came back and my doctor actually smiled. The treatment is working.'); }
+          E.stat('health', -6); return bad('Round after round of treatment. It\'s brutal, and it isn\'t working, but I\'m still fighting.');
+        } },
+        { label: 'Enter hospice and make peace', run: function () { s.flags.hospice = s.year; E.stat('happy', 10); E.log('🕯️ I chose hospice. No more hospitals, just comfort and the people I love.'); return good('The nurses are kind, the bed faces the garden, and my family visits every day.'); } },
+        { label: 'One last great adventure (' + E.fmt(trip) + ')', run: function () {
+          if (s.money < trip) { E.stat('happy', 6); return 'I couldn\'t afford the trip of a lifetime, so we drove to the coast and watched the sunset instead. It was perfect.'; }
+          E.addMoney(-trip); E.stat('happy', 22); E.stat('health', -3); s.flags.lastAdventure = s.year;
+          var where = U.pick(['the Northern Lights in Norway', 'the temples of Kyoto', 'a safari in Kenya', 'the Amalfi Coast', 'the Grand Canyon by helicopter', 'Machu Picchu']);
+          E.log('✈️ I took one last great adventure: ' + where + '.', 'good');
+          return good('I saw ' + where + '. I cried at the view. No regrets.');
+        } },
+        { label: 'Gather the family and say goodbye', run: function () {
+          var mended = 0;
+          fam.forEach(function (p) { if (p.rel < 35) mended++; E.rel(p, p.rel < 35 ? 30 : 15); });
+          E.stat('happy', 12); E.karma(3);
+          E.log('💞 I gathered the family and told everyone what they meant to me.' + (mended ? ' Even old wounds healed.' : ''), 'good');
+          return good(fam.length ? 'We laughed, we cried, we looked at old photos until midnight.' + (mended ? ' Things that went unsaid for years finally got said.' : '') : 'There wasn\'t much family left, so I wrote letters to everyone who ever mattered.');
+        } }
+      ] };
+    }
+  });
   def('car_breakdown', {
     scripted: true,
     build: function (d) {

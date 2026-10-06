@@ -99,6 +99,7 @@ TL.market = (function () {
       if (TL.history && !TL.history.listed(k)) return;
       divs += Math.round((s.stocks[k] || 0) * p * x.div);
       var own = U.gauss(0, x.vol), ret = Math.max(-0.85, Math.exp(Math.log(1 + x.drift) - x.beta * 0.068 + x.beta * lr + own) - 1);
+      if (x.sym === 'VOO') { own = 0; ret = r; } // an index fund tracks its index: same move as the S&P 500 headline
       // The famous real years: Apple's comeback, the dot-com crash, Nvidia and AI.
       var real = REAL[k] && REAL[k][s.year];
       if (real) { ret = real[0] / 100; own = real[0] / 100 - lr; if (s.stocks[k] > 0 && real[1]) news.unshift(real[1] + ' ' + k + ' ' + pct(ret) + '.'); }

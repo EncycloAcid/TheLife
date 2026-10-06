@@ -9,6 +9,7 @@ TL.recap = (function () {
   // [pattern, icon, weight, max per life]. Higher weight wins when an age is crowded.
   var MOMENTS = [
     [/^\S*\s*I was born/i, '👶', 10, 1],
+    [/I chose hospice|one last great adventure|gathered the family and told everyone|experimental treatment pushed my cancer back/i, '🕯️', 9, 1], // the final chapter (js/events.js)
     [/I graduated from (?!elementary)|I finished (?!middle)|earned my|degree in|passed the GED/i, '🎓', 8, 4],
     [/I married |I got married|we got married|we eloped/i, '💍', 9, 3],
     [/divorce/i, '💔', 6, 3],
