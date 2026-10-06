@@ -614,9 +614,23 @@ TL.features = (function () {
     { id: 'volunteer', icon: '🙏', text: 'Volunteer 3 times', check: function (s) { return (s.flags.volunteered || 0) >= 3; } },
     { id: 'retire', icon: '🌅', text: 'Retire from a career', check: function (s) { return s.ach.indexOf('retired') >= 0; } }
   ];
+  // Goals that only make sense in modern times (no skydiving or followers in ancient Rome),
+  // and how to work toward each one.
+  var MODERN_ONLY = { degree: 1, million: 1, travel: 1, aurora: 1, skydive: 1, followers: 1, top: 1, celeb: 1, business: 1, retire: 1, book: 0 };
+  var HINTS = { married: 'Date someone, then propose', parent: 'Start a family with a partner, or adopt', home: 'Assets → Real estate', degree: 'Career → University', million: 'Work, invest, build a business', travel: 'Activities → Vacation', aurora: 'Activities → Vacation → Northern Lights in Iceland', skydive: 'Activities → Go skydiving', marathon: 'Activities → Run a marathon', book: 'Activities → Hobbies & skills → Write a book', skill: 'Activities → Hobbies & skills', followers: 'Phone → Social media', pet: 'Activities → Pets', top: 'Work hard and keep getting promoted', ninety: 'Look after your health', contest: 'Hobbies have competitions', celeb: 'Fame, or just luck', bff: 'Spend lots of time with a close friend', famous: 'A special career, or a viral moment', business: 'Assets → Start a business', volunteer: 'Activities → Volunteer', retire: 'Career → Retire (55+)' };
+  function bucketOk(id) {
+    var s = S();
+    if (MODERN_ONLY[id] && E.ancient()) return false;
+    if (id === 'followers' && s.year + Math.max(0, 80 - me().age) < 2008) return false; // social media won't exist in time
+    if (id === 'skydive' && s.year + Math.max(0, 70 - me().age) < 1960) return false;
+    return true;
+  }
+  function freshItems(n, skip) { return U.shuffle(BUCKET.filter(function (b) { return bucketOk(b.id) && skip.indexOf(b.id) < 0; })).slice(0, n).map(function (b) { return { id: b.id, done: false }; }); }
   function bucket() {
     var s = S();
-    if (!s.bucket) s.bucket = U.shuffle(BUCKET).slice(0, 5).map(function (b) { return { id: b.id, done: false }; });
+    if (!s.bucket) s.bucket = freshItems(5, []);
+    // Older lists could hold goals this era can't reach: swap those out.
+    s.bucket.forEach(function (b, i) { if (!b.done && !bucketOk(b.id)) { var r = freshItems(1, s.bucket.map(function (x) { return x.id; }))[0]; if (r) s.bucket[i] = r; } });
     return s.bucket;
   }
   function bucketDef(id) { return BUCKET.filter(function (b) { return b.id === id; })[0]; }
@@ -637,11 +651,20 @@ TL.features = (function () {
   }
   function bucketMenu() {
     ui().menu('Bucket list 📝', function () {
-      var list = bucket(), n = list.filter(function (b) { return b.done; }).length;
-      return [{ info: true, html: '<p class="muted">' + n + ' of ' + list.length + ' done. Every life gets its own list.</p>' }].concat(list.map(function (b) {
+      var s = S(), list = bucket(), n = list.filter(function (b) { return b.done; }).length, swapped = (s.yearActs.bswap || 0) > 0;
+      var items = [{ info: true, html: '<p class="muted">' + (s.bucketRound ? 'List #' + (s.bucketRound + 1) + ' · ' : '') + n + ' of ' + list.length + ' done. ' + (n < list.length ? 'Tap a goal to swap it for another (once a year).' : 'All done!') + '</p>' }];
+      list.forEach(function (b, i) {
         var d = bucketDef(b.id) || { icon: '•', text: b.id };
-        return { icon: d.icon, label: d.text, sub: b.done ? 'Done at age ' + b.age : 'Not yet', check: !!b.done };
-      }));
+        items.push({ icon: d.icon, label: d.text, sub: b.done ? 'Done at age ' + b.age : (HINTS[b.id] || 'Not yet') + (swapped ? '' : ' · tap to swap'), check: !!b.done, onClick: b.done || swapped ? null : function () {
+          ui().confirm('Swap this goal?', 'Replace "' + d.text + '" with something else? You can swap one goal a year.', function () {
+            var r = freshItems(1, list.map(function (x) { return x.id; }))[0];
+            if (!r) return done(bad('I can\'t think of anything else I want more.'));
+            s.yearActs.bswap = 1; list[i] = r; done('I crossed out "' + d.text + '" and wrote "' + bucketDef(r.id).text + '" instead.');
+          });
+        } });
+      });
+      if (n === list.length) items.push({ icon: '🖊️', label: 'Write a new bucket list', sub: 'Five new goals', onClick: function () { var old = list.map(function (x) { return x.id; }); s.bucketRound = (s.bucketRound || 0) + 1; s.bucket = freshItems(5, old); if (s.bucket.length < 5) s.bucket = s.bucket.concat(freshItems(5 - s.bucket.length, s.bucket.map(function (x) { return x.id; }))); done(good('I sat down and wrote five new things I want to do before I die. 📝')); } });
+      return items;
     });
   }
   function bucketCount() { var l = bucket(); return l.filter(function (b) { return b.done; }).length + '/' + l.length; }
