@@ -1055,11 +1055,11 @@ TL.events = (function () {
 
   // ---------- v1.4 home events ----------
   function homeIs(t) { return me().age >= 18 && !S().prison && E.home().type === t; }
-  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !S().flags.parentRent && E.parentsAround().length > 0 && !(S().job && S().job.mil); }, build: function () {
+  def('parents_rent', { min: 22, max: 50, w: 6, cond: function () { return homeIs('parents') && !E.home().rent && E.parentsAround().length > 0 && !(S().job && S().job.mil); }, build: function () {
     var rent = E.$(U.pick([3000, 5000, 8000]));
     var p = E.parentsAround()[0];
     return { icon: '🏠', title: 'House rules', text: 'My ' + E.relWord(p) + ' says it\'s time I either pay rent or move out.', choices: [
-      { label: 'Pay rent (' + E.fmt(rent) + '/yr)', run: function () { S().flags.parentRent = rent; E.rel(p, 8); return 'I agreed to pay my parents rent.'; } },
+      { label: 'Pay rent (' + E.fmt(rent) + '/yr)', run: function () { E.home().rent = rent; E.rel(p, 8); return 'I agreed to pay my parents rent.'; } },
       { label: 'Move into a studio apartment', run: function () { var dep = Math.round(E.$(12000) / 6); if (S().money < dep) { E.rel(p, -5); return bad('I couldn\'t afford the deposit. Awkward.'); } E.addMoney(-dep); E.moveHome({ type: 'rent', tier: 1 }); E.rel(p, 5); return good('I finally moved out! 📦'); } },
       { label: 'Beg to stay rent-free', run: function () { if (U.chance(p.rel / 120)) return good(p.first + ' caved. I can stay for free.'); E.rel(p, -12); return bad(p.first + ' is not happy with me.'); } }
     ] };

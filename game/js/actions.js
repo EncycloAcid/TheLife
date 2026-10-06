@@ -1150,6 +1150,16 @@ TL.actions = (function () {
         if (!U.chance(p.rel / 100 + 0.25)) { E.rel(p, -3); return done(bad('My ' + E.relWord(p) + ' said there\'s no room for me.')); }
         done(E.moveHome({ type: 'parents' }, 'I moved back in with my parents.'));
       } });
+      // An adult at home: pay my way, pitch in, or freeload.
+      var par = E.parentsAround();
+      if (h.type === 'parents' && par.length && me().age >= 18 && !(TL.ancient && TL.ancient.on()) && !(s.flags.care && s.flags.care.kind === 'home')) {
+        var studio = E.$(E.RENT_TIERS[1][1]);
+        items.push({ section: 'Life at home' });
+        items.push({ info: true, html: '<p class="muted">' + (h.rent ? 'I pay my parents ' + E.fmt(h.rent) + '/yr. They appreciate it.' : 'I live here rent-free.' + (me().age >= 25 ? ' My parents are starting to wonder when I\'ll move out.' : '')) + ' A studio would cost ' + E.fmt(studio) + '/yr.</p>' });
+        if (!h.rent) items.push({ icon: '💵', label: 'Pay my parents rent', sub: E.fmt(E.$(4000)) + '/yr · they\'ll warm up to me', onClick: function () { E.home().rent = E.$(4000); E.parentsAround().forEach(function (p) { E.rel(p, 5); }); done(good('I started paying my parents rent. They looked relieved.')); } });
+        else items.push({ icon: '🙅', label: 'Stop paying rent', sub: 'Save money, but they\'ll notice', onClick: function () { delete E.home().rent; E.parentsAround().forEach(function (p) { E.rel(p, -6); }); done(bad('I told my parents I can\'t pay rent anymore. Dinner was quiet.')); } });
+        items.push({ icon: '🧹', label: 'Help around the house', sub: used('homehelp') ? 'Done this year' : 'Chores, groceries, fixing things', disabled: used('homehelp') > 0, onClick: function () { use('homehelp'); S().flags.homeHelp = S().year; E.parentsAround().forEach(function (p) { E.rel(p, U.rand(3, 6)); }); E.stat('happy', -1); done(good(U.pick(['I cleaned the gutters and fixed the leaky faucet.', 'I did the grocery runs and cooked dinner all week.', 'I took over the yard work.']) + ' My parents noticed.')); } });
+      }
       if (s.royal && h.type !== 'palace') items.push({ icon: '🏰', label: 'Move back into the palace', onClick: function () { done(E.moveHome({ type: 'palace' }, 'I moved back into the royal palace.')); } });
       items.push({ section: 'Rent a place' });
       E.RENT_TIERS.forEach(function (t, i) {

@@ -162,7 +162,7 @@ TL.engine = (function () {
     s.ach.push(id);
     var a = D.ACHIEVEMENTS.filter(function (x) { return x.id === id; })[0];
     if (a) {
-      log('🏅 Achievement unlocked: ' + a.name + '!', 'good');
+      log('🏅 Achievement unlocked: ' + a.name + (/[.!?]$/.test(a.name) ? '' : '!'), 'good'); // never "Is...!"
       var global = loadGlobal();
       if (global.ach.indexOf(id) < 0) { global.ach.push(id); saveGlobal(global); }
     }
@@ -1031,6 +1031,8 @@ TL.engine = (function () {
       var own = s.assets.filter(function (a) { return a.kind === 'house' && !a.rented; })[0];
       s.home = me().age < 18 ? { type: 'parents' } : s.royal ? { type: 'palace' } : own ? { type: 'owned', id: own.id } : { type: 'rent', tier: 1 };
     }
+    // Saves before v2.37 kept parent rent in a flag that outlived moving out.
+    if (s.flags.parentRent) { if (s.home.type === 'parents' && !s.home.rent) s.home.rent = s.flags.parentRent; delete s.flags.parentRent; }
     return s.home;
   }
   function ownedHome() {
@@ -1049,7 +1051,7 @@ TL.engine = (function () {
   function rentCost(h) {
     h = h || home();
     if (h.type === 'rent') return Math.round($(RENT_TIERS[h.tier][1]) * (h.mult || 1));
-    if (h.type === 'parents' && S().flags.parentRent) return S().flags.parentRent;
+    if (h.type === 'parents' && h.rent) return h.rent; // the deal lives on this stay at home, so moving out ends it
     return 0;
   }
   function parentsAround() { return people(['mother', 'father']); }
@@ -1065,7 +1067,6 @@ TL.engine = (function () {
   function moveHome(h, msg) {
     var s = S();
     s.home = h;
-    if (h.type !== 'parents') delete s.flags.parentRent;
     return msg;
   }
   function yearlyHome() {
@@ -1077,9 +1078,18 @@ TL.engine = (function () {
     else if (h.type === 'palace') stat('happy', 3);
     else if (h.type === 'homeless') { stat('happy', -8); stat('health', -4); }
     else if (h.type === 'parents' && m.age >= 25 && !ancient() && !(s.flags.care && s.flags.care.kind === 'home')) {
-      stat('happy', -2);
-      parentsAround().forEach(function (p) { rel(p, -U.rand(0, 2)); });
+      // Paying my way or pitching in keeps the peace; freeloading wears on everyone.
+      var paying = !!h.rent, helped = s.flags.homeHelp === s.year;
+      stat('happy', paying ? -1 : -2);
+      parentsAround().forEach(function (p) { rel(p, paying ? 1 : helped ? 0 : -U.rand(0, 2)); });
       if (m.age === 30) log('I\'m 30 and I still live with my parents...', 'bad');
+      // Parents who've had enough of a freeloader ask them to leave.
+      var par = parentsAround();
+      if (!paying && !helped && par.length && par.every(function (p) { return p.rel < 20; }) && U.chance(0.3)) {
+        var dep = Math.round($(RENT_TIERS[0][1]) / 6);
+        if (s.money >= dep) { addMoney(-dep); moveHome({ type: 'rent', tier: 0 }); log('🧳 My parents finally told me to pack my bags. I\'m in a shared room now.', 'bad'); stat('happy', -6); }
+        else { par.forEach(function (p) { rel(p, -3); }); log('🧳 My parents want me out, but I can\'t even afford a deposit. The house is tense.', 'bad'); }
+      }
     }
     // Rent unpaid for too long: evicted.
     if (h.type === 'rent' && s.money < -rentCost(h)) {
