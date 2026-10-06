@@ -260,6 +260,27 @@ TL.events = (function () {
       { label: 'Forgive them', run: function () { E.rel(s, 10); E.karma(2); return good('I forgave ' + s.first + '. We played video games together.'); } }
     ] };
   } });
+  // Grown siblings: a close one bails me out when I'm broke; an estranged one may come back.
+  function closeSib() { return E.people('sibling').filter(function (q) { return q.age >= 21 && q.rel >= 65 && q.money >= E.$(10000); }).sort(function (a, b) { return b.rel - a.rel; })[0]; }
+  def('sibling_bailout', { min: 20, max: 90, w: 6, cond: function () { var f = S().flags; return S().money < -E.$(2000) && !S().prison && closeSib() && !(f.sibBail && S().year - f.sibBail < 5); }, build: function () {
+    var sb = closeSib(), amt = Math.round(Math.min(-S().money, sb.money * 0.3, E.$(30000)));
+    return { icon: '🫂', title: 'Family to the rescue', text: 'My ' + E.relWord(sb) + ' ' + sb.first + ' heard I\'m ' + E.fmt(-S().money) + ' in debt and offered me ' + E.fmt(amt) + ', no strings attached.', choices: [
+      { label: 'Accept, gratefully', run: function () { S().flags.sibBail = S().year; E.addMoney(amt); sb.money -= amt; E.rel(sb, 3); E.stat('happy', 5); if (TL.mind) TL.mind.note(sb, 4, 'helped me when I was broke', true); return good(sb.first + ' sent ' + E.fmt(amt) + '. I don\'t know what I\'d do without family.'); } },
+      { label: 'Thank them, but say no', run: function () { S().flags.sibBail = S().year; E.rel(sb, 5); E.stat('happy', 2); return 'I told ' + sb.first + ' I need to fix this myself. It meant a lot that they offered.'; } }
+    ] };
+  } });
+  def('sibling_estranged', { min: 25, max: 95, w: 4, cond: function () { return !(S().flags.sibEst && S().year - S().flags.sibEst < 4) && E.people('sibling').some(function (q) { return q.age >= 18 && q.rel <= 20; }); }, build: function () {
+    var sb = E.people('sibling').filter(function (q) { return q.age >= 18 && q.rel <= 20; }).sort(function (a, b) { return a.rel - b.rel; })[0];
+    S().flags.sibEst = S().year;
+    return { icon: '📞', title: 'A missing sibling', text: 'I haven\'t really talked to my ' + E.relWord(sb) + ' ' + sb.first + ' in years. ' + U.pick(['I saw an old photo of us as kids today.', 'It\'s ' + sb.first + '\'s birthday this week.'].concat(E.people('mother').length ? ['Mom keeps asking if we\'ve made up.'] : E.people('father').length ? ['Dad keeps asking if we\'ve made up.'] : [])), choices: [
+      { label: 'Call ' + (sb.gender === 'M' ? 'him' : 'her'), run: function () {
+        if (U.chance(0.35 + sb.rel / 100)) { sb.rel = Math.max(sb.rel, 45); E.rel(sb, U.rand(5, 15)); E.stat('happy', 8); if (TL.mind) TL.mind.note(sb, 6, 'reached out after years apart'); E.log('🫂 ' + sb.first + ' and I talked for hours. We\'re family again.', 'good'); return good(sb.first + ' picked up on the second ring. We talked for hours.'); }
+        E.rel(sb, -2); E.stat('happy', -3); return bad(sb.first + ' let it go to voicemail. Maybe someday.');
+      } },
+      { label: 'Send a birthday card', run: function () { E.rel(sb, U.rand(4, 9)); return 'I mailed ' + sb.first + ' a card. It\'s a start.'; } },
+      { label: 'Leave it be', run: function () { return 'Some bridges stay burned.'; } }
+    ] };
+  } });
   def('talent_show', { min: 8, max: 17, w: 4, cond: function () { return S().edu; }, build: function () {
     return { icon: '🎤', title: 'Talent show', text: 'The school talent show is this weekend.', choices: [
       { label: 'Sing', run: function () { if (U.chance(0.4)) { E.stat('happy', 8); S().flags.music = (S().flags.music || 0) + 1; return good('I won the talent show with my singing!'); } E.stat('happy', -5); return bad('My voice cracked. Kids are still laughing.'); } },
