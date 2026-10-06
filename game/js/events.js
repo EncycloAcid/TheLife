@@ -34,9 +34,9 @@ TL.events = (function () {
       return {
         icon: '⚰️', title: 'Funeral', text: 'The funeral for my ' + E.relWord(p) + ' ' + E.fullName(p) + ' is being held. Will I attend?',
         choices: [
-          { label: 'Attend and give a eulogy', run: function () { E.stat('happy', 5); E.karma(2); return 'I gave a moving eulogy for ' + p.first + '. Everyone was in tears.'; } },
+          { label: 'Attend and give a eulogy', run: function () { E.stat('happy', 5); E.karma(2); E.easeGrief(p.id, 1); return 'I gave a moving eulogy for ' + p.first + '. Everyone was in tears.'; } },
           { label: 'Attend quietly', run: function () { E.stat('happy', 2); return 'I paid my respects to ' + p.first + '.'; } },
-          { label: 'Skip it', run: function () { E.karma(-3); E.people(['mother', 'father', 'sibling']).forEach(function (x) { E.rel(x, -10); }); return bad('I skipped ' + p.first + '\'s funeral. My family is upset.'); } }
+          { label: 'Skip it', run: function () { var g = E.grief(p.id); if (g) g.left++; E.karma(-3); E.people(['mother', 'father', 'sibling']).forEach(function (x) { E.rel(x, -10); }); return bad('I skipped ' + p.first + '\'s funeral. My family is upset.'); } }
         ]
       };
     }

@@ -1186,12 +1186,36 @@ TL.engine = (function () {
     p.alive = false; p.died = s.year;
     var close = ['mother', 'father', 'sibling', 'spouse', 'child', 'grandparent', 'partner', 'fiance', 'grandchild'].indexOf(p.role) >= 0;
     log('⚰️ My ' + relWord(p) + ' ' + fullName(p) + ' died from ' + cause + ' at age ' + p.age + '.', close ? 'bad' : '');
-    if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); }
+    if (close) { stat('happy', -U.rand(10, 25)); queue('funeral', { pid: p.id }); startGrief(p); }
     if (TL.features) TL.features.onDeath(p);
     if (TL.health && TL.health.familyDeath) TL.health.familyDeath(p, cause); // family history (js/health.js)
     if (TL.dynasty) TL.dynasty.onDeath(p); // the crown may pass (js/eras.js)
     if (['mother', 'father', 'grandparent', 'spouse'].indexOf(p.role) >= 0 && p.money > 0) inherit(p);
     if ((p.role === 'mother' || p.role === 'father') && me().age >= 18) validateHome(); // no more living with parents who are gone
+  }
+  // Grief: losing someone close hurts for years, more the closer we were.
+  // Visiting the grave, honoring them and counseling help it heal.
+  function startGrief(p) {
+    var s = S(), yrs = (p.rel >= 70 ? 4 : p.rel >= 40 ? 3 : 1) + (['spouse', 'child'].indexOf(p.role) >= 0 ? 1 : 0);
+    s.griefs = (s.griefs || []).filter(function (g) { return g.pid !== p.id; });
+    s.griefs.push({ pid: p.id, left: yrs });
+  }
+  function grief(pid) { return (S().griefs || []).filter(function (g) { return g.pid === pid; })[0] || null; }
+  function easeGrief(pid, n) {
+    var s = S(), g = grief(pid);
+    if (!g) return false;
+    g.left = Math.max(0, g.left - n);
+    if (!g.left) { s.griefs = s.griefs.filter(function (x) { return x !== g; }); var p = person(pid); if (p) log('🕊️ I\'ve made peace with losing ' + p.first + '. I still think of them often.'); }
+    return true;
+  }
+  function griefYear() {
+    var s = S();
+    if (!s.griefs || !s.griefs.length) return;
+    s.griefs.slice().forEach(function (g) {
+      if (!person(g.pid)) { s.griefs = s.griefs.filter(function (x) { return x !== g; }); return; }
+      stat('happy', -(1 + Math.min(4, g.left))); // the hurt fades a little each year
+      easeGrief(g.pid, 1);
+    });
   }
   // Friendships have a history: they count the years, mark the milestones,
   // and a best friend shows up when life is hard. Neglected ones drift apart.
@@ -1536,6 +1560,7 @@ TL.engine = (function () {
     yearlyHome();
     yearlyHealth();
     yearlyPeople();
+    griefYear();
     if (TL.features) TL.features.yearly();
     if (m.age === 18 && !s.prison) log('I\'m officially an adult now! 🎉');
     // Allowance for kids from parents
@@ -1842,7 +1867,7 @@ TL.engine = (function () {
   }
 
   return {
-    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies,
+    ancient: ancient, yearLabel: yearLabel, illName: illName, illWith: illWith, illLow: illLow, npcDies: npcDies, grief: grief, easeGrief: easeGrief,
     home: home, homeLabel: homeLabel, rentCost: rentCost, RENT_TIERS: RENT_TIERS, validateHome: validateHome, moveHome: moveHome, ownedHome: ownedHome, parentsAround: parentsAround,
     exportAll: exportAll, importAll: importAll, wipeAll: wipeAll, tmAges: tmAges, timeTravel: timeTravel,
     countryName: countryName, jobPhrase: jobPhrase, an: an,

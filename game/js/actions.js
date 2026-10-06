@@ -121,7 +121,22 @@ TL.actions = (function () {
     return (function () {
       var items = [{ info: true, html: personCard(p) }];
       if (!p.alive) {
-        items.push({ icon: '💐', label: 'Visit grave', onClick: function () { E.stat('happy', 3); done('I laid flowers at ' + p.first + '\'s grave and shared some memories.'); } });
+        var g = E.grief(p.id), old = E.ancient();
+        if (g) items.push({ info: true, html: '<p class="muted">🖤 I\'m still grieving ' + U.esc(p.first) + '.</p>' });
+        items.push({ icon: '💐', label: 'Visit grave', sub: used('grave' + p.id) ? 'Done this year' : g ? 'It helps a little each time' : 'Lay flowers and remember', disabled: used('grave' + p.id) > 0, onClick: function () {
+          use('grave' + p.id); E.stat('happy', g ? 5 : 2);
+          if (g) E.easeGrief(p.id, 1);
+          done('I laid flowers at ' + p.first + '\'s grave and ' + (g ? 'told them everything that\'s happened since they\'ve been gone.' : 'shared some memories.'));
+        } });
+        if (!old) items.push({ icon: '📷', label: 'Look through old photos', disabled: used('photos' + p.id) > 0, sub: used('photos' + p.id) ? 'Done this year' : '', onClick: function () { use('photos' + p.id); E.stat('happy', 3); done(U.pick(['I found a photo of ' + p.first + ' laughing at something I said. I\'d forgotten that day.', 'I went through an old box of pictures of ' + p.first + '. Some made me cry, most made me smile.', 'I found a birthday card ' + p.first + ' wrote me years ago. I\'m keeping it.'])); } });
+        if (!p.honored) items.push({ icon: '🌳', label: 'Honor their memory', sub: 'Something that lasts', onClick: function () {
+          var big = E.$(100000), gift = Math.max(E.$(500), Math.round(Math.max(0, S().money) * 0.02));
+          var ch = [{ label: old ? 'Carve a memorial stone (' + E.fmt(E.$(200)) + ')' : 'Plant a tree (' + E.fmt(E.$(200)) + ')', fn: function () { if (!afford(E.$(200))) return done(noMoney(E.$(200))); E.addMoney(-E.$(200)); p.honored = 'tree'; E.easeGrief(p.id, 2); E.stat('happy', 4); done(good(old ? 'I had a stone carved with ' + p.first + '\'s name. It will stand for a long time.' : 'I planted a tree in ' + p.first + '\'s name. It\'ll be there long after me. 🌳')); } }];
+          if (!old) ch.push({ label: 'Donate to a charity in their name (' + E.fmt(gift) + ')', fn: function () { if (!afford(gift)) return done(noMoney(gift)); E.addMoney(-gift); p.honored = 'gift'; E.karma(4); E.easeGrief(p.id, 2); E.stat('happy', 5); done(good('I donated ' + E.fmt(gift) + ' in ' + p.first + '\'s name. It\'s what they would have wanted.')); } });
+          if (!old && S().money >= big * 2.5) ch.push({ label: 'Found a scholarship in their name (' + E.fmt(big) + ')', fn: function () { E.addMoney(-big); p.honored = 'scholarship'; E.karma(8); E.fame(2); E.easeGrief(p.id, 3); E.stat('happy', 8); E.log('🎓 The ' + E.fullName(p) + ' Scholarship will help a student every year.', 'good'); done(good('I founded the ' + E.fullName(p) + ' Scholarship. Every year a student will learn their name.')); } });
+          ui().choose('🌳 Honor ' + p.first, 'How do I want ' + p.first + ' to be remembered?', ch.map(function (c) { return { label: c.label, fn: c.fn }; }));
+        } });
+        if (g && !old && S().year >= 1950) items.push({ icon: '🛋️', label: 'See a grief counselor', right: E.fmt(E.$(800)), disabled: used('counsel') > 0, sub: used('counsel') ? 'Done this year' : 'Talk it through with someone', onClick: function () { if (!afford(E.$(800))) return done(noMoney(E.$(800))); E.addMoney(-E.$(800)); use('counsel'); E.easeGrief(p.id, 2); E.stat('happy', 6); done(good('Talking about ' + p.first + ' with a counselor helped more than I expected.')); } });
         return items;
       }
       if (S().prison) {
