@@ -1369,7 +1369,7 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', right: E.fmt(E.$(2)), onClick: lottery });
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
       items.push({ icon: '🐾', label: 'Pets', onClick: petStore });
-      if (a >= 16 && !S().flags.license) items.push({ icon: '🪪', label: 'Driving test', onClick: drivingTest });
+      if (a >= 16 && !S().flags.license) { var sus = S().flags.suspended > S().year; items.push({ icon: '🪪', label: 'Driving test', sub: sus ? 'License suspended until ' + S().flags.suspended : used('dmv') ? 'Try again next year' : S().flags.dmvTries ? 'Failed ' + times(S().flags.dmvTries) + ' so far' : '', disabled: sus || used('dmv') > 0, onClick: drivingTest }); }
       if (a >= 21) items.push({ icon: '👶', label: 'Adoption', sub: a > 55 ? 'Agencies won\'t place a child with me at my age' : undefined, disabled: a > 55, onClick: adopt });
 
       // Results say how much each stat moved (choices that open a dialog report when they finish).
@@ -1702,11 +1702,23 @@ TL.actions = (function () {
   // What a destination is good for: [icon, menu blurb, kind].
   var TRIP_KINDS = { party: ['🎉', 'Party · huge fun, rough on the body'], luxury: ['🏖️', 'Luxury · deep rest, health and looks'], adventure: ['🥾', 'Adventure · athleticism and health'], culture: ['🏛️', 'Culture · museums and history, smarts'] };
   function tripKind(v) { var k = TRIP_KINDS[v.kind] ? v.kind : 'culture'; return TRIP_KINDS[k].concat(k); }
+  function times(n) { return n === 1 ? 'once' : n === 2 ? 'twice' : n + ' times'; }
+  // The road test: lessons help, nerves and age don't.
+  function roadTest(lessons) {
+    var f = S().flags, m = me(), first = !f.dmvTries;
+    var ok = U.chance(U.clamp(0.45 + m.smarts / 300 + (lessons ? 0.25 : 0) - (m.age >= 75 ? 0.1 : 0), 0.1, 0.95));
+    if (ok) { f.license = true; delete f.suspended; delete f.tickets; E.stat('happy', 8); E.log('🪪 I passed my driving test' + (first ? ' on the first try' : ' after ' + U.plural(f.dmvTries, 'failed attempt')) + '!', 'good'); delete f.dmvTries; return good('I passed my driving test' + (first ? ' on the first try' : '') + '! 🚗'); }
+    f.dmvTries = (f.dmvTries || 0) + 1;
+    return bad(U.pick(['I failed. I hit a traffic cone... and the examiner\'s car.', 'I failed the parallel parking. Twice.', 'I rolled through a stop sign and the examiner just sighed.']) + (lessons ? '' : ' Maybe lessons would help.'));
+  }
   function drivingTest() {
+    if (S().flags.suspended > S().year) return done(nope('My license is suspended until ' + S().flags.suspended + '.'));
     if (used('dmv')) return done(nope('I have to wait until next year to retake the test.'));
-    use('dmv');
-    if (U.chance(0.6 + me().smarts / 300)) { S().flags.license = true; done(good('I passed my driving test! 🚗')); }
-    else done(bad('I failed my driving test.'));
+    var c = E.$(400);
+    ui().choose('🪪 Driving test', S().flags.dmvTries ? 'I\'ve failed this ' + times(S().flags.dmvTries) + ' before. How do I go in this time?' : 'How do I prepare?', [
+      { label: 'Take driving lessons first (' + E.fmt(c) + ')', fn: function () { if (!afford(c)) return done(noMoney(c)); E.addMoney(-c); use('dmv'); done(roadTest(true)); } },
+      { label: 'Just take the test', fn: function () { use('dmv'); done(roadTest(false)); } }
+    ]);
   }
   function adopt() {
     // Every route here (Activities, Fertility options) shares the agency's age limit.
@@ -1863,6 +1875,6 @@ TL.actions = (function () {
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
     activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu, fameMenu: fameMenu, assetMenu: assetMenu,
-    achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
+    roadTest: roadTest, achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

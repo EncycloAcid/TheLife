@@ -359,8 +359,7 @@ TL.events = (function () {
   def('learners_permit', { min: 16, max: 17, w: 20, once: true, build: function () {
     return { icon: '🚗', title: 'Driving test', text: 'I\'m old enough to take my driving test!', choices: [
       { label: 'Take the test', run: function () {
-        if (U.chance(0.55 + me().smarts / 300)) { S().flags.license = true; E.stat('happy', 8); return good('I passed my driving test! 🚗'); }
-        return bad('I failed. I hit a traffic cone... and the examiner\'s car.');
+        return TL.actions.roadTest(false);
       } },
       { label: 'Not yet', run: function () { return 'I\'ll take it later.'; } }
     ] };
@@ -638,8 +637,9 @@ TL.events = (function () {
       };
     }
   });
-  def('car_accident', { min: 16, max: 95, w: 3, cond: function () { return S().assets.some(function (a) { return a.kind === 'car'; }); }, build: function () {
-    var car = S().assets.filter(function (a) { return a.kind === 'car'; })[0];
+  def('car_accident', { min: 16, max: 95, w: 3, cond: function () { return hasCar(); }, build: function () {
+    var car = S().assets.filter(function (a) { return a.kind === 'car' && ['Private Jet', 'Superyacht'].indexOf(a.type) < 0; })[0]; // jets and yachts don't run red lights
+    if (!car) return null;
     return { icon: '💥', title: 'Car accident', text: 'Someone ran a red light and T-boned my ' + car.name + '!', choices: [
       { label: 'Sue the other driver', run: function () { if (U.chance(0.55)) { var a = E.$(U.rand(5000, 80000)); E.addMoney(a); return good('I won ' + E.fmt(a) + ' in the lawsuit.'); } E.addMoney(-E.$(4000)); return bad('I lost the case and paid legal fees.'); } },
       { label: 'Let insurance handle it', run: function () { car.cond = Math.max(0, car.cond - 40); car.value = Math.round(car.value * 0.7); E.stat('health', -U.rand(2, 12)); return 'Insurance fixed it, mostly. My neck hurts.'; } }
@@ -1030,17 +1030,35 @@ TL.events = (function () {
   } });
 
   // ---------- v1.2 events ----------
+  // Points on my license: three tickets in three years and it's suspended for a year.
+  function ticket() {
+    var f = S().flags, y = S().year;
+    if (!f.license) return '';
+    f.tickets = (f.tickets || []).filter(function (t) { return y - t < 3; }).concat(y);
+    if (f.tickets.length < 3) return f.tickets.length === 2 ? ' One more ticket and I lose my license.' : '';
+    f.license = false; f.suspended = y + 1; f.tickets = [];
+    E.log('🪪 Three speeding tickets in three years. My license is suspended for a year.', 'bad');
+    return ' That was my third ticket in three years. My license is suspended for a year.';
+  }
   function hasCar() { return S().assets.some(function (a) { return a.kind === 'car' && ['Private Jet', 'Superyacht'].indexOf(a.type) < 0; }); }
   def('speeding', { min: 16, max: 95, w: 4, cond: hasCar, build: function () {
     var fine = E.$(U.pick([150, 300, 600]));
     return { icon: '🚓', title: 'Pulled over', text: 'A cop pulled me over for doing 25 over the speed limit.', choices: [
-      { label: 'Accept the ticket (' + E.fmt(fine) + ')', run: function () { E.addMoney(-fine); return 'I paid the ' + E.fmt(fine) + ' fine.'; } },
-      { label: 'Talk my way out of it', run: function () { if (U.chance(me().looks / 200 + 0.15)) return good('The officer let me off with a warning. 😇'); E.addMoney(-fine * 2); return bad('The officer was not charmed. Double fine.'); } },
+      { label: 'Accept the ticket (' + E.fmt(fine) + ')', run: function () { E.addMoney(-fine); return 'I paid the ' + E.fmt(fine) + ' fine.' + ticket(); } },
+      { label: 'Talk my way out of it', run: function () { if (U.chance(me().looks / 200 + 0.15)) return good('The officer let me off with a warning. 😇'); E.addMoney(-fine * 2); return bad('The officer was not charmed. Double fine.' + ticket()); } },
       { label: 'Floor it', run: function () {
         E.karma(-4);
         if (U.chance(0.3)) { E.stat('happy', 6); return 'I lost them in traffic! My heart is pounding.'; }
         E.jail(U.rand(0, 2), 'Evading Police'); return bad('They caught me after a high-speed chase.');
       } }
+    ] };
+  } });
+  def('unlicensed_stop', { min: 16, max: 95, w: 5, cond: function () { return hasCar() && !S().flags.license && !E.ancient(); }, build: function () {
+    var f = S().flags, prior = f.unlic || 0, fine = E.$(prior ? 2500 : 1000), susp = f.suspended > S().year;
+    var after = function () { f.unlic = prior + 1; if (prior >= 1) { S().record.push({ crime: 'Driving Without a License', year: S().year, years: 0 }); return ' This wasn\'t my first time, so it\'s on my criminal record now.'; } return ''; };
+    return { icon: '🚓', title: 'Pulled over', text: 'A cop pulled me over for a broken taillight and asked for my license' + (susp ? ', which is suspended.' : '. I don\'t have one.'), choices: [
+      { label: 'Come clean (' + E.fmt(fine) + ' fine)', run: function () { E.addMoney(-fine); E.karma(1); return bad('I got a ' + E.fmt(fine) + ' fine for driving ' + (susp ? 'on a suspended license' : 'without a license') + '.' + after()); } },
+      { label: 'Say I left it at home', run: function () { if (U.chance(me().looks / 300 + me().smarts / 400 + 0.05)) return good('The officer bought it and let me go with a warning. I need to get my license sorted out.'); E.karma(-3); E.addMoney(-fine * 2); return bad('They ran my name. Lying made it worse: ' + E.fmt(fine * 2) + ' in fines.' + after()); } }
     ] };
   } });
   def('dui', { min: 18, max: 90, w: 3, cond: hasCar, build: function () {
@@ -1049,7 +1067,7 @@ TL.events = (function () {
       { label: 'Drive home anyway', run: function () {
         E.karma(-5);
         var r = U.rand(1, 100);
-        if (r <= 20) { E.jail(U.rand(0, 1), 'DUI'); E.addMoney(-E.$(5000)); S().flags.license = false; return bad('I was arrested for drunk driving and lost my license.'); }
+        if (r <= 20) { E.jail(U.rand(0, 1), 'DUI'); E.addMoney(-E.$(5000)); S().flags.license = false; S().flags.suspended = S().year + 2; return bad('I was arrested for drunk driving. My license is suspended for two years.'); }
         if (r <= 30) { E.stat('health', -U.rand(15, 35)); var car = S().assets.filter(function (a) { return a.kind === 'car'; })[0]; if (car) car.cond = Math.max(0, car.cond - 50); return bad('I crashed into a tree. I\'m lucky to be alive.'); }
         return 'I made it home... this time.';
       } }
