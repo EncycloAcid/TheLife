@@ -289,11 +289,11 @@ TL.data = (function () {
   var SPORTS_TEAMS = ['Basketball Team', 'Soccer Team', 'Track Team', 'Swim Team', 'Football Team', 'Volleyball Team', 'Cheerleading', 'Wrestling Team', 'Baseball Team', 'Tennis Team'];
 
   var VACATIONS = [
-    { name: 'Road Trip', cost: 1200 }, { name: 'New York City Weekend', cost: 3000 }, { name: 'London Sightseeing', cost: 4500 }, { name: 'Rome & the Vatican', cost: 5000 },
-    { name: 'Dubai Luxury Stay', cost: 9000 }, { name: 'Carnival in Rio de Janeiro', cost: 5500 }, { name: 'Sydney Harbour', cost: 7500 }, { name: 'Machu Picchu Trek', cost: 6000 }, { name: 'Santorini Sunsets', cost: 6500 }, { name: 'Seoul Food Tour', cost: 5000 }, { name: 'Camping in the Mountains', cost: 600 }, { name: 'Beach Resort in Cancún', cost: 4000 },
-    { name: 'Paris Getaway', cost: 6000 }, { name: 'Tokyo Adventure', cost: 7000 }, { name: 'Safari in Kenya', cost: 9000 },
-    { name: 'Bali Retreat', cost: 5000 }, { name: 'Northern Lights in Iceland', cost: 5500, aurora: true }, { name: 'Maldives Overwater Villa', cost: 18000 }, { name: 'Antarctica Expedition', cost: 30000 },
-    { name: 'Private Island Charter', cost: 250000 }
+    { name: 'Road Trip', kind: 'adventure', cost: 1200 }, { name: 'New York City Weekend', kind: 'culture', cost: 3000 }, { name: 'London Sightseeing', kind: 'culture', cost: 4500 }, { name: 'Rome & the Vatican', kind: 'culture', cost: 5000 },
+    { name: 'Dubai Luxury Stay', kind: 'luxury', cost: 9000 }, { name: 'Carnival in Rio de Janeiro', kind: 'party', cost: 5500 }, { name: 'Sydney Harbour', kind: 'culture', cost: 7500 }, { name: 'Machu Picchu Trek', kind: 'adventure', cost: 6000 }, { name: 'Santorini Sunsets', kind: 'luxury', cost: 6500 }, { name: 'Seoul Food Tour', kind: 'culture', cost: 5000 }, { name: 'Camping in the Mountains', kind: 'adventure', cost: 600 }, { name: 'Beach Resort in Cancún', kind: 'luxury', cost: 4000 },
+    { name: 'Paris Getaway', kind: 'culture', cost: 6000 }, { name: 'Tokyo Adventure', kind: 'culture', cost: 7000 }, { name: 'Safari in Kenya', kind: 'adventure', cost: 9000 },
+    { name: 'Bali Retreat', kind: 'luxury', cost: 5000 }, { name: 'Northern Lights in Iceland', kind: 'adventure', cost: 5500, aurora: true }, { name: 'Maldives Overwater Villa', kind: 'luxury', cost: 18000 }, { name: 'Antarctica Expedition', kind: 'adventure', cost: 30000 },
+    { name: 'Private Island Charter', kind: 'luxury', cost: 250000 }
   ];
 
   var TRAITS = ['Ambitious', 'Lazy', 'Kind', 'Mean', 'Funny', 'Shy', 'Outgoing', 'Jealous', 'Loyal', 'Greedy', 'Generous', 'Moody', 'Cheerful', 'Nerdy', 'Athletic', 'Artsy', 'Romantic', 'Stubborn'];

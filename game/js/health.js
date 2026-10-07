@@ -88,7 +88,7 @@ TL.health = (function () {
   function familyDeath(p, cause) {
     if (['mother', 'father', 'sibling', 'grandparent'].indexOf(p.role) < 0) return;
     var m = st(); m.fam = m.fam || {};
-    FAMILY_CAUSE.forEach(function (f) { if (f[0].test(cause || '') && !m.fam[f[1]]) m.fam[f[1]] = 'my ' + (p.role === 'sibling' ? (p.gender === 'M' ? 'brother' : 'sister') : p.role === 'grandparent' ? (p.gender === 'M' ? 'grandfather' : 'grandmother') : p.role); });
+    FAMILY_CAUSE.forEach(function (f) { if (f[0].test(cause || '') && !m.fam[f[1]]) m.fam[f[1]] = 'my ' + (p.role === 'sibling' ? (p.gender === 'M' ? 'brother' : 'sister') : p.role === 'grandparent' ? (p.gender === 'M' ? 'grandfather' : 'grandmother') : p.role) + (p.role === 'sibling' || p.role === 'grandparent' ? ' ' + p.first : ''); }); // two grandfathers are two people
   }
   function risk(n) {
     var m = st(), r = 1;
@@ -97,7 +97,12 @@ TL.health = (function () {
     if (INFECTIONS[n] && yr() < 1942) r *= 1.5;
     return r;
   }
-  function famNote() { var m = st(); return m.fam ? Object.keys(m.fam).map(function (n) { return m.fam[n] + ' (' + n.toLowerCase() + ')'; }).join(', ') : ''; }
+  // One entry per relative: "my grandfather Joe (cancer, high blood pressure)".
+  function famNote() {
+    var m = st(), by = {}, order = [];
+    Object.keys(m.fam || {}).forEach(function (n) { var who = m.fam[n]; if (!by[who]) { by[who] = []; order.push(who); } by[who].push(n.toLowerCase()); });
+    return order.map(function (who) { return who + ' (' + by[who].join(', ') + ')'; }).join(', ');
+  }
 
   // ------------------------------------------------------------ hooks
   function hides(name) { return !!SILENT[name]; }
@@ -338,5 +343,5 @@ TL.health = (function () {
     return { icon: '🧾', title: 'Medical bill', text: 'The hospital sent a bill for ' + E.fmt(amt) + ' after insurance.', choices: ch };
   } });
 
-  return { familyDeath: familyDeath, risk: risk, eraCure: eraCure, year: year, costs: costs, hides: hides, hide: hide, has: has, mult: mult, menu: menu, summary: summary, deathCause: deathCause, coverage: coverage, st: st };
+  return { familyDeath: familyDeath, risk: risk, eraCure: eraCure, year: year, costs: costs, hides: hides, hide: hide, has: has, mult: mult, menu: menu, summary: summary, deathCause: deathCause, coverage: coverage, st: st, famNote: famNote };
 })();
