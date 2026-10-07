@@ -147,6 +147,12 @@ TL.eras.viking = (function () {
       E.people('sibling').forEach(function (p) { p.last = patronym(dad.first, p.gender); });
     }
     if (mom) mom.last = patronym(U.pick(c.male.filter(function (n) { return !dad || n !== dad.first; })), 'F'); // a daughter named for Mom never shares her full name
+    // Grandfathers are who my parents are named for: Dad "Leifsson" is the son of Leif.
+    E.people('grandparent').forEach(function (g) {
+      var kid = g.side === 'paternal' ? dad : g.side === 'maternal' ? mom : null;
+      if (g.gender === 'M' && kid && stem(kid.last) !== kid.last) g.first = stem(kid.last);
+      g.last = patronym(U.pick(c.male.filter(function (n) { return n !== g.first; })), g.gender);
+    });
     s.log.forEach(function (yy) { yy.entries.forEach(function (e) { e.t = e.t.replace(was, me().first + ' ' + me().last); }); });
     fixParentLines(s, mom, dad);
     if (opts.royal && TL.dynasty.born(s, royalCfg())) { a.king = king(s.year); return; }

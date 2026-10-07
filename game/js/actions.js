@@ -1366,7 +1366,7 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '🪂', label: 'Go skydiving', right: E.fmt(E.$(300)), onClick: skydive });
       if (a >= 8) { var inj = injury(), pb = (S().flags.pb || {}).full; items.push({ icon: '🏃', label: 'Run a race', sub: inj ? 'Not with a ' + inj.toLowerCase() : used('marathon') ? 'Raced this year' : pb ? 'Marathon best ' + raceTime(pb) : '5K to marathon', disabled: used('marathon') > 0 || !!inj, onClick: raceMenu }); }
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });
-      if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', right: E.fmt(E.$(2)), onClick: lottery });
+      if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', sub: 'Jackpot ' + E.fmt(jackpot()), onClick: lottery });
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
       items.push({ icon: '🐾', label: 'Pets', onClick: petStore });
       if (a >= 16 && !S().flags.license) { var sus = S().flags.suspended > S().year; items.push({ icon: '🪪', label: 'Driving test', sub: sus ? 'License suspended until ' + S().flags.suspended : used('dmv') ? 'Try again next year' : S().flags.dmvTries ? 'Failed ' + times(S().flags.dmvTries) + ' so far' : '', disabled: sus || used('dmv') > 0, onClick: drivingTest }); }
@@ -1623,16 +1623,64 @@ TL.actions = (function () {
       } };
     }));
   }
-  function lottery() {
-    var c = E.$(2);
-    if (!afford(c)) return done(noMoney(c));
-    bet(-c);
+  // The big draw: a jackpot that rolls over until someone wins it, plus scratch-offs and pools.
+  // Every option pays back roughly 60 cents on the dollar over time, like a real lottery.
+  var JACK_ODDS = 1 / 60000000;
+  function jackpot() {
+    var f = S().flags, y = S().year, j = f.jackpot;
+    if (!j) j = f.jackpot = { y: y, amt: E.$(U.rand(20, 80) * 1000000) };
+    for (; j.y < y; j.y++) j.amt = U.chance(0.35) ? E.$(20000000) : Math.min(E.$(1500000000), j.amt + E.$(U.rand(10, 40) * 1000000)); // someone else hits it, or it rolls over
+    return j.amt;
+  }
+  // tickets bought, split how many ways. Returns { won, text }.
+  function lotteryDraw(tickets, ways) {
+    ways = ways || 1;
+    if (Math.random() < tickets * JACK_ODDS) {
+      var lump = Math.round(jackpot() * 0.6), mine = Math.round(lump / ways);
+      S().flags.jackpot = { y: S().year, amt: E.$(20000000) };
+      bet(mine); E.stat('happy', 40); E.achieve('lottery');
+      E.log('🎰 I won the lottery jackpot' + (ways > 1 ? ' with ' + (ways - 1) + ' others' : '') + '! My lump sum: ' + E.fmt(mine) + '.', 'good');
+      if (!S().pending.some(function (q) { return q.id === 'lottery_winner'; })) E.queue('lottery_winner', { amt: mine });
+      return { won: mine, jack: true, text: '🎉🎉 ' + (ways > 1 ? 'OUR POOL HIT THE JACKPOT! My share of the lump sum: ' : 'I WON THE LOTTERY JACKPOT! Lump sum: ') + E.fmt(mine) + '!!! 🎉🎉' };
+    }
+    var won = 0;
+    for (var i = 0; i < tickets; i++) { var r = Math.random(); won += r < 1 / 100000 ? E.$(10000) : r < 0.03 ? E.$(U.pick([4, 4, 4, 10, 50])) : 0; }
+    won = Math.round(won / ways); if (won) bet(won);
+    return { won: won, text: won ? (ways > 1 ? 'The pool won a little. My cut: ' : 'I won ') + E.fmt(won) + '.' : '' };
+  }
+  function scratchOff() {
     var r = Math.random();
-    // Odds like a real draw: a ticket returns about 60 cents on the dollar.
-    if (r < 1 / 60000000) { var jp = E.$(U.rand(5, 75) * 1000000); bet(jp); E.stat('happy', 40); E.achieve('lottery'); return done(good('🎉🎉 I WON THE LOTTERY JACKPOT: ' + E.fmt(jp) + '!!! 🎉🎉')); }
-    if (r < 1 / 100000) { var big = E.$(10000); bet(big); return done(good('I matched 5 numbers and won ' + E.fmt(big) + '!')); }
-    if (r < 0.03) { var sm = E.$(U.pick([4, 4, 4, 10, 50])); bet(sm); return done('I won ' + E.fmt(sm) + ' on a lottery ticket.'); }
-    done('My lottery ticket was a dud.');
+    return r < 0.00001 ? 50000 : r < 0.001 ? 500 : r < 0.012 ? 50 : r < 0.072 ? 10 : r < 0.272 ? 5 : 0;
+  }
+  function lottery() {
+    ui().menu('Lottery 🎟️', function () {
+      var g = S().flags.gamble, pals = E.people(['friend', 'best friend', 'coworker']).filter(function (p) { return p.age >= 18; });
+      var items = [{ info: true, html: '<p>💰 This year\'s jackpot: <b>' + E.fmt(jackpot()) + '</b> <span class="muted small">(about ' + E.fmt(Math.round(jackpot() * 0.6)) + ' as a lump sum)</span></p>' + (g && (g.won || g.lost) ? '<p class="small muted">Lifetime gambling: won ' + E.fmt(g.won) + ', lost ' + E.fmt(g.lost) + '.</p>' : '') }];
+      [[1, 2], [10, 20]].forEach(function (t) {
+        var c = E.$(t[1]);
+        items.push({ icon: '🎟️', label: t[0] === 1 ? 'Buy a ticket' : 'Buy 10 tickets', sub: 'Odds of the jackpot: 1 in ' + Math.round(60 / t[0]) + ' million', right: E.fmt(c), onClick: function () {
+          if (!afford(c)) return done(noMoney(c));
+          bet(-c); gambleHook(); var d = lotteryDraw(t[0], 1);
+          done(d.jack ? good(d.text) : d.won ? d.text : t[0] === 1 ? 'My lottery ticket was a dud.' : 'Ten tickets, ten duds.');
+        } });
+      });
+      var sc = E.$(5);
+      items.push({ icon: '🪙', label: 'Scratch-off', sub: 'Small prizes, often', right: E.fmt(sc), onClick: function () {
+        if (!afford(sc)) return done(noMoney(sc));
+        bet(-sc); gambleHook(); var w = E.$(scratchOff());
+        if (w) bet(w);
+        done(w >= E.$(500) ? good('I scratched off ' + E.fmt(w) + '! 🤑') : w ? 'I won ' + E.fmt(w) + ' on a scratch-off.' : 'Nothing under the silver. Figures.');
+      } });
+      if (pals.length) {
+        var pc = E.$(20), n = Math.min(12, pals.length + 2 + S().year % 5); // same pool all year
+        items.push({ icon: '👥', label: 'Go in on a pool', sub: 'Ten tickets each, ' + n + ' of us split any prize', right: E.fmt(pc), onClick: function () {
+          if (!afford(pc)) return done(noMoney(pc));
+          bet(-pc); gambleHook(); var d = lotteryDraw(10 * n, n), p = U.pick(pals); E.rel(p, 2);
+          done(d.jack ? good(d.text) : d.won ? d.text : p.first + ' organized a pool. We didn\'t win anything, but it was fun checking the numbers together.');
+        } });
+      }
+      return items;
+    });
   }
   function vacationMenu() {
     ui().menu('Vacation ✈️', function () {
@@ -1875,6 +1923,6 @@ TL.actions = (function () {
   return {
     relationshipsMenu: relationshipsMenu, occupationMenu: occupationMenu, assetsMenu: assetsMenu,
     activitiesMenu: activitiesMenu, openUniversity: openUniversity, tradeMenu: tradeMenu, divorce: divorce, addPet: addPet, petMenu: petMenu, personMenu: personMenu, prisonMenu: prisonMenu, fameMenu: fameMenu, assetMenu: assetMenu,
-    roadTest: roadTest, achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
+    roadTest: roadTest, lotteryDraw: lotteryDraw, achievementsMenu: achievementsMenu, socialMenu: socialMenu, personIcon: personIcon, roleLabel: roleLabel, done: done, nope: nope
   };
 })();

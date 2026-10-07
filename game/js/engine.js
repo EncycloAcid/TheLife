@@ -317,12 +317,15 @@ TL.engine = (function () {
       addPerson({ role: 'sibling', age: sa, last: st.me.last, rel: U.rand(35, 90), money: 0 });
     }
     // Grandparents
-    var gpCount = U.rand(0, 3);
-    for (var g = 0; g < gpCount; g++) {
-      var gp = addPerson({ role: 'grandparent', age: U.rand(Math.max(momAge, dadAge) + 18, Math.max(momAge, dadAge) + 38), last: g % 2 ? st.me.last : undefined, rel: U.rand(50, 100), money: $(wealthTier.m * U.randf(0.5, 3)) });
-      gp.job = 'Retired';
-      if (gp.age > 88) gp.age = 88;
-    }
+    // One grandfather and one grandmother per side. Mom's parents share her family name;
+    // a Roman wife keeps her father's name (Cornelia stays a Cornelia after marrying a Vibius).
+    var matLast = parentsMarried ? randomName('M').last : mom.last, rome = ctry.ancient === 'rome';
+    if (rome && parentsMarried) mom.last = D.surname(matLast, 'F', 'rome');
+    var slots = U.shuffle([['M', dad.last, 'paternal', dadAge], ['F', dad.last, 'paternal', dadAge], ['M', matLast, 'maternal', momAge], ['F', matLast, 'maternal', momAge]]).slice(0, U.rand(0, 3));
+    slots.forEach(function (sl) { // (Viking patronymics are fixed up in js/viking.js once the parents are named.)
+      var gp = addPerson({ role: 'grandparent', gender: sl[0], age: Math.min(88, U.rand(sl[3] + 18, sl[3] + 38)), last: rome && sl[0] === 'F' ? undefined : sl[1], rel: U.rand(50, 100), money: $(wealthTier.m * U.randf(0.5, 3)) });
+      gp.job = 'Retired'; gp.side = sl[2];
+    });
 
     if (opts.royal && TL.features && !ctry.ancient) TL.features.makeRoyal(st); // earlier eras crown their own (TL.dynasty)
     var m = st.me;
@@ -1826,6 +1829,8 @@ TL.engine = (function () {
         if (p.role === 'grandchild' && p.parentId === c.id) { p.role = 'child'; p.otherParent = null; newPeople.push(p); }
       });
     }
+    // Everyone carried into the next life is family now; friendship history belonged to the old me.
+    newPeople.forEach(function (p) { delete p.fyears; delete p.helped; delete p.ended; });
     var gen = s.gen + 1;
     var st = newLife({
       country: s.country, gen: gen, year: s.year - c.age,

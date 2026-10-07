@@ -1224,8 +1224,17 @@ TL.events = (function () {
   def('lottery_pool', { min: 21, max: 65, w: 4, cond: function () { var j = S().job; return j && !j.partTime && !j.fame && !S().prison; }, build: function () {
     var buy = E.$(20);
     return { icon: '🎟️', title: 'Office lottery pool', text: 'My coworkers are pooling money for the big lottery jackpot. It\'s ' + E.fmt(buy) + ' to join.', choices: [
-      { label: 'Join the pool', run: function () { E.addMoney(-buy); if (Math.random() < 0.004) { var share = E.$(U.rand(200000, 2000000)); E.addMoney(share); E.achieve('lottery'); return good('WE WON! My share of the jackpot is ' + E.fmt(share) + '! 🎉'); } if (U.chance(0.1)) { var sm = E.$(U.rand(20, 200)); E.addMoney(sm); return 'We won a small prize. My cut: ' + E.fmt(sm) + '.'; } return 'We didn\'t win anything.'; } },
+      { label: 'Join the pool', run: function () { var n = U.rand(8, 20), f = S().flags, g = f.gamble || (f.gamble = { won: 0, lost: 0 }); E.addMoney(-buy); g.lost += buy; var d = TL.actions.lotteryDraw(10 * n, n); if (d.jack) return good(d.text); return d.won ? d.text : 'We didn\'t win. Same time next week, apparently.'; } },
       { label: 'Sit this one out', run: function () { return 'I kept my money.'; } }
+    ] };
+  } });
+  def('lottery_winner', { scripted: true, build: function (d) {
+    var fam = E.people(['mother', 'father', 'sibling', 'child', 'grandparent']).filter(function (p) { return p.age >= 16; }), pals = E.people(['friend', 'best friend']);
+    var gift = Math.round(d.amt * 0.2), adv = Math.round(d.amt * 0.01);
+    return { icon: '💸', title: 'Everyone knows', text: 'Word got out that I won the lottery. Suddenly everyone I\'ve ever met has a business idea, a sick aunt, or a really good reason to need money.', choices: [
+      { label: 'Share with family and friends (' + E.fmt(gift) + ')', run: function () { var all = fam.concat(pals); if (!all.length) return 'There was no one to share it with. That was its own kind of sad.'; var each = Math.round(gift / all.length); E.addMoney(-gift); all.forEach(function (p) { E.rel(p, 15); p.money = (p.money || 0) + each; }); E.karma(5); E.stat('happy', 6); return good('I gave ' + all.length + ' people ' + E.fmt(each) + ' each. A few of them cried.'); } },
+      { label: 'Hire a financial advisor and stay quiet (' + E.fmt(adv) + ')', run: function () { E.addMoney(-adv); E.stat('happy', 3); fam.forEach(function (p) { if (U.chance(0.3)) E.rel(p, -5); }); return 'I hired a fee-only advisor, changed my number and invested most of it. Some relatives aren\'t speaking to me.'; } },
+      { label: 'Treat myself first', run: function () { var spend = Math.round(d.amt * U.randf(0.25, 0.5)); E.addMoney(-spend); E.stat('happy', 12); E.stat('looks', 2); fam.concat(pals).forEach(function (p) { E.rel(p, -6); }); return bad('Cars, watches, a trip around the world. ' + E.fmt(spend) + ' gone in a year, and people noticed I didn\'t help anyone.'); } }
     ] };
   } });
   def('marathon_invite', { min: 16, max: 65, w: 4, cond: function () { return !S().flags.marathon && E.people(['friend', 'best friend']).length; }, build: function () {
