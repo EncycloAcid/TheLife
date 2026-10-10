@@ -1,0 +1,219 @@
+/* TheLife — "iOS 26" design (v2.5–2.7), layered over css/expressive.css:
+ * hero with Activity rings, timeline log, large sheet titles, iOS 26 tab bar. */
+
+/* ============================================================ v2.5 bolder */
+/* Hero card: me, my money and my four stats in one tonal container. */
+.hero { margin: 4px 12px 10px; padding: 4px 6px 10px; border-radius: 32px; background: var(--primary-c); color: var(--on-primary-c); box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--primary) 70%, transparent); position: relative; z-index: 2; }
+.hero .gh { padding: 8px 10px 10px 4px; }
+.hero .icon-btn { color: var(--on-primary-c); }
+.hero .avatar-ring { width: 56px; height: 56px; background: var(--cell); }
+.hero .avatar { font-size: 1.8rem; }
+.hero .gh-name { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; }
+.hero .gh-sub, .hero .gh-age { color: color-mix(in srgb, var(--on-primary-c) 72%, transparent); }
+.hero .gh .money { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; color: var(--on-primary-c); }
+.hero .gh .money.neg { color: var(--bad); }
+.hero .stats { margin: 0 4px; gap: 6px; }
+.hero .stat { background: color-mix(in srgb, var(--cell) 78%, transparent); border-radius: var(--r-l); padding: 9px 2px 7px; }
+.hero .stat.low { background: var(--bad-bg); }
+.hero .stat-lbl { color: color-mix(in srgb, var(--text) 70%, transparent); }
+.hero .floater { top: -4px; }
+/* Wavy progress rings */
+.ring { width: 50px; height: 50px; }
+.ring .rb { stroke-width: 4; stroke-opacity: .16; }
+.ring .rf { stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke-dashoffset 1s var(--bounce); }
+.ring-ico { font-size: 1.1rem; }
+/* The log scrolls under the hero. */
+.log { padding-top: 2px; }
+/* Year headers as display type: "Age 16" big, the year beside it. */
+.year-h { align-items: baseline; margin: 6px 0 8px 6px; }
+.year-h b { padding: 0; background: none; font-size: 1.375rem; font-weight: 800; letter-spacing: -.03em; color: var(--text); }
+.year.latest .year-h b { background: none; color: var(--primary); }
+.year-h span { font-size: .875rem; font-weight: 600; color: var(--muted); }
+.year.latest .year-h span { color: var(--primary); }
+.year.latest .ycard { box-shadow: none; background: var(--cell); outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: -2px; }
+.quiet-row b { font-size: .8125rem; }
+/* Sheets: a large headline that hands off to the bar title when you scroll. */
+.sheet-large { display: block; margin: 2px 6px 6px; font-size: 2rem; font-weight: 800; letter-spacing: -.035em; line-height: 1.1; color: var(--text); transition: opacity .2s ease, transform var(--spring-ms) var(--spring); transform-origin: 0 50%; }
+.sheet-head h3 { opacity: 0; transform: translateY(6px); transition: opacity .2s ease, transform var(--spring-ms) var(--spring); }
+.sheet.scrolled .sheet-head h3 { opacity: 1; transform: none; }
+.sheet.scrolled .sheet-large { opacity: 0; transform: scale(.92); }
+.jump { margin-top: 4px; }
+/* Bigger, bouncier presses on list tiles and stats. */
+.group .item { transition: background-color .2s ease, border-radius var(--spring-ms) var(--spring), transform var(--bounce-ms) var(--bounce); }
+.group .item:active:not(.disabled):not(.static) { transform: scale(.98); }
+.hero .stats:active .stat { border-radius: var(--r-m); transform: scale(.96); }
+.hero .stat { transition: border-radius var(--spring-ms) var(--spring), transform var(--bounce-ms) var(--bounce); }
+/* New year's card springs in a touch more. */
+.year.fresh .ycard { animation: card-in var(--bounce-ms) var(--bounce); }
+@keyframes card-in { from { transform: translateY(18px) scale(.96); border-radius: var(--r-m); opacity: 0; } }
+/* The age button: bigger, with a bolder press. */
+.ageup { width: 68px; height: 68px; border-radius: 24px; background: var(--primary); color: var(--on-primary); }
+.ageup.pop::after { border-radius: 24px; }
+@keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.82) rotate(-8deg); } 100% { border-radius: 24px; } }
+/* Hero header: name gets the full width; money and age sit on a line below. */
+.hero .gh { display: grid; grid-template-columns: 40px 56px 1fr auto; grid-template-rows: auto auto; column-gap: 10px; row-gap: 0; align-items: center; }
+.hero #h-menu { grid-row: 1 / span 2; grid-column: 1; }
+.hero .avatar-ring { grid-row: 1 / span 2; grid-column: 2; }
+.hero .gh-mid { grid-row: 1; grid-column: 3; align-self: end; }
+.hero #h-phone { grid-row: 1 / span 2; grid-column: 4; }
+.hero .gh-right { grid-row: 2; grid-column: 3; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 8px; align-self: start; text-align: left; }
+.hero .gh-sub { display: none; }
+.hero .gh-age::before { content: '· '; }
+.hero .gh-age { font-size: .875rem; font-weight: 600; }
+.hero .delta { left: 0; right: auto; }
+/* Stat change floaters stay inside their tile. */
+.hero .stat { overflow: hidden; }
+.hero .floater { top: 4px; left: auto; right: 8px; font-size: .75rem; }
+.hero .gh-sub { display: block; font-size: .8125rem; margin-top: 1px; }
+.hero .gh-right { margin-top: 2px; }
+
+/* ============================================================ v2.5.1 balance
+ * An even mix: iOS glass, grouped lists, semibold type and compact alerts,
+ * with Material 3 Expressive color, wavy rings, pills and morphing shapes. */
+/* Hero: iOS frosted glass, lightly tinted with the seed color. */
+.hero { background: color-mix(in srgb, var(--primary-c) 55%, var(--glass)); -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8); border-radius: 26px; box-shadow: 0 8px 28px -14px rgba(0, 0, 0, .25), inset 0 0 0 1px color-mix(in srgb, var(--outline) 16%, transparent); color: var(--text); }
+.hero .icon-btn { color: var(--primary); }
+.hero .gh-name { font-size: 1.125rem; font-weight: 700; letter-spacing: -.015em; }
+.hero .gh .money { font-size: 1.125rem; font-weight: 700; color: var(--money); }
+.hero .gh .money.neg { color: var(--red); }
+.hero .gh-sub, .hero .gh-age { color: var(--muted); }
+.hero .stat { background: color-mix(in srgb, var(--cell) 70%, transparent); border-radius: 18px; }
+/* Type: iOS semibold weights instead of the heaviest display weights. */
+h1 { font-weight: 700; }
+.sheet-large { font-size: 1.875rem; font-weight: 700; letter-spacing: -.025em; }
+.dialog-card h3 { font-size: 1.1875rem; font-weight: 700; }
+.death-wrap h2 { font-weight: 700; }
+/* Year headers: an iOS large-title feel, a step smaller. */
+.year-h b { font-size: 1.1875rem; font-weight: 700; letter-spacing: -.02em; }
+/* Lists: one rounded card per group with hairline dividers (iOS grouped),
+   Material's larger radius and tonal icon tiles. */
+.group { background: var(--cell); border-radius: 22px; overflow: hidden; gap: 0; }
+.group .item { background: transparent; border-radius: 0 !important; min-height: 52px; }
+.group .item + .item::before { display: block; left: 64px; right: 0; background: var(--sep); transform: scaleY(.5); }
+.item:active:not(.disabled):not(.static) { background: var(--fill); }
+.group .item:active:not(.disabled):not(.static) { transform: none; }
+.i-ico { width: 32px; height: 32px; border-radius: 10px; }
+.tiles { background: var(--cell); border-radius: 22px; overflow: hidden; gap: 0; }
+.tile, .tile:first-child, .tile:last-child { border-radius: 0; background: transparent; }
+.tile + .tile::before { display: block; left: 64px; }
+.t-ico { width: 32px; height: 32px; border-radius: 10px; }
+/* Alerts: compact and centered like iOS, with Material pill choices. */
+.dialog-card { max-width: 312px; border-radius: 26px; -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); background: color-mix(in srgb, var(--material) 88%, transparent); }
+.d-icon { width: 54px; height: 54px; font-size: 1.7rem; }
+#d-buttons .btn { min-height: 44px; font-size: .9375rem; }
+/* Tab bar: iOS liquid glass with the Material pill indicator. */
+.nav { background: color-mix(in srgb, var(--glass) 80%, transparent); -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8); }
+/* Age button: Material's shape-shifting button, a touch smaller. */
+.ageup { width: 62px; height: 62px; border-radius: 22px; }
+.ageup.pop::after { border-radius: 22px; }
+@keyframes fab-pop { 0% { border-radius: 50%; transform: scale(.84); } 100% { border-radius: 22px; } }
+/* Section labels: iOS small caps-free footnote style in the seed color. */
+.section { font-size: .8125rem; font-weight: 600; }
+
+/* ============================================================ v2.6 layout */
+/* Life log as a timeline: a rail down the left, a shaped age badge per year. */
+.year { position: relative; padding-left: 50px; }
+.year::before { content: ''; position: absolute; left: 21px; top: 20px; bottom: -22px; width: 2px; border-radius: 2px; background: var(--sep); }
+.year.latest::before { display: none; }
+.year-h { min-height: 42px; margin: 0 0 6px; align-items: center; }
+.y-node { display: grid; position: absolute; left: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; clip-path: var(--cookie); background: var(--surface-high); color: var(--text); font-style: normal; font-size: .9375rem; font-weight: 750; font-variant-numeric: tabular-nums; z-index: 1; }
+.year.latest .y-node { background: var(--primary); color: var(--on-primary); }
+.year.fresh .y-node { animation: node-in var(--bounce-ms) var(--bounce); }
+@keyframes node-in { from { transform: scale(.4) rotate(-40deg); } }
+.year-h b { font-size: 1.0625rem; font-weight: 700; }
+.year-h span { font-size: .8125rem; }
+.ycard { border-radius: 22px; }
+.year.quiet { position: relative; padding-left: 50px; }
+.year.quiet::before { top: 0; bottom: -10px; }
+.quiet-row { position: relative; padding: 4px 0; }
+.quiet-row .q-dot { position: absolute; left: -36px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 0; clip-path: var(--cookie); background: var(--surface-top); }
+.log { padding-left: 12px; padding-right: 14px; }
+
+/* Collapsing hero: scrolling back through the years folds it to a slim bar. */
+.hero .stats { max-height: 120px; overflow: hidden; transition: max-height var(--spring-ms) var(--spring), opacity .25s ease, margin var(--spring-ms) var(--spring); }
+.hero .avatar-ring { transition: width var(--spring-ms) var(--spring), height var(--spring-ms) var(--spring); }
+.hero .gh-sub { transition: opacity .2s ease; }
+.hero { transition: padding var(--spring-ms) var(--spring), border-radius var(--spring-ms) var(--spring); }
+.hero.compact { padding-bottom: 2px; border-radius: 22px; }
+.hero.compact .stats { max-height: 0; opacity: 0; margin-top: 0; margin-bottom: 0; }
+.hero.compact .avatar-ring { width: 40px; height: 40px; }
+.hero.compact .gh { grid-template-columns: 40px 40px 1fr auto; padding-top: 4px; padding-bottom: 6px; }
+.hero.compact .gh-sub { display: none; }
+
+/* Home: expressive shapes floating behind the title. */
+#screen-home { overflow: hidden; }
+#screen-home::before, #screen-home::after { content: ''; position: absolute; z-index: 0; pointer-events: none; }
+#screen-home::before { width: 300px; height: 300px; left: -110px; top: -80px; clip-path: var(--cookie); background: var(--primary-c); opacity: .7; animation: drift 18s ease-in-out infinite alternate; }
+#screen-home::after { width: 220px; height: 220px; right: -90px; top: 150px; clip-path: var(--sunny); background: var(--tertiary-c); opacity: .6; animation: drift 22s ease-in-out infinite alternate-reverse; }
+@keyframes drift { to { transform: rotate(40deg) translateY(16px); } }
+.home-wrap { position: relative; z-index: 1; }
+.logo { background: var(--cell); box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--primary) 50%, transparent); }
+
+/* ============================================================ v2.7 iOS 26 layout
+ * Arranged like Apple's own apps: a large-title header with glass buttons,
+ * an Activity-rings summary card, and the iOS 26 tab bar with a separate
+ * round Age button. Material color, shapes and pills stay. */
+/* Header: glass corner buttons, then a big title with money beside it. */
+.hero { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; margin: 0 12px 6px; padding: 0; display: grid; grid-template-columns: 44px 1fr auto 44px; grid-template-areas: "menu . avatar phone" "mid mid right right" "stats stats stats stats"; column-gap: 8px; align-items: center; color: var(--text); }
+.hero .gh { display: contents; }
+.hero #h-menu { grid-area: menu; }
+.hero #h-phone { grid-area: phone; }
+.hero .avatar-ring { grid-area: avatar; width: 40px; height: 40px; justify-self: end; }
+.hero .avatar { font-size: 1.35rem; }
+.hero #h-menu, .hero #h-phone { width: 40px; min-width: 40px; height: 40px; margin: 4px 0; border-radius: 50%; background: color-mix(in srgb, var(--glass) 85%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); box-shadow: 0 2px 10px -2px rgba(0, 0, 0, .12), inset 0 0 0 1px color-mix(in srgb, var(--outline) 18%, transparent); color: var(--text); justify-content: center; padding: 0; }
+.hero #h-menu .ic, .hero #h-phone .ic { width: 20px; height: 20px; }
+.hero .gh-mid { grid-area: mid; align-self: end; padding: 2px 4px 0; min-width: 0; }
+.hero .gh-name { font-size: 2.125rem; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; transition: font-size var(--spring-ms) var(--spring); }
+.hero .gh-sub { font-size: .9375rem; color: var(--muted); margin-top: 2px; }
+.hero .gh-right { grid-area: right; align-self: end; flex-direction: column; align-items: flex-end; gap: 0; padding: 0 4px 2px; text-align: right; }
+.hero .gh .money { font-size: 1.375rem; font-weight: 700; letter-spacing: -.02em; }
+.hero .gh-age::before { content: none; }
+.hero .gh-age { font-size: .875rem; }
+.hero .delta { left: auto; right: 0; }
+
+/* Summary card: Activity rings on the left, a colored legend on the right. */
+.hero .stats { grid-area: stats; position: relative; display: block; margin: 10px 0 0; padding: 14px 16px 14px 150px; min-height: 144px; max-height: 200px; background: var(--cell); border-radius: 24px; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.hero .stat { position: static; display: flex; background: none; padding: 0; border-radius: 0; overflow: visible; transform: none !important; }
+.hero .stat-lbl { display: flex; align-items: baseline; justify-content: space-between; width: 100%; margin: 0; padding: 3px 0; font-size: .9375rem; font-weight: 600; color: var(--c); }
+.hero .stat + .stat .stat-lbl { border-top: .5px solid var(--sep); }
+.hero .stat-lbl b { font-size: 1.25rem; font-weight: 700; color: var(--c); letter-spacing: -.02em; }
+.hero .stat.low .stat-lbl b { color: var(--red); }
+.hero .stat.low { background: none; }
+.hero .ring { position: absolute; left: 14px; top: 50%; animation: none !important; }
+.hero .ring-ico { display: none; }
+.hero .stat:nth-child(1) .ring { width: 120px; height: 120px; margin-top: -60px; --sw: 5.4; }
+.hero .stat:nth-child(2) .ring { width: 94px; height: 94px; margin-top: -47px; left: 27px; --sw: 6.9; }
+.hero .stat:nth-child(3) .ring { width: 68px; height: 68px; margin-top: -34px; left: 40px; --sw: 9.6; }
+.hero .stat:nth-child(4) .ring { width: 42px; height: 42px; margin-top: -21px; left: 53px; --sw: 15.5; }
+.hero .ring .rb, .hero .ring .rf { stroke-width: var(--sw); }
+.hero .ring .rb { stroke-opacity: .2; }
+.hero .floater { position: absolute; top: auto; right: 16px; left: auto; margin-top: -2px; }
+.hero .stats:active { transform: scale(.98); transition: transform var(--bounce-ms) var(--bounce); }
+
+/* Scrolling back: the large title folds into a slim inline bar (iOS). */
+.hero.compact { padding: 0; border-radius: 0; }
+.hero.compact .stats { max-height: 0; min-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; opacity: 0; }
+.hero.compact .gh-name { font-size: 1.125rem; }
+.hero.compact .gh-sub { display: none; }
+.hero.compact .gh .money { font-size: 1rem; }
+.hero .stats { transition: max-height var(--spring-ms) var(--spring), min-height var(--spring-ms) var(--spring), padding var(--spring-ms) var(--spring), opacity .25s ease, margin var(--spring-ms) var(--spring); }
+
+/* iOS 26 tab bar: four tabs in a glass capsule, Age as its own round button. */
+.nav { display: flex; align-items: center; gap: 10px; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; margin: 8px 14px calc(8px + var(--safe-b)); }
+.nav::before { content: ''; position: absolute; left: 0; right: 76px; top: 0; bottom: 0; border-radius: var(--r-full); background: color-mix(in srgb, var(--glass) 82%, transparent); -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8); box-shadow: 0 8px 28px -10px rgba(0, 0, 0, .28), inset 0 0 0 1px color-mix(in srgb, var(--outline) 20%, transparent); }
+.nav-btn { position: relative; flex: 1; padding: 7px 0 6px; }
+#nav-occ { order: 1; margin-left: 4px; } #nav-assets { order: 2; } #nav-rel { order: 3; } #nav-act { order: 4; margin-right: 4px; }
+.nav-btn .ic { width: 52px; height: 28px; padding: 3px 14px; }
+.ageup { order: 5; position: relative; flex: none; width: 66px; height: 66px; border-radius: 50%; background: var(--primary); color: var(--on-primary); box-shadow: 0 8px 24px -8px color-mix(in srgb, var(--primary) 70%, transparent); }
+.ageup:active { border-radius: 24px; transform: scale(.92); }
+.ageup.pop::after { border-radius: 50%; }
+@keyframes fab-pop { 0% { border-radius: 24px; transform: scale(.84); } 100% { border-radius: 50%; } }
+body.sheet-open .nav::before, .screen.leaving .nav::before { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--cell); }
+/* Uniform 10px Activity rings: stroke in viewBox units = 10 * 50 / ring size. */
+.hero .stat:nth-child(1) .ring { --sw: 4.17; }
+.hero .stat:nth-child(2) .ring { --sw: 5.32; }
+.hero .stat:nth-child(3) .ring { --sw: 7.35; }
+.hero .stat:nth-child(4) .ring { --sw: 11.9; }
+
+/* Fitness-style ring color for Smarts in this design. */
+:root { --ring-smarts: var(--teal); }

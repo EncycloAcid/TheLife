@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#F2F2F7">
+  <meta name="description" content="TheLife — a deep text-based life simulator. Live from birth to death, one year at a time.">
+  <title>TheLife</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/Inter.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link id="css-exp" rel="stylesheet" href="css/expressive.css">
+  <link id="css-ios26" rel="stylesheet" href="css/ios26.css">
+  <link id="css-compact" rel="stylesheet" href="css/compact.css">
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"></div>
+  <!-- HOME -->
+  <section id="screen-home" class="screen active">
+    <div class="home-wrap">
+      <div class="logo"><img src="icon.svg" alt="TheLife logo" class="logo-img"></div>
+      <h1>The<span class="grad-text">Life</span></h1>
+      <p class="tagline">Every choice. Every year. One life.</p>
+      <div id="home-actions" class="stack"></div>
+      <p class="muted small center">Your lives are saved on this device.</p>
+    </div>
+  </section>
+
+  <!-- CREATE -->
+  <section id="screen-create" class="screen">
+    <div class="topbar"><button id="c-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>Back</span></button><h2>New Life</h2><span></span></div>
+    <div class="form">
+      <label>First name<input id="c-first" maxlength="20" autocomplete="off"></label>
+      <label>Last name<input id="c-last" maxlength="24" autocomplete="off"></label>
+      <button id="c-random" class="btn ghost small">🎲 Random name</button>
+      <label>Gender
+        <select id="c-gender"><option value="M">Male</option><option value="F">Female</option></select>
+      </label>
+      <label>Attracted to
+        <select id="c-interest"><option value="auto">Opposite gender</option><option value="M">Men</option><option value="F">Women</option><option value="A">Everyone</option></select>
+      </label>
+      <label>Country<select id="c-country"></select></label>
+      <label>Born in<select id="c-year"></select></label>
+      <label class="check"><input type="checkbox" id="c-royal"> <span id="c-royal-t">👑 Born into the royal family</span></label>
+      <details class="custom">
+        <summary>🎛️ Customize starting stats</summary>
+        <div id="c-stats"></div>
+        <label>Family wealth
+          <select id="c-wealth"><option value="">Random</option><option value="poor">Poor</option><option value="middle">Middle class</option><option value="upper">Upper class</option><option value="rich">Rich</option></select>
+        </label>
+        <label>Born talent
+          <select id="c-talent"><option value="">Random</option><option value="none">None</option></select>
+        </label>
+        <button id="c-reroll" class="btn ghost small" type="button">🎲 Re-roll stats</button>
+      </details>
+      <button id="c-start" class="btn primary">Start Life 👶</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="hero">
+    <header class="gh">
+      <button id="h-menu" class="icon-btn" aria-label="Main menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="avatar-ring"><div id="h-avatar" class="avatar">👶</div></div>
+      <div class="gh-mid">
+        <div id="h-name" class="gh-name"></div>
+        <div id="h-sub" class="gh-sub"></div>
+      </div>
+      <button id="h-phone" class="icon-btn" aria-label="Phone" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg></button>
+      <div class="gh-right">
+        <div id="h-money" class="money"></div>
+        <div id="h-delta" class="delta"></div>
+        <div id="h-age" class="gh-age"></div>
+      </div>
+    </header>
+    <div id="stats" class="stats" title="Tap for more"></div>
+    </div>
+    <main id="log" class="log"></main>
+    <nav class="nav">
+      <button id="nav-occ" class="nav-btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8.5 7V5.8A1.8 1.8 0 0 1 10.3 4h3.4a1.8 1.8 0 0 1 1.8 1.8V7M3 12.5h18"/></svg><span>Career</span></button>
+      <button id="nav-assets" class="nav-btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg><span>Assets</span></button>
+      <button id="btn-ageup" class="ageup" aria-label="Age up one year"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span id="ageup-label">Age</span></button>
+      <button id="nav-rel" class="nav-btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16 14.6c2.2.2 3.9 1.8 4.5 4.9"/></svg><span>People</span></button>
+      <button id="nav-act" class="nav-btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span>Activities</span></button>
+    </nav>
+  </section>
+
+  <!-- DEATH -->
+  <section id="screen-death" class="screen">
+    <div class="death-wrap">
+      <div class="tomb"><span>🪦</span></div>
+      <h2 id="death-name"></h2>
+      <p id="death-sub" class="muted center"></p>
+      <div id="death-ribbon" class="ribbon"></div>
+      <p id="death-obit" class="obit"></p>
+      <div id="death-chart" class="card"></div>
+      <div id="death-stats" class="recap"></div>
+      <div id="death-actions" class="stack"></div>
+    </div>
+  </section>
+
+  <!-- GENERIC LIST -->
+  <section id="screen-list" class="screen">
+    <div class="topbar"><button id="list-back" class="icon-btn" aria-label="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>Back</span></button><h2 id="list-title"></h2><span></span></div>
+    <div id="list-body" class="list-body"></div>
+  </section>
+
+  <!-- BOTTOM SHEET -->
+  <div id="sheet" class="sheet">
+    <div id="sheet-scrim" class="scrim"></div>
+    <div class="sheet-panel">
+      <div class="grip"></div>
+      <div class="sheet-head"><button id="sheet-back" class="icon-btn" aria-label="Back"></button><h3 id="sheet-title"></h3><span></span></div>
+      <div id="sheet-body" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- DIALOG -->
+  <div id="dialog" class="dialog">
+    <div class="dialog-card">
+      <div id="d-icon" class="d-icon"></div>
+      <h3 id="d-title"></h3>
+      <p id="d-text" class="d-text"></p>
+      <input id="d-input" maxlength="40">
+      <textarea id="d-area" rows="6" spellcheck="false"></textarea>
+      <div id="d-buttons" class="stack"></div>
+    </div>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/realdata.js"></script>
+  <script src="js/logofiles.js"></script>
+  <script src="js/logos.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/actions.js"></script>
+  <script src="js/features.js"></script>
+  <script src="js/talents.js"></script>
+  <script src="js/celebs.js"></script>
+  <script src="js/extras.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/hoops.js"></script>
+  <script src="js/nba.js"></script>
+  <script src="js/nbarosters.js"></script>
+  <script src="js/league.js"></script>
+  <script src="js/hoopsocial.js"></script>
+  <script src="js/phone.js"></script>
+  <script src="js/mind.js"></script>
+  <script src="js/social.js"></script>
+  <script src="js/military.js"></script>
+  <script src="js/sports.js"></script>
+  <script src="js/creator.js"></script>
+  <script src="js/acting.js"></script>
+  <script src="js/specials.js"></script>
+  <script src="js/wrestling.js"></script>
+  <script src="js/racing.js"></script>
+  <script src="js/gamedev.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/prosports.js"></script>
+  <script src="js/politics.js"></script>
+  <script src="js/work.js"></script>
+  <script src="js/business.js"></script>
+  <script src="js/health.js"></script>
+  <script src="js/market.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/ancient.js"></script>
+  <script src="js/medieval.js"></script>
+  <script src="js/viking.js"></script>
+  <script src="js/eras.js"></script>
+  <script src="js/mapdata.js"></script>
+  <script src="js/maps.js"></script>
+  <script src="js/recap.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/motion.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    TL.ui.init();
+    // Android hardware back button bridge: the native wrapper calls this.
+    window.__tlBack = function () { return TL.ui.handleBack(); };
+    if ('serviceWorker' in navigator && location.protocol === 'https:' && location.hostname !== 'appassets.androidplatform.net') {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+  </script>
+</body>
+</html>

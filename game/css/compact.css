@@ -1,0 +1,47 @@
+/* TheLife — "Compact" design (v2.8), layered over css/expressive.css.
+ * The story gets the screen: one slim header row, the four stats as a row
+ * of small pills, and a docked iOS-style tab bar with a raised Age button
+ * in the middle. Material color and shapes from expressive.css stay. */
+
+/* ------------------------------------------------------------ header */
+.hero { margin: 0; padding: 0 0 6px; background: var(--bg); position: relative; z-index: 2; }
+.hero .gh { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; }
+.hero #h-menu { min-width: 36px; height: 36px; }
+.hero .avatar-ring { width: 38px; height: 38px; }
+.hero .avatar { font-size: 1.3rem; }
+.hero .gh-name { font-size: 1.0625rem; font-weight: 700; letter-spacing: -.015em; }
+.hero .gh-sub { font-size: .75rem; }
+.hero #h-phone { min-width: 36px; height: 36px; }
+.hero .gh-right { gap: 0; }
+.hero .gh .money { font-size: 1.0625rem; font-weight: 700; }
+.hero .gh-age { font-size: .75rem; }
+
+/* ------------------------------------------------------------ stats: one slim row */
+.hero .stats { display: flex; gap: 6px; margin: 0 12px; padding: 0; background: none; border-radius: 0; }
+.hero .stat { flex: 1; flex-direction: row; align-items: center; justify-content: center; gap: 6px; min-width: 0; height: 40px; padding: 0 8px 0 4px; background: var(--cell); border-radius: var(--r-full); }
+.hero .stat.low { background: var(--bad-bg); }
+.hero .ring { width: 30px; height: 30px; flex: none; }
+.hero .ring .rb { stroke-width: 6; stroke-opacity: .2; }
+.hero .ring .rf { stroke-width: 6; stroke-linecap: round; }
+.hero .ring-ico { font-size: .72rem; }
+.hero .stat-lbl { margin: 0; font-size: 0; color: transparent; }
+.hero .stat-lbl b { font-size: .9375rem; font-weight: 700; color: var(--text); }
+.hero .stat.low .stat-lbl b { color: var(--red); }
+.hero .floater { top: -14px; font-size: .6875rem; }
+.hero .stats:active .stat { transform: scale(.96); }
+
+/* ------------------------------------------------------------ the story */
+.log { padding: 4px 14px 16px; }
+
+/* ------------------------------------------------------------ docked tab bar */
+/* Edge to edge like a classic iOS tab bar, with the Age button raised in the
+   middle (it sits half above the bar so it's easy to hit with a thumb). */
+.nav { margin: 0; padding: 6px 6px calc(6px + var(--safe-b)); border-radius: 0; border: 0; border-top: .5px solid var(--sep); grid-template-columns: 1fr 1fr 84px 1fr 1fr; background: color-mix(in srgb, var(--glass) 88%, transparent); -webkit-backdrop-filter: blur(24px) saturate(1.8); backdrop-filter: blur(24px) saturate(1.8); box-shadow: none; overflow: visible; }
+.nav-btn { gap: 3px; padding: 4px 0 2px; font-size: .6875rem; }
+.nav-btn .ic { width: 56px; height: 30px; padding: 3px 16px; }
+.ageup { width: 70px; height: 70px; margin-top: -34px; border-radius: 50%; background: var(--primary); color: var(--on-primary); font-size: .75rem; font-weight: 700; box-shadow: 0 0 0 5px var(--bg), 0 10px 22px -8px color-mix(in srgb, var(--primary) 70%, transparent); }
+.ageup .ic { width: 28px; height: 28px; }
+.ageup:active { border-radius: 26px; transform: scale(.92); }
+.ageup.pop::after { border-radius: 50%; }
+@keyframes fab-pop { 0% { border-radius: 26px; transform: scale(.84); } 100% { border-radius: 50%; } }
+body.sheet-open .nav { background: var(--cell); }
