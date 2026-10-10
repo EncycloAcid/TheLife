@@ -82,7 +82,7 @@ TL.actions = (function () {
       if (S().pets.length) {
         items.push({ section: 'Pets' });
         S().pets.forEach(function (pet) {
-          items.push({ icon: petIcon(pet.species), label: pet.name, sub: pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species) + ' · ' + pet.age + ' yrs', bar: pet.rel, onClick: function () { petMenu(pet); } });
+          items.push({ icon: petIcon(pet.species), label: pet.name, sub: pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species) + ' · ' + (pet.age < 1 ? 'under 1' : pet.age + (pet.age === 1 ? ' yr' : ' yrs')), bar: pet.rel, onClick: function () { petMenu(pet); } });
         });
       }
       // Meeting people comes before school, work and old contacts.
@@ -611,7 +611,7 @@ TL.actions = (function () {
     return pet;
   }
   // Bond tiers: best friends cheer me up and live a little longer; neglected pets wander off (js/engine.js).
-  function petBond(pet) { return pet.rel >= 80 ? '💛 Best friends' : pet.rel >= 50 ? 'Close' : pet.rel >= 20 ? 'Drifting apart' : '⚠️ Neglected: might run away'; }
+  function petBond(pet) { return pet.rel >= 80 ? '💛 Best friends' : pet.rel >= 50 ? 'Close' : pet.shelter === 1 && pet.rel >= 20 ? '🫣 Still shy around me' : pet.rel >= 20 ? 'Drifting apart' : '⚠️ Neglected: might run away'; }
   // Training: how much each species can learn (cats do it on their own terms).
   var PET_TRAIN = { Dog: 1, Horse: 0.9, Parrot: 0.8, Cat: 0.5 };
   var PET_LEVELS = ['Untrained', 'Knows a few tricks', 'Well trained', 'Show-ready'];
@@ -647,7 +647,7 @@ TL.actions = (function () {
   function petMenu(pet) {
     ui().menu(pet.name, function () {
       return [
-        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + pet.age + ' years old.</p><p class="muted">' + petBond(pet) + (S().year - (pet.got || S().year) >= 1 ? ' · together ' + U.plural(S().year - pet.got, 'year') : '') + (pet.hero ? ' · 🦸 saved my life' + (pet.hero > 1 ? ' ' + pet.hero + ' times' : '') : '') + '</p>' },
+        { info: true, html: '<p>' + petIcon(pet.species) + ' <b>' + U.esc(pet.name) + '</b> — ' + pet.breed + (new RegExp(pet.species + '$', 'i').test(pet.breed) ? '' : ' ' + pet.species.toLowerCase()) + ', ' + petAge(pet.age) + '.</p><p class="muted">' + petBond(pet) + (S().year - (pet.got || S().year) >= 1 ? ' · together ' + U.plural(S().year - pet.got, 'year') : '') + (pet.hero ? ' · 🦸 saved my life' + (pet.hero > 1 ? ' ' + pet.hero + ' times' : '') : '') + '</p>' },
         { icon: '🎾', label: 'Play', onClick: function () { var f = diminish('pet' + pet.id); pet.rel = U.clamp(pet.rel + 10 * f, 0, 100); E.stat('happy', 4 * f); done('I played with ' + pet.name + '.'); } },
         { icon: '🦮', label: 'Go for a walk', onClick: function () { var f = diminish('walkpet' + pet.id); pet.rel = U.clamp(pet.rel + 8 * f, 0, 100); E.stat('health', 3 * f); done('I took ' + pet.name + ' for a walk.'); } },
         { icon: '🏥', label: pet.sick ? 'Get ' + pet.name + ' treated' : 'Take to the vet', sub: pet.sick ? 'Sick with ' + pet.sick : pet.vetYear === S().year ? 'Checked up this year' : 'Yearly checkup', disabled: !pet.sick && pet.vetYear === S().year, right: E.fmt(E.$(pet.sick ? 600 : 200)), onClick: function () { petVet(pet); } },
@@ -661,20 +661,43 @@ TL.actions = (function () {
       ]);
     });
   }
+  // Where a pet comes from matters: a shelter animal is older, cheaper and grateful;
+  // a breeder sells a baby of the breed I pick, at full price.
+  var SHELTER = { Dog: 1, Cat: 1, Rabbit: 1, Horse: 1 };
+  function petAge(n) { return n < 1 ? 'under a year old' : n === 1 ? '1 year old' : n + ' years old'; }
   function petStore() {
     ui().menu('Adopt a pet', function () {
       return D.PETS.map(function (sp) {
         var cost = E.$(sp.price);
-        return { icon: petIcon(sp.species), label: sp.species, sub: 'Lifespan ~' + sp.life + ' yrs', right: E.fmt(cost), onClick: function () {
+        return { icon: petIcon(sp.species), label: sp.species, sub: 'Lifespan ~' + sp.life + ' yrs' + (SHELTER[sp.species] ? ' · shelter or breeder' : ''), right: E.fmt(cost), onClick: function () {
           if (me().age < 18 && U.chance(0.5)) return done('My parents said no pets.');
-          if (!afford(cost)) return done(noMoney(cost));
-          E.addMoney(-cost);
-          var p = addPet(sp.species);
-          done(good('I adopted ' + (/^[AEIOU]/.test(p.breed) ? 'an ' : 'a ') + p.breed + (new RegExp(sp.species + '$', 'i').test(p.breed) ? '' : ' ' + sp.species.toLowerCase()) + ' named ' + p.name + '!'));
+          var young = sp.species === 'Dog' ? 'puppy' : sp.species === 'Cat' ? 'kitten' : sp.species === 'Horse' ? 'foal' : 'baby ' + sp.species.toLowerCase();
+          var breeds = U.shuffle(sp.breeds.filter(function (b) { return b !== 'Mutt'; })).slice(0, 3);
+          var ch = breeds.map(function (b) { return { label: (/^[AEIOU]/.test(b) ? 'An ' : 'A ') + b + ' ' + young + ' (' + E.fmt(cost) + ')', fn: function () {
+            if (!afford(cost)) return done(noMoney(cost));
+            E.addMoney(-cost);
+            var p = addPet(sp.species, b);
+            done(good('I brought home ' + (/^[AEIOU]/.test(b) ? 'an ' : 'a ') + b + ' ' + young + '. Welcome home, ' + p.name + '! 🐾'));
+          } }; });
+          if (SHELTER[sp.species]) {
+            var age = U.rand(1, Math.max(1, Math.floor(sp.life * 0.7))), senior = age >= sp.life * 0.55, fee = senior ? 0 : Math.max(E.$(25), Math.round(cost * 0.2));
+            var breed = sp.species === 'Dog' && U.chance(0.5) ? 'Mutt' : U.pick(sp.breeds);
+            ch.unshift({ label: (senior ? 'Adopt a senior from the shelter (free)' : 'Adopt from the shelter (' + E.fmt(fee) + ')'), fn: function () {
+              if (!afford(fee)) return done(noMoney(fee));
+              E.addMoney(-fee);
+              var p = addPet(sp.species, breed, age);
+              p.rel = U.rand(35, 55); p.shelter = 1; // shy at first, warms up with time
+              E.karma(senior ? 5 : 3); E.stat('happy', 6);
+              E.log('🏠 I adopted ' + p.name + ', ' + (/^[AEIOU]/.test(breed) ? 'an ' : 'a ') + breed + (new RegExp(sp.species + '$', 'i').test(breed) ? '' : ' ' + sp.species.toLowerCase()) + ', ' + petAge(age) + ', from the shelter.', 'good');
+              done(good(senior ? p.name + ' had been at the shelter longer than anyone. ' + U.cap(petAge(age)) + ', gray around the face, and already asleep on my couch.' : p.name + ' was nervous the whole ride home. Give it time. ' + U.pick(['They had been waiting ' + U.rand(2, 14) + ' months for someone.', 'The staff cried a little when we left.'])));
+            } });
+          }
+          ui().choose(petIcon(sp.species) + ' ' + sp.species, SHELTER[sp.species] ? 'The shelter has animals that need a home. A breeder has ' + ({ puppy: 'puppies', kitten: 'kittens', foal: 'foals' }[young] || young.replace(/^baby (\w+)$/, 'baby $1s')) + '.' : 'Which one?', ch);
         } };
       });
     });
   }
+
 
   // ======================================================================
   // OCCUPATION: school + jobs
@@ -1368,7 +1391,7 @@ TL.actions = (function () {
       if (a >= 18) items.push({ icon: '🎰', label: 'Casino', onClick: casinoMenu });
       if (a >= 18) items.push({ icon: '🎟️', label: 'Lottery', sub: 'Jackpot ' + E.fmt(jackpot()), onClick: lottery });
       if (a >= 18) items.push({ icon: '✈️', label: 'Vacation', onClick: vacationMenu });
-      items.push({ icon: '🐾', label: 'Pets', onClick: petStore });
+      items.push({ icon: '🐾', label: 'Adopt a pet', sub: S().pets.length ? 'Your pets are under People' : 'Shelter or breeder', onClick: petStore });
       if (a >= 16 && !S().flags.license) { var sus = S().flags.suspended > S().year; items.push({ icon: '🪪', label: 'Driving test', sub: sus ? 'License suspended until ' + S().flags.suspended : used('dmv') ? 'Try again next year' : S().flags.dmvTries ? 'Failed ' + times(S().flags.dmvTries) + ' so far' : '', disabled: sus || used('dmv') > 0, onClick: drivingTest }); }
       if (a >= 21) items.push({ icon: '👶', label: 'Adoption', sub: a > 55 ? 'Agencies won\'t place a child with me at my age' : undefined, disabled: a > 55, onClick: adopt });
 

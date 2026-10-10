@@ -1490,6 +1490,11 @@ TL.engine = (function () {
       pet.age++;
       // While I'm locked up, family looks after them and we drift apart.
       pet.rel = U.clamp(pet.rel - U.rand(3, 8) - (s.prison ? 6 : 0), 0, 100);
+      // A shelter animal slowly learns this is home for good.
+      if (pet.shelter && !s.prison && s.year - (pet.got || s.year) <= 3) {
+        pet.rel = U.clamp(pet.rel + U.rand(7, 12), 0, 100);
+        if (pet.rel >= 65 && pet.shelter === 1) { pet.shelter = 2; log('🐾 ' + pet.name + ' finally trusts me. The shy shelter animal I brought home is gone; this one follows me everywhere.', 'good'); }
+      }
       // Trained pets are a joy; a best friend even more so (js/actions.js).
       if (!s.prison) { if (pet.trained) stat('happy', pet.trained); if (pet.rel >= 80) stat('happy', 2); }
       if (pet.sick) {
